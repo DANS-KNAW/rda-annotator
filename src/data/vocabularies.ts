@@ -287,456 +287,459 @@ export const gorcElements = [
 ];
 
 export const gorcAttributes = [
-  {
-    uuid_attribute: "rda_tiger:TA2OJCGDBXDQCM5I5GMBQ",
-    attribute: "Intent",
-    description: "commons intent, definition, and strategic planning",
-  },
-  {
-    uuid_attribute: "rda_tiger:66J6D7LNFQ7ACSR8V5EPS",
-    attribute: "Organization",
-    description:
-      "an appropriate organizational structure, design, and capability maturity for the aims and context of the commons*",
-  },
-  {
-    uuid_attribute: "rda_tiger:7WJDAR0CLG7V29P7EXNPH",
-    attribute: "Risk Management",
-    description: "risk management frameworks",
-  },
-  {
-    uuid_attribute: "rda_tiger:SLXCIMHU03LCVH1II75KL",
-    attribute: "Commons* Policy",
-    description:
-      "internal commons* policy development, implementation, and review",
-  },
-  {
-    uuid_attribute: "rda_tiger:EJ5D6R9UG6RBFB1AZWTZ5",
-    attribute: "Community* Relations",
-    description: "development and implementation of community* relations",
-  },
-  {
-    uuid_attribute: "rda_tiger:WK1ML9B18SIRMN6FS1PVO",
-    attribute: "Policy",
-    description: "policy advocacy, and recommendations",
-  },
-  {
-    uuid_attribute: "rda_tiger:7UUFZDJ7RDZU50LRVMQ2S",
-    attribute: "Organizational Monitoring",
-    description:
-      "a monitoring organizational design or organizational performance system to gather qualitative and quantitative metrics",
-  },
-  {
-    uuid_attribute: "rda_tiger:R9K5DNK67PCXM0ONC3XW6",
-    attribute: "Research Governance",
-    description:
-      "research object and service governance rules, principles, and enforcement of quality.",
-  },
-  {
-    uuid_attribute: "rda_tiger:6LL41UOWGJW7JXQWR1C7I",
-    attribute: "Community* Definition",
-    description: "any definition of the commons community*",
-  },
-  {
-    uuid_attribute: "rda_tiger:65SMQS792QSL2299OPMSK",
-    attribute: "Community* Rights",
-    description:
-      "existence of a set of policies defining a minimal set of rights and obligations for the commons* communty",
-  },
-  {
-    uuid_attribute: "rda_tiger:0066NV53M269BASKEGL4K",
-    attribute: "Community* Accountability",
-    description:
-      "existence of a set of policies defining minimal accountability for the commons* communty",
-  },
-  {
-    uuid_attribute: "rda_tiger:JUTIZVA2BVR22X7JJT50P",
-    attribute: "Community* EDII",
-    description:
-      "a commitement to equity, diversity, inclusion, and where appropriate, indigenization (edii), for the commons* communty",
-  },
-  {
-    uuid_attribute: "rda_tiger:TE8UZCKDL0SUT7NVS3ZOK",
-    attribute: "Resourcing",
-    description:
-      "minimal viable plan for resourcing on the medium and long term",
-  },
-  {
-    uuid_attribute: "rda_tiger:AM3J8P39TCPSVB1SEA1QQ",
-    attribute: "Knowledge Retention",
-    description:
-      "minimal viable plan for retaining knowledge accumulated by the commons* on the medium and long term",
-  },
-  {
-    uuid_attribute: "rda_tiger:DBGJD7T6JJZU93RBS53TO",
-    attribute: "Research Objects",
-    description:
-      "minimal viable plan for medium and long term management of research objects*",
-  },
-  {
-    uuid_attribute: "rda_tiger:LKLHE5ID6A9BEH9VWI2D0",
-    attribute: "Trust",
-    description:
-      "minimal viable plan to build community* trust and maintain it in the long term",
-  },
-  {
-    uuid_attribute: "rda_tiger:XJU63519MPD41DI5QVRDL",
-    attribute: "Influencing Governance",
-    description:
-      "mechanisms for community* engagement and input as part of setting expectations for governance decision making processes",
-  },
-  {
-    uuid_attribute: "rda_tiger:BWABHEEVR76O1RHKPM7E6",
-    attribute: "Communications",
-    description:
-      "structured and coordinated communication plan and mechanism, medium, or channels",
-  },
-  {
-    uuid_attribute: "rda_tiger:EQ5D89PWVNIAR00RKMIPS",
-    attribute: "Events",
-    description:
-      "events hosted or provided by the commons* for individuals in the commons community*.",
-  },
-  {
-    uuid_attribute: "rda_tiger:H9S95QZ2LSRUTPXT6FD59",
-    attribute: "Training",
-    description:
-      "training hosted or provided by the commons* for individuals in the commons community*.",
-  },
-  {
-    uuid_attribute: "rda_tiger:3PIV0AJ94EIPZF12LNM54",
-    attribute: "Promotion",
-    description:
-      "active promotion to intended audiences and incentivisation to participate in commons*",
-  },
-  {
-    uuid_attribute: "rda_tiger:88Z0P79ZA3R7VS3CXULX6",
-    attribute: "Other Research Commons*",
-    description: "engagement* with other research commons*",
-  },
-  {
-    uuid_attribute: "rda_tiger:U4438PG2RGSBEA1PPFLI2",
-    attribute: "Staff",
-    description: "internal capacity (i.e. staff)",
-  },
-  {
-    uuid_attribute: "rda_tiger:X4CNGV7S9WG1KG6C00PA9",
-    attribute: "User-Friendliness",
-    description: "skill requirement for users*, ease of use for users*",
-  },
-  {
-    uuid_attribute: "rda_tiger:G7TTZ2ICLWOESJA06IT7K",
-    attribute: "RoP Providers",
-    description:
-      "openness and freedom for providers* as described in the rules of particiation & access",
-  },
-  {
-    uuid_attribute: "rda_tiger:1HO0FL2MSD59AG1CUMCRU",
-    attribute: "Record Maintainer",
-    description:
-      "record maintainer [contact person or organization for the record in a registry that describes the repository*, the participation of the owner or maintainer of the repo* helps verify the information in the registry]",
-  },
-  {
-    uuid_attribute: "rda_tiger:6UPNOS5G4UT275QGCLZ7I",
-    attribute: "Services Skills",
-    description: "skills for planning, managing and assessing service delivery",
-  },
-  {
-    uuid_attribute: "rda_tiger:WS52T95KHW80BIZK8JZFN",
-    attribute: "Services Capacity",
-    description:
-      "capacity to manage operations and infrastructure management services*",
-  },
-  {
-    uuid_attribute: "rda_tiger:UVP2FT73927S6KH38R9FB",
-    attribute: "Documentation",
-    description:
-      "document and make public the whole process for every process where feasible, maintain a high level of transparency and documentation with stakeholders* and the community*",
-  },
-  {
-    uuid_attribute: "rda_tiger:EN0EIK1L0E1IKG90XV6WN",
-    attribute: "Scalable",
-    description:
-      "infrastructure is designed to scale with increasingly complex projects",
-  },
-  {
-    uuid_attribute: "rda_tiger:077AHTDRDO58W9VMC46JZ",
-    attribute: "Regular Updates",
-    description:
-      "a review and update of ict infrastructure* happens on a regular basis, with specific considerations for what enables the next layer of the stack and environmental sustainability",
-  },
-  {
-    uuid_attribute: "rda_tiger:9MZ3902VBNX8563MFUDKU",
-    attribute: "Network Infrastructure",
-    description: "knowledge and management of network infrastructure",
-  },
-  {
-    uuid_attribute: "rda_tiger:2F1R5ARO3329OGJ4TPB5G",
-    attribute: "Compute Infrastructure",
-    description: "knowledge and management of compute infrastructure",
-  },
-  {
-    uuid_attribute: "rda_tiger:F6O3MZWR8VIFL30T0CN0T",
-    attribute: "Storage Infrastructure",
-    description: "knowledge and management of storage infrastructure",
-  },
-  {
-    uuid_attribute: "rda_tiger:N8XDNOJE4F84KPWX6AMOT",
-    attribute: "Infrastructure OS",
-    description: "base software (infrastructure os)",
-  },
-  {
-    uuid_attribute: "rda_tiger:RVAF3SLPQ7URQZVG91EC5",
-    attribute: "AAI",
-    description: "authentication and authorization infrastructure (aai)",
-  },
-  {
-    uuid_attribute: "rda_tiger:P2QQXD02Z0JK9GVL3F4QR",
-    attribute: "Technical",
-    description:
-      "mechanisms, infrastructure, and plans in place for technical interoperability* (i.e. artifact exchange)",
-  },
-  {
-    uuid_attribute: "rda_tiger:I0U93QTUCO66KOLS4M3F3",
-    attribute: "Semantic",
-    description:
-      "mechanisms, infrastructure, and plans in place for semantic interoperability* (i.e. interpretation)",
-  },
-  {
-    uuid_attribute: "rda_tiger:0IO2OQDGD5P7U2NGUWRMZ",
-    attribute: "Pragmatic",
-    description:
-      "mechanisms, infrastructure, and plans in place for pragmatic interoperability* (i.e. agreements between organizations)",
-  },
-  {
-    uuid_attribute: "rda_tiger:BN23HMA2CDFG1Z484FVL8",
-    attribute: "Legal",
-    description:
-      "mechanisms, infrastructure, and plans in place for legal interoperability*",
-  },
-  {
-    uuid_attribute: "rda_tiger:NZ6VEO79HBDO2O7SIS7D0",
-    attribute: "PIDs",
-    description:
-      "a proven workflow to connect multiple different research artefact types is built on a persistent identifier infrastructure designed for interoperability*",
-  },
-  {
-    uuid_attribute: "rda_tiger:TE1W6XRGIDE6XXU30X5FA",
-    attribute: "Supported Metadata",
-    description:
-      "community* supported and well documented metadata* standards such that metadata* fulfills a given purpose",
-  },
-  {
-    uuid_attribute: "rda_tiger:TEF6JK8W0GGSJBRL735JI",
-    attribute: "Vocabulary & Ontology",
-    description: "vocabulary and ontology standards",
-  },
-  {
-    uuid_attribute: "rda_tiger:PSIHTDZML90DZ352F7ML4",
-    attribute: "Research Objects*",
-    description: "research object standards",
-  },
-  {
-    uuid_attribute: "rda_tiger:521UETVAU1W0JSVSKTJJ5",
-    attribute: "Service Endpoint Definition",
-    description:
-      "defined service endpoints between any combination of humans and machines",
-  },
-  {
-    uuid_attribute: "rda_tiger:FOK7BHOHNJPLM3V3QF6V2",
-    attribute: "Authentication & Authorization",
-    description: "authentication and authorization protocols",
-  },
-  {
-    uuid_attribute: "rda_tiger:P0HQBX7G64RWX0DU9NEB2",
-    attribute: "PID Workflow & Definitions",
-    description:
-      "a workflow and standards for adding and maintaining pids for managed assets",
-  },
-  {
-    uuid_attribute: "rda_tiger:CT6M4BMDEWA39VB6EZXVX",
-    attribute: "Applications & Software",
-    description:
-      "applications and software standards, in addition to applicable research object* and metadata* standards",
-  },
-  {
-    uuid_attribute: "rda_tiger:96F0C320W68PMPCAHHFML",
-    attribute: "Commons*-Specific",
-    description:
-      "standards* and protocols for all processes, services and tools* offered by the commons*.",
-  },
-  {
-    uuid_attribute: "rda_tiger:2W58U5S3M8WS5XAHEJW4Q",
-    attribute: "Development Process",
-    description:
-      "there exists a process for developing, updating and promoting standards",
-  },
-  {
-    uuid_attribute: "rda_tiger:VH45FEL4CAIZKLTGIKSNB",
-    attribute: "DMPs",
-    description:
-      "dmp standards, in addition to any applicable research object* and metadata* standards",
-  },
-  {
-    uuid_attribute: "rda_tiger:XRAAAL2UV5BWUT7666FXG",
-    attribute: "Core types definitions",
-    description:
-      "definitions of a set of core types of research objects* and services provided by the commons*.",
-  },
-  {
-    uuid_attribute: "rda_tiger:P3PED0XBAAWFDH9614GMP",
-    attribute: "Availability",
-    description:
-      "standards* describing the availability of post-print versions* of research objects* in institutional or thematic open access repos",
-  },
-  {
-    uuid_attribute: "rda_tiger:0K4QN02HQKG6Q8C5JRH6P",
-    attribute: "Access*",
-    description:
-      "standards* for access to information, resources, services, and tools*",
-  },
-  {
-    uuid_attribute: "rda_tiger:IQ4XMU0P2JW9C627A33HQ",
-    attribute: "Computational Workflows",
-    description:
-      "where computational workflows are used or referenced in provenance* information, these should be captured in a standards-based way",
-  },
-  {
-    uuid_attribute: "rda_tiger:CLX8LC5JFF190Z7W7CHEM",
-    attribute: "Collections",
-    description:
-      "standards* for collections*, in addition to any applicable research object* and metadata* standards",
-  },
-  {
-    uuid_attribute: "rda_tiger:F542WA9FVHE0O7CQB1XPT",
-    attribute: "Research Data Repository*",
-    description: "research data repository*",
-  },
-  {
-    uuid_attribute: "rda_tiger:ENC1ZOAEK7B7URK0IIK80",
-    attribute: "Publication & Research Documentation Repository*",
-    description:
-      "a publication and research documentation repository*, specifically for peer-reviewed articles, reports, and notes. (i.e. research findings available to the wider academic community* and beyond.) that have been provided by the commons community*",
-  },
-  {
-    uuid_attribute: "rda_tiger:1S1X5XL0BFUONQV33M3PO",
-    attribute: "Research Software Repository*",
-    description: "research software repository*",
-  },
-  {
-    uuid_attribute: "rda_tiger:WXIHHWMW4KCGKQ3VQB7FV",
-    attribute: "Vocabulary Repository*",
-    description: "vocabulary repository*",
-  },
-  {
-    uuid_attribute: "rda_tiger:0NHUKAOP0NCP55OTH0FZ8",
-    attribute: "Harvesting & Integration",
-    description:
-      "harvesting, or aggregating, and integrating research objects*, metadata*, services and tools* from external repositories and commons*, including members* and providers*",
-  },
-  {
-    uuid_attribute: "rda_tiger:P756ENTMIHAUQJJMFB4PV",
-    attribute: "Cataloging & Inventory",
-    description:
-      "a process to inventory research objects* and services to create and add to an open, searchable commons* catelogue that will include pointers to other types of catalogues or collections* and services",
-  },
-  {
-    uuid_attribute: "rda_tiger:BBTEQC7LNB4JRKBXMUUL9",
-    attribute: "Service Marketplace",
-    description:
-      "a marketplace or api for external service providers* to access and add their services, such that an interoperable interface is available to third party services from the perspective of users* and creates a service catelogue",
-  },
-  {
-    uuid_attribute: "rda_tiger:9D41I6P97NK6M1LQX5LF9",
-    attribute: "Data Acquisition",
-    description: "digital object*, research object, and data acquisition",
-  },
-  {
-    uuid_attribute: "rda_tiger:BJ02UUD11JX18DPKJWRBZ",
-    attribute: "Metadata Quality Control",
-    description:
-      "provide integrity and quality control mechanisms for metadata*, including immutiability",
-  },
-  {
-    uuid_attribute: "rda_tiger:5WWIVF2RK81PZ43EVDBRC",
-    attribute: "Research Object* Quality Control",
-    description:
-      "provide integrity and quality control mechanisms for research objects*",
-  },
-  {
-    uuid_attribute: "rda_tiger:4OZ40WHZZKIFLKAE3KN0N",
-    attribute: "Data Management",
-    description: "digital object*, research object, and data management",
-  },
-  {
-    uuid_attribute: "rda_tiger:R9IBPN1H9R1E4BFL6Q6HO",
-    attribute: "Vocabulary Utilization",
-    description: "a mechanism for utilizing vocabulary services",
-  },
-  {
-    uuid_attribute: "rda_tiger:2CZ8D1SKU9W8H3EXJCXM4",
-    attribute: "Types Registration",
-    description:
-      "a system to register types of research objects*, services and tools* that may not already be present in the commons*.",
-  },
-  {
-    uuid_attribute: "rda_tiger:J2JZGNZCLS8J3K9RAXO82",
-    attribute: "Harvestable Metadata",
-    description:
-      "provide a harvestable metadata* service so that others can harvest metadata* hosted by the commons* that describes research objects*, services, and tools*.",
-  },
-  {
-    uuid_attribute: "rda_tiger:P3QJEPZM4ZSAQCVV01GRF",
-    attribute: "Usage Statistics",
-    description:
-      "expose research object* usage statistics so that they are publicly viewable on the research object* landing page, spanning access and downloads",
-  },
-  {
-    uuid_attribute: "rda_tiger:6R1WWF96AROZQIXA8OWKB",
-    attribute: "SaaS",
-    description:
-      "software as a service* (saas), or an applications catelogue, supported by the commons* open source program office (ospo)",
-  },
-  {
-    uuid_attribute: "rda_tiger:8QJXFTO77QIJWKCQ4DD24",
-    attribute: "PaaS",
-    description:
-      "platform as a service* (paas) (i.e. a space to deploy, develop and use software packages and libraries)",
-  },
-  {
-    uuid_attribute: "rda_tiger:C0N8OFCL01LJUTRV5ALMF",
-    attribute: "Processing & Visualization",
-    description: "processing and visualization",
-  },
-  {
-    uuid_attribute: "rda_tiger:73AJTKOXF6O4XB7ZPZRB8",
-    attribute: "RDM-Dedicated",
-    description:
-      "dedicated research data management services and tools*, outside of training events and workshops.",
-  },
-  {
-    uuid_attribute: "rda_tiger:UX2RKR7TVKRA5U1FGDVCS",
-    attribute: "Security & ID",
-    description:
-      "securtiy and identification services, authenticaion and authorization (aai)",
-  },
-  {
-    uuid_attribute: "rda_tiger:TZN5D0L67BGJZP2UB1KCN",
-    attribute: "Repository API",
-    description:
-      "api for automated execution of standard repository* tasks and to interoperate with external services and tools* useful to the stakeholders*",
-  },
-  {
-    uuid_attribute: "rda_tiger:8JP3SV27A1HCTEVBXMP67",
-    attribute: "User Accessibility",
-    description:
-      "considerations for the displayed, user*-facing accessibility and reusability of research objects* held by and discoverable through the research commons*.",
-  },
-  {
-    uuid_attribute: "rda_tiger:77SCGFXAA8E3IPD8AA72E",
-    attribute: "Research Object Discovery",
-    description:
-      "considerations for what research objects* are held by and discoverable through the commons*",
-  },
+  [
+    {
+      uuid_attribute: "77D49FB9",
+      attribute: "Intent",
+      description: "Commons intent, definition, and Strategic Planning",
+    },
+    {
+      uuid_attribute: "9CBACF2B",
+      attribute: "Organization",
+      description:
+        "An appropriate organizational structure, design, and capability maturity for the aims and context of the commons*",
+    },
+    {
+      uuid_attribute: "25D05636",
+      attribute: "Risk Management",
+      description: "Risk management frameworks",
+    },
+    {
+      uuid_attribute: "DE212E4A",
+      attribute: "Commons* Policy",
+      description:
+        "Internal Commons* Policy Development, implementation, and review",
+    },
+    {
+      uuid_attribute: "1FE982A0",
+      attribute: "Community* Relations",
+      description: "Development and implementation of community* relations",
+    },
+    {
+      uuid_attribute: "441B04F2",
+      attribute: "Policy",
+      description: "Policy advocacy, and recommendations",
+    },
+    {
+      uuid_attribute: "DD1E70FF",
+      attribute: "Organizational Monitoring",
+      description:
+        "A monitoring organizational design or organizational performance system to gather qualitative and quantitative metrics",
+    },
+    {
+      uuid_attribute: "7CD61AB2",
+      attribute: "Research Governance",
+      description:
+        "Research object and service governance rules, principles, and enforcement of quality.",
+    },
+    {
+      uuid_attribute: "9BA1BA84",
+      attribute: "Community* Definition",
+      description: "Any definition of the commons community*",
+    },
+    {
+      uuid_attribute: "69395219",
+      attribute: "Community* Rights",
+      description:
+        "Existence of a set of policies defining a minimal set of rights and obligations for the commons* communty",
+    },
+    {
+      uuid_attribute: "148A4642",
+      attribute: "Community* Accountability",
+      description:
+        "Existence of a set of policies defining minimal accountability for the commons* communty",
+    },
+    {
+      uuid_attribute: "AB848C55",
+      attribute: "Community* EDII",
+      description:
+        "A commitement to equity, diversity, inclusion, and where appropriate, Indigenization (EDII), for the commons* communty",
+    },
+    {
+      uuid_attribute: "61E0388A",
+      attribute: "Resourcing",
+      description:
+        "Minimal viable plan for resourcing on the medium and long term",
+    },
+    {
+      uuid_attribute: "B790D527",
+      attribute: "Knowledge Retention",
+      description:
+        "Minimal viable plan for retaining knowledge accumulated by the commons* on the medium and long term",
+    },
+    {
+      uuid_attribute: "4A1ACD5F",
+      attribute: "Research Objects",
+      description:
+        "Minimal viable plan for medium and long term management of research objects*",
+    },
+    {
+      uuid_attribute: "9F67E5BB",
+      attribute: "Trust",
+      description:
+        "Minimal viable plan to build community* trust and maintain it in the long term",
+    },
+    {
+      uuid_attribute: "ACEE4BDD",
+      attribute: "Influencing Governance",
+      description:
+        "Mechanisms for community* engagement and input as part of setting expectations for governance decision making processes",
+    },
+    {
+      uuid_attribute: "E2C756C9",
+      attribute: "Communications",
+      description:
+        "Structured and coordinated communication plan and mechanism, medium, or channels",
+    },
+    {
+      uuid_attribute: "4F888A7E",
+      attribute: "Events",
+      description:
+        "Events hosted or provided by the commons* for individuals in the commons community*.",
+    },
+    {
+      uuid_attribute: "6C95143A",
+      attribute: "Training",
+      description:
+        "Training hosted or provided by the commons* for individuals in the commons community*.",
+    },
+    {
+      uuid_attribute: "654DB461",
+      attribute: "Promotion",
+      description:
+        "Active promotion to intended audiences and incentivisation to participate in Commons*",
+    },
+    {
+      uuid_attribute: "1B8FE29A",
+      attribute: "Other Research Commons*",
+      description: "Engagement* with other research commons*",
+    },
+    {
+      uuid_attribute: "850E4932",
+      attribute: "Staff",
+      description: "Internal Capacity (i.e. staff)",
+    },
+    {
+      uuid_attribute: "0CCA84F1",
+      attribute: "User-Friendliness",
+      description: "Skill requirement for users*, ease of use for users*",
+    },
+    {
+      uuid_attribute: "1CD9ABED",
+      attribute: "RoP Providers",
+      description:
+        "Openness and freedom for Providers* as described in the Rules of Particiation & Access",
+    },
+    {
+      uuid_attribute: "86A6A8A8",
+      attribute: "Record Maintainer",
+      description:
+        "Record maintainer [contact person or organization for the record in a registry that describes the Repository*, the participation of the owner or maintainer of the repo* helps verify the information in the registry]",
+    },
+    {
+      uuid_attribute: "B582B21D",
+      attribute: "Services Skills",
+      description:
+        "Skills for planning, managing and assessing service delivery",
+    },
+    {
+      uuid_attribute: "63F6D6A6",
+      attribute: "Services Capacity",
+      description:
+        "Capacity to manage operations and Infrastructure Management Services*",
+    },
+    {
+      uuid_attribute: "D08544E0",
+      attribute: "Documentation",
+      description:
+        "Document and make public the whole process for every process where feasible, maintain a high level of transparency and documentation with stakeholders* and the community*",
+    },
+    {
+      uuid_attribute: "3E807457",
+      attribute: "Scalable",
+      description:
+        "Infrastructure is designed to scale with increasingly complex projects",
+    },
+    {
+      uuid_attribute: "045EBFB1",
+      attribute: "Regular Updates",
+      description:
+        "A review and update of ICT Infrastructure* happens on a regular basis, with specific considerations for what enables the next layer of the stack and environmental sustainability",
+    },
+    {
+      uuid_attribute: "DF7A4A44",
+      attribute: "Network Infrastructure",
+      description: "Knowledge and management of Network infrastructure",
+    },
+    {
+      uuid_attribute: "781A252E",
+      attribute: "Compute Infrastructure",
+      description: "Knowledge and management of Compute Infrastructure",
+    },
+    {
+      uuid_attribute: "1EB3CFA7",
+      attribute: "Storage Infrastructure",
+      description: "Knowledge and management of Storage Infrastructure",
+    },
+    {
+      uuid_attribute: "8EF56C34",
+      attribute: "Infrastructure OS",
+      description: "Base software (Infrastructure OS)",
+    },
+    {
+      uuid_attribute: "85DF5C39",
+      attribute: "AAI",
+      description: "Authentication and Authorization Infrastructure (AAI)",
+    },
+    {
+      uuid_attribute: "9B368066",
+      attribute: "Technical",
+      description:
+        "Mechanisms, infrastructure, and plans in place for technical interoperability* (i.e. artifact exchange)",
+    },
+    {
+      uuid_attribute: "BB822F74",
+      attribute: "Semantic",
+      description:
+        "Mechanisms, infrastructure, and plans in place for semantic interoperability* (i.e. interpretation)",
+    },
+    {
+      uuid_attribute: "A66E0E5F",
+      attribute: "Pragmatic",
+      description:
+        "Mechanisms, infrastructure, and plans in place for pragmatic interoperability* (i.e. agreements between organizations)",
+    },
+    {
+      uuid_attribute: "79C884B4",
+      attribute: "Legal",
+      description:
+        "Mechanisms, infrastructure, and plans in place for legal interoperability*",
+    },
+    {
+      uuid_attribute: "BAB36BF6",
+      attribute: "PIDs",
+      description:
+        "A proven workflow to connect multiple different research artefact types is built on a persistent identifier infrastructure designed for interoperability*",
+    },
+    {
+      uuid_attribute: "1EAB24E3",
+      attribute: "Supported Metadata",
+      description:
+        "Community* supported and well documented metadata* standards such that metadata* fulfills a given purpose",
+    },
+    {
+      uuid_attribute: "F54630C2",
+      attribute: "Vocabulary & Ontology",
+      description: "Vocabulary and Ontology standards",
+    },
+    {
+      uuid_attribute: "47B72C83",
+      attribute: "Research Objects*",
+      description: "Research object standards",
+    },
+    {
+      uuid_attribute: "ECB75681",
+      attribute: "Service Endpoint Definition",
+      description:
+        "Defined service endpoints between any combination of humans and machines",
+    },
+    {
+      uuid_attribute: "F39FF8CA",
+      attribute: "Authentication & Authorization",
+      description: "Authentication and Authorization protocols",
+    },
+    {
+      uuid_attribute: "9484F018",
+      attribute: "PID Workflow & Definitions",
+      description:
+        "A workflow and standards for adding and maintaining PIDs for managed assets",
+    },
+    {
+      uuid_attribute: "09CE6F2C",
+      attribute: "Applications & Software",
+      description:
+        "Applications and Software standards, in addition to applicable research object* and metadata* standards",
+    },
+    {
+      uuid_attribute: "1330CEBA",
+      attribute: "Commons*-Specific",
+      description:
+        "Standards* and protocols for all processes, services and tools* offered by the commons*.",
+    },
+    {
+      uuid_attribute: "1BA01522",
+      attribute: "Development Process",
+      description:
+        "There exists a process for developing, updating and promoting standards",
+    },
+    {
+      uuid_attribute: "D78BA8D0",
+      attribute: "DMPs",
+      description:
+        "DMP standards, in addition to any applicable research object* and metadata* standards",
+    },
+    {
+      uuid_attribute: "973BAB43",
+      attribute: "Core types definitions",
+      description:
+        "Definitions of a set of core types of research objects* and services provided by the commons*.",
+    },
+    {
+      uuid_attribute: "5373971C",
+      attribute: "Availability",
+      description:
+        "Standards* describing the availability of post-print versions* of research objects* in institutional or thematic Open Access repos",
+    },
+    {
+      uuid_attribute: "50083F53",
+      attribute: "Access*",
+      description:
+        "Standards* for access to information, resources, services, and tools*",
+    },
+    {
+      uuid_attribute: "E6DDF79A",
+      attribute: "Computational Workflows",
+      description:
+        "Where computational workflows are used or referenced in Provenance* information, these should be captured in a standards-based way",
+    },
+    {
+      uuid_attribute: "402EE822",
+      attribute: "Collections",
+      description:
+        "Standards* for collections*, in addition to any applicable research object* and metadata* standards",
+    },
+    {
+      uuid_attribute: "D2F21080",
+      attribute: "Research Data Repository*",
+      description: "Research data Repository*",
+    },
+    {
+      uuid_attribute: "385EA3F1",
+      attribute: "Publication & Research Documentation Repository*",
+      description:
+        "A publication and research documentation repository*, specifically for peer-reviewed articles, reports, and notes. (i.e. Research findings available to the wider academic community* and beyond.) that have been provided by the commons community*",
+    },
+    {
+      uuid_attribute: "337B0595",
+      attribute: "Research Software Repository*",
+      description: "Research software repository*",
+    },
+    {
+      uuid_attribute: "0A8D064E",
+      attribute: "Vocabulary Repository*",
+      description: "Vocabulary repository*",
+    },
+    {
+      uuid_attribute: "824CEDD7",
+      attribute: "Harvesting & Integration",
+      description:
+        "Harvesting, or aggregating, and integrating research objects*, metadata*, services and tools* from external repositories and commons*, including members* and providers*",
+    },
+    {
+      uuid_attribute: "C0E5B005",
+      attribute: "Cataloging & Inventory",
+      description:
+        "A process to inventory research objects* and services to create and add to an open, searchable commons* catelogue that will include pointers to other types of catalogues or collections* and services",
+    },
+    {
+      uuid_attribute: "A5A228F7",
+      attribute: "Service Marketplace",
+      description:
+        "A marketplace or API for external service Providers* to access and add their services, such that an interoperable interface is available to third party services from the perspective of users* and creates a service catelogue",
+    },
+    {
+      uuid_attribute: "FEC5C206",
+      attribute: "Data Acquisition",
+      description: "digital object*, Research object, and data acquisition",
+    },
+    {
+      uuid_attribute: "ED333B57",
+      attribute: "Metadata Quality Control",
+      description:
+        "Provide integrity and quality control mechanisms for metadata*, including immutiability",
+    },
+    {
+      uuid_attribute: "8DBFBCE2",
+      attribute: "Research Object* Quality Control",
+      description:
+        "Provide integrity and quality control mechanisms for research objects*",
+    },
+    {
+      uuid_attribute: "2B1CD18D",
+      attribute: "Data Management",
+      description: "digital object*, Research object, and data management",
+    },
+    {
+      uuid_attribute: "D7778708",
+      attribute: "Vocabulary Utilization",
+      description: "A mechanism for utilizing vocabulary services",
+    },
+    {
+      uuid_attribute: "9ACCB493",
+      attribute: "Types Registration",
+      description:
+        "A system to register types of research objects*, services and tools* that may not already be present in the commons*.",
+    },
+    {
+      uuid_attribute: "1DED88BE",
+      attribute: "Harvestable Metadata",
+      description:
+        "Provide a harvestable metadata* service so that others can harvest metadata* hosted by the commons* that describes research objects*, services, and tools*.",
+    },
+    {
+      uuid_attribute: "F267C969",
+      attribute: "Usage Statistics",
+      description:
+        "expose research object* usage statistics so that they are publicly viewable on the research object* landing page, spanning access and downloads",
+    },
+    {
+      uuid_attribute: "51CB11E4",
+      attribute: "SaaS",
+      description:
+        "Software as a Service* (SaaS), or an applications catelogue, supported by the commons* Open Source Program Office (OSPO)",
+    },
+    {
+      uuid_attribute: "87A86CAE",
+      attribute: "PaaS",
+      description:
+        "Platform as a Service* (PaaS) (i.e. a space to deploy, develop and use software packages and libraries)",
+    },
+    {
+      uuid_attribute: "90B18272",
+      attribute: "Processing & Visualization",
+      description: "Processing and visualization",
+    },
+    {
+      uuid_attribute: "3155C127",
+      attribute: "RDM-Dedicated",
+      description:
+        "Dedicated Research Data Management services and tools*, outside of training events and workshops.",
+    },
+    {
+      uuid_attribute: "6FB0E27B",
+      attribute: "Security & ID",
+      description:
+        "Securtiy and Identification services, Authenticaion and Authorization (AAI)",
+    },
+    {
+      uuid_attribute: "A769C212",
+      attribute: "Repository API",
+      description:
+        "API for automated execution of standard Repository* tasks and to interoperate with external services and tools* useful to the stakeholders*",
+    },
+    {
+      uuid_attribute: "0721E445",
+      attribute: "User Accessibility",
+      description:
+        "Considerations for the displayed, user*-facing accessibility and reusability of research objects* held by and discoverable through the research commons*.",
+    },
+    {
+      uuid_attribute: "CF052F85",
+      attribute: "Research Object Discovery",
+      description:
+        "Considerations for what research objects* are held by and discoverable through the commons*",
+    },
+  ],
 ];
 
 export const domains = [
