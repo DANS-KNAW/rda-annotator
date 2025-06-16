@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
+import terser from "@rollup/plugin-terser";
 
 const getRequiredEnvVar = (name: string): string => {
   const value = process.env[name];
@@ -23,6 +24,7 @@ export default defineConfig({
       },
       preserveEntrySignatures: false,
       treeshake: true,
+      plugins: [terser()],
     },
   },
 });
