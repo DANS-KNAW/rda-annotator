@@ -53,11 +53,12 @@ export default defineBackground(async () => {
             if (url) {
               browser.tabs.update(sender.tab.id, { url });
             }
+
             extension.activate(sender.tab.id, {
               afterNavigationTo: url,
               query,
             });
-
+            
             sendResponse({ active: true });
           }
           break;
@@ -70,7 +71,7 @@ export default defineBackground(async () => {
       browser.runtime.reload()
     );
   });
-
+  
   // Show survey to users after they uninstall extension.
   browser.runtime.setUninstallURL(uninstallURL);
 

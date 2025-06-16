@@ -20,7 +20,7 @@ if (isBrowserSupported()) {
     | SidebarAppConfig;
   const assetRoot = processUrlTemplate(config.assetRoot || "__ASSET_ROOT__");
 
-  console.log({ config, assetRoot });
+  console.log({ config, assetRoot, browser: import.meta.env.BROWSER });
 
   // // Check whether this is a mini-app (indicated by the presence of a
   // // `<hypothesis-app>` element) and load the appropriate part of the client.
