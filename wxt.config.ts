@@ -3,6 +3,7 @@ import { defineConfig } from "wxt";
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   manifest: {
+    action: {},
     web_accessible_resources: [
       {
         resources: ["pdfjs/*", "pdfjs/web/viewer.html"],
