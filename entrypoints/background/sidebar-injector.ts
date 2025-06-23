@@ -506,7 +506,7 @@ export class SidebarInjector {
       return executeScript({
         tabId,
         frameId,
-        file: "/client/build/boot.js",
+        file: "/client/boot.js",
       });
     }
   }

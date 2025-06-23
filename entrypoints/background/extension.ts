@@ -336,10 +336,13 @@ export class Extension {
         // Note this configuration is duplicated in `pdfjs-init.js`. Any changes
         // made here must be reflected there as well.
         const config = {
-          assetRoot: browser.runtime.getURL("/pdfjs/web/viewer.html"),
-          notebookAppUrl: browser.runtime.getURL("/pdfjs/web/viewer.html"),
-          profileAppUrl: browser.runtime.getURL("/pdfjs/web/viewer.html"),
-          sidebarAppUrl: browser.runtime.getURL("/pdfjs/web/viewer.html"),
+          // Remove /app.html for assetRoot.
+          assetRoot: browser.runtime
+            .getURL("/client/app.html")
+            .replace(/\/[^\/]+$/, ""),
+          notebookAppUrl: browser.runtime.getURL("/client/notebook.html"),
+          profileAppUrl: browser.runtime.getURL("/client/profile.html"),
+          sidebarAppUrl: browser.runtime.getURL("/client/app.html"),
 
           // Pass the direct-link query as configuration into the client.
           //
@@ -348,6 +351,8 @@ export class Extension {
           // that modify the URL fragment as they load. See commit 3143ca27e05d.
           ...directLinkQuery,
         };
+
+        console.log(config);
 
         try {
           await sidebarInjector.injectIntoTab(tab, config);
@@ -401,7 +406,7 @@ export class Extension {
      *   the state of existing tabs has been determined.
      */
     this.init = async () => {
-      browser.browserAction.onClicked.addListener(onBrowserActionClicked);
+      browser.action.onClicked.addListener(onBrowserActionClicked);
 
       // Set up listeners for tab events.
       browser.tabs.onCreated.addListener(onTabCreated);
