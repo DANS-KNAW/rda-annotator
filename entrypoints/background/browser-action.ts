@@ -1,16 +1,15 @@
-
-import type { State as TabState } from './tab-state';
+import type { State as TabState } from "./tab-state";
 
 // Each button state has two icons one for normal resolution (19) and one
 // for hi-res screens (38).
 const icons = {
   active: {
-    19: 'images/browser-icon-active.png',
-    38: 'images/browser-icon-active@2x.png',
+    19: "icon/19-active.png",
+    38: "icon/38-active.png",
   },
   inactive: {
-    19: 'images/browser-icon-inactive.png',
-    38: 'images/browser-icon-inactive@2x.png',
+    19: "icon/19-inactive.png",
+    38: "icon/38-inactive.png",
   },
 };
 
@@ -20,12 +19,12 @@ const icons = {
  */
 const badgeThemes: Record<string, { defaultText: string; color: string }> = {
   dev: {
-    defaultText: 'DEV',
-    color: '#5BCF59', // Emerald green
+    defaultText: "DEV",
+    color: "#5BCF59", // Emerald green
   },
   staging: {
-    defaultText: 'STG',
-    color: '#EDA061', // Porche orange-pink
+    defaultText: "STG",
+    color: "#EDA061", // Porche orange-pink
   },
 };
 
@@ -45,29 +44,29 @@ export class BrowserAction {
   update(tabId: number, state: TabState) {
     let activeIcon;
     let title;
-    let badgeText = '';
+    let badgeText = "";
 
     switch (state.state) {
-      case 'active':
+      case "active":
         activeIcon = icons.active;
-        title = 'Hypothesis is active';
+        title = "Hypothesis is active";
         break;
-      case 'inactive':
+      case "inactive":
         activeIcon = icons.inactive;
-        title = 'Hypothesis is inactive';
+        title = "Hypothesis is inactive";
         break;
-      case 'errored':
+      case "errored":
         activeIcon = icons.inactive;
-        title = 'Hypothesis failed to load';
-        badgeText = '!';
+        title = "Hypothesis failed to load";
+        badgeText = "!";
         break;
     }
 
     // display the annotation count on the badge
-    if (state.state !== 'errored' && state.annotationCount) {
+    if (state.state !== "errored" && state.annotationCount) {
       let totalString = state.annotationCount.toString();
       if (state.annotationCount > 999) {
-        totalString = '999+';
+        totalString = "999+";
       }
 
       let countLabel;
@@ -84,7 +83,7 @@ export class BrowserAction {
     // update the badge style to reflect the build type
     const badgeTheme = badgeThemes[import.meta.env.buildType];
     if (badgeTheme) {
-      browser.browserAction.setBadgeBackgroundColor({
+      browser.action.setBadgeBackgroundColor({
         tabId,
         color: badgeTheme.color,
       });
@@ -93,9 +92,9 @@ export class BrowserAction {
       }
     }
 
-    browser.browserAction.setBadgeText({ tabId, text: badgeText });
-    browser.browserAction.setIcon({ tabId, path: activeIcon });
-    browser.browserAction.setTitle({ tabId, title });
+    browser.action.setBadgeText({ tabId, text: badgeText });
+    browser.action.setIcon({ tabId, path: activeIcon });
+    browser.action.setTitle({ tabId, title });
   }
 
   static icons = icons;

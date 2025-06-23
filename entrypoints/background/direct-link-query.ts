@@ -14,7 +14,7 @@ export type Query = {
 /**
  * @TODO We might not utilize an iframe for the sidebar anymore.
  * We should check if this still functions as expected.
- * 
+ *
  * Extracts the direct-linking query from the URL if any.
  *
  * If present, the query causes the extension to activate automatically and
