@@ -15,7 +15,7 @@ export function isBrowserSupported(): boolean {
 
     // DOM API checks for frequently-used APIs.
     () => new URL(document.location.href), // URL constructor.
-    () => new Request('https://google.com'), // Part of the `fetch` API.
+    () => new Request('https://rda.dansdemo.nl'), // Part of the `fetch` API.
     () => Element.prototype.attachShadow,
 
     // CSS feature checks
