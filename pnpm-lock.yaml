@@ -11,6 +11,9 @@ importers:
       is-equal-shallow:
         specifier: ^0.1.3
         version: 0.1.3
+      lodash.debounce:
+        specifier: ^4.0.8
+        version: 4.0.8
       preact:
         specifier: ^10.26.9
         version: 10.26.9
@@ -27,6 +30,9 @@ importers:
       '@types/is-equal-shallow':
         specifier: ^0.1.0
         version: 0.1.0
+      '@types/lodash.debounce':
+        specifier: ^4.0.9
+        version: 4.0.9
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
@@ -434,6 +440,12 @@ packages:
 
   '@types/is-equal-shallow@0.1.0':
     resolution: {integrity: sha512-w8A9aD0zK/ltq2VoIO35SZ91VmjUtrB045u880w1xeb2wb/cM5y81PRZTrxa+chHQz69IGX1hzERLYHbrkfIaw==}
+
+  '@types/lodash.debounce@4.0.9':
+    resolution: {integrity: sha512-Ma5JcgTREwpLRwMM+XwBR7DaWe96nC38uCBDFKZWbNKD+osjVzdpnUSwBcqCptrp16sSOLBAUb50Car5I0TCsQ==}
+
+  '@types/lodash@4.17.19':
+    resolution: {integrity: sha512-NYqRyg/hIQrYPT9lbOeYc3kIRabJDn/k4qQHIXUpx88CBDww2fD15Sg5kbXlW86zm2XEW4g0QxkTI3/Kfkc7xQ==}
 
   '@types/minimatch@3.0.5':
     resolution: {integrity: sha512-Klz949h02Gz2uZCMGwDUSDS1YBlTdDDgbWHi+81l29tQALUtvz4rAYi5uoVhE5Lagoq6DeqAUlbrHvW/mXDgdQ==}
@@ -1292,6 +1304,9 @@ packages:
 
   lodash.camelcase@4.3.0:
     resolution: {integrity: sha512-TwuEnCnxbc3rAvhf/LbG7tJUDzhqXyFnv3dtzLOPgCG/hODL7WFnsbwktkD7yUV0RrreP/l1PALq/YSg6VvjlA==}
+
+  lodash.debounce@4.0.8:
+    resolution: {integrity: sha512-FT1yDzDYEoYWhnSGnpE/4Kj1fLZkDFyqRb7fNt6FdYOSxlUWAtp42Eh6Wb0rGIv/m9Bgo7x4GhQbm5Ys4SG5ow==}
 
   lodash.kebabcase@4.1.1:
     resolution: {integrity: sha512-N8XRTIMMqqDgSy4VLKPnJ/+hpGZN+PHQiJnSenYqPaVV/NCqEogTnAdZLQiGKhxX+JCs8waWq2t1XHWKOmlY8g==}
@@ -2380,6 +2395,12 @@ snapshots:
 
   '@types/is-equal-shallow@0.1.0': {}
 
+  '@types/lodash.debounce@4.0.9':
+    dependencies:
+      '@types/lodash': 4.17.19
+
+  '@types/lodash@4.17.19': {}
+
   '@types/minimatch@3.0.5': {}
 
   '@types/node@22.14.1':
@@ -3222,6 +3243,8 @@ snapshots:
       quansync: 0.2.10
 
   lodash.camelcase@4.3.0: {}
+
+  lodash.debounce@4.0.8: {}
 
   lodash.kebabcase@4.1.1: {}
 
