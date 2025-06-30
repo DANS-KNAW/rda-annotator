@@ -1,7 +1,7 @@
 import { defineWxtModule } from "wxt/modules";
 import { execSync } from "child_process";
 
-const configs = ["vite.boot.config.ts"];
+const configs = ["vite.boot.config.ts", "vite.annotator.config.ts"];
 
 /**
  * WXT Module that triggers an external build process after WXT completes its build.

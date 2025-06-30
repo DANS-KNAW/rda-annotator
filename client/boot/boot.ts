@@ -17,6 +17,7 @@ export type AnnotatorConfig = {
   /** The URL of the sidebar's HTML page. */
   sidebarAppUrl: string;
   /** A mapping from canonical asset path to cache-busted asset path. */
+  /**@NOTE We probably won't use this... */
   manifest: Record<string, string>;
 };
 
@@ -29,13 +30,13 @@ type MaybePDFWindow = Window & { PDFViewerApplication?: object };
  * the client.
  */
 function tagElement(el: HTMLElement) {
-  el.setAttribute('data-hypothesis-asset', '');
+  el.setAttribute("data-hypothesis-asset", "");
 }
 
 function injectStylesheet(doc: Document, href: string) {
-  const link = doc.createElement('link');
-  link.rel = 'stylesheet';
-  link.type = 'text/css';
+  const link = doc.createElement("link");
+  link.rel = "stylesheet";
+  link.type = "text/css";
   link.href = href;
 
   tagElement(link);
@@ -53,12 +54,12 @@ function injectScript(
     esModule?: boolean;
     /** Whether to force re-evaluation of an ES module script. */
     forceReload?: boolean;
-  } = {},
+  } = {}
 ) {
-  const script = doc.createElement('script');
+  const script = doc.createElement("script");
 
   if (esModule) {
-    script.type = 'module';
+    script.type = "module";
   }
 
   if (forceReload) {
@@ -83,10 +84,10 @@ function injectScript(
 function injectLink(
   doc: Document,
   rel: string,
-  type: 'html' | 'javascript',
-  url: string,
+  type: "html" | "javascript",
+  url: string
 ) {
-  const link = doc.createElement('link');
+  const link = doc.createElement("link");
   link.rel = rel;
   link.href = url;
   link.type = `application/annotator+${type}`;
@@ -102,16 +103,16 @@ function injectLink(
  * that the client will load.
  */
 function preloadURL(doc: Document, type: string, url: string) {
-  const link = doc.createElement('link');
-  link.rel = 'preload';
+  const link = doc.createElement("link");
+  link.rel = "preload";
   link.as = type;
   link.href = url;
 
   // If this is a resource that we are going to read the contents of, then we
   // need to make a cross-origin request. For other types, use a non cross-origin
   // request which returns a response that is opaque.
-  if (type === 'fetch') {
-    link.crossOrigin = 'anonymous';
+  if (type === "fetch") {
+    link.crossOrigin = "anonymous";
   }
 
   tagElement(link);
@@ -119,7 +120,7 @@ function preloadURL(doc: Document, type: string, url: string) {
 }
 
 function assetURL(config: SidebarAppConfig | AnnotatorConfig, path: string) {
-  return config.assetRoot + 'build/' + config.manifest[path];
+  return config.assetRoot + "/" + config.manifest[path];
 }
 
 /**
@@ -132,7 +133,7 @@ function assetURL(config: SidebarAppConfig | AnnotatorConfig, path: string) {
 export function bootHypothesisClient(doc: Document, config: AnnotatorConfig) {
   // Detect presence of Hypothesis in the page
   const appLinkEl = doc.querySelector(
-    'link[type="application/annotator+html"]',
+    'link[type="application/annotator+html"]'
   );
   if (appLinkEl) {
     return;
@@ -141,27 +142,28 @@ export function bootHypothesisClient(doc: Document, config: AnnotatorConfig) {
   // Register the URL of the sidebar app which the Hypothesis client should load.
   // The <link> tag is also used by browser extensions etc. to detect the
   // presence of the Hypothesis client on the page.
-  injectLink(doc, 'sidebar', 'html', config.sidebarAppUrl);
+  injectLink(doc, "sidebar", "html", config.sidebarAppUrl);
 
   // Register the URL of the notebook app which the Hypothesis client should load.
-  injectLink(doc, 'notebook', 'html', config.notebookAppUrl);
+  injectLink(doc, "notebook", "html", config.notebookAppUrl);
 
   // Register the URL of the user profile app which the Hypothesis client should load.
-  injectLink(doc, 'profile', 'html', config.profileAppUrl);
+  injectLink(doc, "profile", "html", config.profileAppUrl);
 
   // Preload the styles used by the shadow roots of annotator UI elements.
-  preloadURL(doc, 'style', assetURL(config, 'styles/annotator.css'));
+  /** @NOTE SHOULD look how to tweak this for RDA */
+  preloadURL(doc, "style", assetURL(config, "styles/annotator.css"));
 
   // Register the URL of the annotation client which is currently being used to drive
   // annotation interactions.
   injectLink(
     doc,
-    'hypothesis-client',
-    'javascript',
-    config.assetRoot + 'boot.js',
+    "hypothesis-client",
+    "javascript",
+    config.assetRoot + "boot.js"
   );
 
-  const scripts = ['scripts/annotator.bundle.js'];
+  const scripts = ["annotator.js"];
   for (const path of scripts) {
     const url = assetURL(config, path);
     injectScript(doc, url, { esModule: false });
@@ -169,9 +171,9 @@ export function bootHypothesisClient(doc: Document, config: AnnotatorConfig) {
 
   const styles = [];
   if ((window as MaybePDFWindow).PDFViewerApplication !== undefined) {
-    styles.push('styles/pdfjs-overrides.css');
+    styles.push("styles/pdfjs-overrides.css");
   }
-  styles.push('styles/highlights.css');
+  styles.push("styles/highlights.css");
   for (const path of styles) {
     const url = assetURL(config, path);
     injectStylesheet(doc, url);
@@ -183,16 +185,16 @@ export function bootHypothesisClient(doc: Document, config: AnnotatorConfig) {
  */
 export function bootSidebarApp(doc: Document, config: SidebarAppConfig) {
   // Preload `/api/` and `/api/links` API responses.
-  preloadURL(doc, 'fetch', config.apiUrl);
-  preloadURL(doc, 'fetch', config.apiUrl + 'links');
+  preloadURL(doc, "fetch", config.apiUrl);
+  preloadURL(doc, "fetch", config.apiUrl + "links");
 
-  const scripts = ['scripts/sidebar.bundle.js'];
+  const scripts = ["sidebar.bundle.js"];
   for (const path of scripts) {
     const url = assetURL(config, path);
     injectScript(doc, url, { esModule: true });
   }
 
-  const styles = ['styles/katex.min.css', 'styles/sidebar.css'];
+  const styles = ["styles/katex.min.css", "styles/sidebar.css"];
   for (const path of styles) {
     const url = assetURL(config, path);
     injectStylesheet(doc, url);

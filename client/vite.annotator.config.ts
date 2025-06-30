@@ -15,12 +15,12 @@ export default defineConfig({
     outDir: getRequiredEnvVar("WXT_OUT_DIR"),
     rollupOptions: {
       input: {
-        boot: resolve(__dirname, "boot/index.ts"),
+        annotator: resolve(__dirname, "annotator/index.ts"),
       },
       output: {
         entryFileNames: "client/[name].js",
         format: "iife",
-        sourcemap: false,
+        sourcemap: true,
       },
       preserveEntrySignatures: false,
       treeshake: true,

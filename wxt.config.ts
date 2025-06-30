@@ -1,28 +1,7 @@
 import { defineConfig, UserManifest } from "wxt";
-import replace from "@rollup/plugin-replace";
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
-  vite: () => ({
-    plugins: [
-      replace({
-        preventAssignment: true,
-        __APPCONFIG__: {
-          apiUrl: "http://localhost:5000/api/",
-          assetRoot: "/client/",
-          authDomain: "localhost",
-          serviceUrl: "http://localhost:5000/",
-          release: "test",
-          appType: "test",
-          // raven: {
-          //   dsn: "",
-          //   release: "",
-          // },
-          oauthClientId: "test",
-        },
-      }),
-    ],
-  }),
   manifest: ({ browser }) => {
     const isFirefox = browser === "firefox";
 
@@ -49,7 +28,7 @@ export default defineConfig({
       },
       web_accessible_resources: [
         {
-          resources: ["pdfjs/*", "pdfjs/web/viewer.html"],
+          resources: ["client/*", "pdfjs/*", "pdfjs/web/viewer.html"],
           matches: ["<all_urls>"],
         },
       ],
