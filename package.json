@@ -19,6 +19,7 @@
     "@rollup/plugin-terser": "^0.4.4",
     "@types/is-equal-shallow": "^0.1.0",
     "@types/lodash.debounce": "^4.0.9",
+    "@types/scroll-into-view": "^1.16.4",
     "typescript": "^5.8.3",
     "wxt": "^0.20.0"
   },
@@ -29,6 +30,7 @@
     "is-equal-shallow": "^0.1.3",
     "lodash.debounce": "^4.0.8",
     "preact": "^10.26.9",
+    "scroll-into-view": "^1.16.2",
     "tailwindcss": "^4.1.11",
     "vite": "^6.3.5"
   }

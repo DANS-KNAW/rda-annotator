@@ -26,6 +26,9 @@ importers:
       preact:
         specifier: ^10.26.9
         version: 10.26.9
+      scroll-into-view:
+        specifier: ^1.16.2
+        version: 1.16.2
       tailwindcss:
         specifier: ^4.1.11
         version: 4.1.11
@@ -45,6 +48,9 @@ importers:
       '@types/lodash.debounce':
         specifier: ^4.0.9
         version: 4.0.9
+      '@types/scroll-into-view':
+        specifier: ^1.16.4
+        version: 1.16.4
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
@@ -469,6 +475,9 @@ packages:
 
   '@types/node@22.14.1':
     resolution: {integrity: sha512-u0HuPQwe/dHrItgHHpmw3N2fYCR6x4ivMNbPHRkBVP4CvN+kiRrKHWk3i8tXiO/joPwXLMYvF9TTF0eqgHIuOw==}
+
+  '@types/scroll-into-view@1.16.4':
+    resolution: {integrity: sha512-f2Rw8aA9gj7+M6uWhNx/mRAWyC4tYsvG2uA/cMEkXUyfMXYgTRJCM8CD8kTkoQlX8STQVgTQL0SmmM1VPZQmsg==}
 
   '@types/yauzl@2.10.3':
     resolution: {integrity: sha512-oJoftv0LSuaDZE3Le4DbKX+KS9G36NzOeSap90UIK0yMA/NhKJhqlSGtNDORNRaIbQfzjXDrQa0ytJ6mNRGz/Q==}
@@ -1750,6 +1759,9 @@ packages:
   sax@1.4.1:
     resolution: {integrity: sha512-+aWOz7yVScEGoKNd4PA10LZ8sk0A/z5+nXQG5giUO5rprX9jgYsTdov9qCchZiPIZezbZH+jRut8nPodFAX4Jg==}
 
+  scroll-into-view@1.16.2:
+    resolution: {integrity: sha512-vyTE0i27o6eldt9xinjHec41Dw05y+faoI+s2zNKJAVOdbA5M2XZrYq/obJ8E+QDQulJ2gDjgui9w9m9RZSRng==}
+
   scule@1.3.0:
     resolution: {integrity: sha512-6FtHJEvt+pVMIB9IBY+IcCJ6Z5f1iQnytgyfKMhDKgmzYG+TeH/wx1y3l27rshSbLiSanrR9ffZDrEsmjlQF2g==}
 
@@ -2454,6 +2466,8 @@ snapshots:
   '@types/node@22.14.1':
     dependencies:
       undici-types: 6.21.0
+
+  '@types/scroll-into-view@1.16.4': {}
 
   '@types/yauzl@2.10.3':
     dependencies:
@@ -3764,6 +3778,8 @@ snapshots:
     optional: true
 
   sax@1.4.1: {}
+
+  scroll-into-view@1.16.2: {}
 
   scule@1.3.0: {}
 
