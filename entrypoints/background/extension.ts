@@ -352,8 +352,6 @@ export class Extension {
           ...directLinkQuery,
         };
 
-        console.log(config);
-
         try {
           await sidebarInjector.injectIntoTab(tab, config);
 
