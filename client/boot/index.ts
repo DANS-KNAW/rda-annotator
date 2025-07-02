@@ -14,27 +14,26 @@ import { processUrlTemplate } from "./url-template";
 /**
  * @NOTE Should find a way to generate manifest file with cache-busted URLs.
  */
-const manifest = {
+const manifest: Record<string, string> = {
   "annotator.js": "annotator.js?fceda4",
+  "annotator.js.map": "annotator.js.map?11a837",
+  "sidebar.js": "sidebar.js?51aaf7",
+  "sidebar.js.map": "sidebar.js.map?d212f6",
+  "styles/annotator.css": "styles/annotator.css?c1d2f9",
   "styles/annotator.css.map": "styles/annotator.css.map?1ba208",
   "styles/highlights.css": "styles/highlights.css?470b72",
   "styles/highlights.css.map": "styles/highlights.css.map?f23b53",
   "styles/katex.min.css": "styles/katex.min.css?921c28",
   "styles/katex.min.css.map": "styles/katex.min.css.map?7e544d",
   "styles/pdfjs-overrides.css": "styles/pdfjs-overrides.css?c95edf",
-  "styles/annotator.css": "styles/annotator.css?c1d2f9",
   "styles/pdfjs-overrides.css.map": "styles/pdfjs-overrides.css.map?9b78be",
   "styles/sidebar.css": "styles/sidebar.css?ad2b5d",
-  "styles/ui-playground.css.map": "styles/ui-playground.css.map?a9e643",
-  "styles/ui-playground.css": "styles/ui-playground.css?7a65b5",
   "styles/sidebar.css.map": "styles/sidebar.css.map?1f3bc6",
-  "scripts/ui-playground.bundle.js": "scripts/ui-playground.bundle.js?696b45",
-  "annotator.js.map": "annotator.js.map?11a837",
-  "scripts/sidebar.bundle.js": "scripts/sidebar.bundle.js?51aaf7",
-  "scripts/ui-playground.bundle.js.map":
-    "scripts/ui-playground.bundle.js.map?746847",
-  "scripts/sidebar.bundle.js.map": "scripts/sidebar.bundle.js.map?d212f6",
 };
+
+const test = __CACHE_BUSTER__;
+
+console.log(test);
 
 if (isBrowserSupported()) {
   const config = parseJsonConfig(document) as
