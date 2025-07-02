@@ -188,7 +188,7 @@ export function bootSidebarApp(doc: Document, config: SidebarAppConfig) {
   preloadURL(doc, "fetch", config.apiUrl);
   preloadURL(doc, "fetch", config.apiUrl + "links");
 
-  const scripts = ["sidebar.bundle.js"];
+  const scripts = ["sidebar.js"];
   for (const path of scripts) {
     const url = assetURL(config, path);
     injectScript(doc, url, { esModule: true });

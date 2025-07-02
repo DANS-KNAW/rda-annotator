@@ -1,3 +1,15 @@
 {
-  "extends": "./.wxt/tsconfig.json"
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "lib": ["es2021", "dom", "dom.iterable"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "module": "es2020",
+    "moduleResolution": "node",
+    "target": "ES2021",
+    "useUnknownInCatchVariables": false,
+    "types": []
+  }
 }
