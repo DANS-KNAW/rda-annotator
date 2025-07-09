@@ -18,7 +18,7 @@ export default defineConfig({
         annotator: resolve(__dirname, "annotator/index.ts"),
       },
       output: {
-        entryFileNames: "client/[name].js",
+        entryFileNames: "client/scripts/[name].js",
         format: "iife",
         sourcemap: true,
       },

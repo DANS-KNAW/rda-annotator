@@ -15,7 +15,12 @@ const getRequiredEnvVar = (name: string): string => {
 const generateCacheBuster = () => {
   const packageVersion = packageJson.version;
   const buildTime = Date.now();
-  const files = ["script/annotator.js", "script/annotator.js.map"];
+  const files = [
+    "scripts/annotator.js",
+    "scripts/annotator.js.map",
+    "script/sidebar.js",
+    "script/sidebar.js.map",
+  ];
   const cacheBuster: Record<string, string> = {};
 
   files.forEach((file, index) => {

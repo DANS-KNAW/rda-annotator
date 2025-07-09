@@ -17,7 +17,6 @@ export type AnnotatorConfig = {
   /** The URL of the sidebar's HTML page. */
   sidebarAppUrl: string;
   /** A mapping from canonical asset path to cache-busted asset path. */
-  /**@NOTE We probably won't use this... */
   manifest: Record<string, string>;
 };
 
@@ -163,7 +162,7 @@ export function bootHypothesisClient(doc: Document, config: AnnotatorConfig) {
     config.assetRoot + "boot.js"
   );
 
-  const scripts = ["annotator.js"];
+  const scripts = ["script/annotator.js"];
   for (const path of scripts) {
     const url = assetURL(config, path);
     injectScript(doc, url, { esModule: false });
@@ -188,7 +187,7 @@ export function bootSidebarApp(doc: Document, config: SidebarAppConfig) {
   preloadURL(doc, "fetch", config.apiUrl);
   preloadURL(doc, "fetch", config.apiUrl + "links");
 
-  const scripts = ["sidebar.js"];
+  const scripts = ["script/sidebar.js"];
   for (const path of scripts) {
     const url = assetURL(config, path);
     injectScript(doc, url, { esModule: true });

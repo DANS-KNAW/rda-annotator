@@ -14,26 +14,24 @@ import { processUrlTemplate } from "./url-template";
 /**
  * @NOTE Should find a way to generate manifest file with cache-busted URLs.
  */
-const manifest: Record<string, string> = {
-  "annotator.js": "annotator.js?fceda4",
-  "annotator.js.map": "annotator.js.map?11a837",
-  "sidebar.js": "sidebar.js?51aaf7",
-  "sidebar.js.map": "sidebar.js.map?d212f6",
-  "styles/annotator.css": "styles/annotator.css?c1d2f9",
-  "styles/annotator.css.map": "styles/annotator.css.map?1ba208",
-  "styles/highlights.css": "styles/highlights.css?470b72",
-  "styles/highlights.css.map": "styles/highlights.css.map?f23b53",
-  "styles/katex.min.css": "styles/katex.min.css?921c28",
-  "styles/katex.min.css.map": "styles/katex.min.css.map?7e544d",
-  "styles/pdfjs-overrides.css": "styles/pdfjs-overrides.css?c95edf",
-  "styles/pdfjs-overrides.css.map": "styles/pdfjs-overrides.css.map?9b78be",
-  "styles/sidebar.css": "styles/sidebar.css?ad2b5d",
-  "styles/sidebar.css.map": "styles/sidebar.css.map?1f3bc6",
-};
+// const manifest: Record<string, string> = {
+//   "annotator.js": "annotator.js?fceda4",
+//   "annotator.js.map": "annotator.js.map?11a837",
+//   "sidebar.js": "sidebar.js?51aaf7",
+//   "sidebar.js.map": "sidebar.js.map?d212f6",
+//   "styles/annotator.css": "styles/annotator.css?c1d2f9",
+//   "styles/annotator.css.map": "styles/annotator.css.map?1ba208",
+//   "styles/highlights.css": "styles/highlights.css?470b72",
+//   "styles/highlights.css.map": "styles/highlights.css.map?f23b53",
+//   "styles/katex.min.css": "styles/katex.min.css?921c28",
+//   "styles/katex.min.css.map": "styles/katex.min.css.map?7e544d",
+//   "styles/pdfjs-overrides.css": "styles/pdfjs-overrides.css?c95edf",
+//   "styles/pdfjs-overrides.css.map": "styles/pdfjs-overrides.css.map?9b78be",
+//   "styles/sidebar.css": "styles/sidebar.css?ad2b5d",
+//   "styles/sidebar.css.map": "styles/sidebar.css.map?1f3bc6",
+// };
 
-const test = __CACHE_BUSTER__;
-
-console.log(test);
+const manifest = __CACHE_BUSTER__;
 
 if (isBrowserSupported()) {
   const config = parseJsonConfig(document) as
