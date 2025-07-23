@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
 import terser from "@rollup/plugin-terser";
+import babel from "vite-plugin-babel";
 
 const getRequiredEnvVar = (name: string): string => {
   const value = process.env[name];
@@ -11,6 +12,28 @@ const getRequiredEnvVar = (name: string): string => {
 };
 
 export default defineConfig({
+  plugins: [
+    babel({
+      babelConfig: {
+        babelrc: false,
+        configFile: false,
+        presets: [
+          [
+            "@babel/preset-typescript",
+            {
+              // Allow TypeScript syntax
+              allowDeclareFields: true,
+              // Only transform imports, not types
+              onlyRemoveTypeImports: true,
+            },
+          ],
+        ],
+        plugins: ["inject-args"],
+      },
+      // Apply to JavaScript and TypeScript files in the client directory.
+      filter: /client\/.*\.(jsx?|tsx?)$/,
+    }),
+  ],
   build: {
     outDir: getRequiredEnvVar("WXT_OUT_DIR"),
     rollupOptions: {

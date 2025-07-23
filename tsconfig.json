@@ -7,7 +7,7 @@
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "module": "es2020",
-    "moduleResolution": "node",
+    // "moduleResolution": "node",
     "target": "ES2021",
     "useUnknownInCatchVariables": false,
     "types": []

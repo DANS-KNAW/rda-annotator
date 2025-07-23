@@ -18,8 +18,12 @@ const generateCacheBuster = () => {
   const files = [
     "scripts/annotator.js",
     "scripts/annotator.js.map",
-    "script/sidebar.js",
-    "script/sidebar.js.map",
+    "scripts/sidebar.js",
+    "scripts/sidebar.js.map",
+    "styles/annotator.css",
+    "styles/highlights.css",
+    "styles/pdfjs-overrides.css",
+    "styles/sidebar.css",
   ];
   const cacheBuster: Record<string, string> = {};
 

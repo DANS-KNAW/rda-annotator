@@ -150,7 +150,6 @@ export function bootHypothesisClient(doc: Document, config: AnnotatorConfig) {
   injectLink(doc, "profile", "html", config.profileAppUrl);
 
   // Preload the styles used by the shadow roots of annotator UI elements.
-  /** @NOTE SHOULD look how to tweak this for RDA */
   preloadURL(doc, "style", assetURL(config, "styles/annotator.css"));
 
   // Register the URL of the annotation client which is currently being used to drive
@@ -162,7 +161,7 @@ export function bootHypothesisClient(doc: Document, config: AnnotatorConfig) {
     config.assetRoot + "boot.js"
   );
 
-  const scripts = ["script/annotator.js"];
+  const scripts = ["scripts/annotator.js"];
   for (const path of scripts) {
     const url = assetURL(config, path);
     injectScript(doc, url, { esModule: false });
@@ -187,13 +186,16 @@ export function bootSidebarApp(doc: Document, config: SidebarAppConfig) {
   preloadURL(doc, "fetch", config.apiUrl);
   preloadURL(doc, "fetch", config.apiUrl + "links");
 
-  const scripts = ["script/sidebar.js"];
+  const scripts = ["scripts/sidebar.js"];
   for (const path of scripts) {
     const url = assetURL(config, path);
     injectScript(doc, url, { esModule: true });
   }
 
-  const styles = ["styles/katex.min.css", "styles/sidebar.css"];
+  const styles = [
+    // "styles/katex.min.css",
+    "styles/sidebar.css",
+  ];
   for (const path of styles) {
     const url = assetURL(config, path);
     injectStylesheet(doc, url);

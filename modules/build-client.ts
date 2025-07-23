@@ -1,5 +1,9 @@
 import { defineWxtModule } from "wxt/modules";
 import { execSync } from "child_process";
+import { buildCSS } from "../tools/buildcss";
+import annotatorTailwindConfig from "../tailwind-annotator.config.js";
+import sidebarTailwindConfig from "../tailwind-sidebar.config.js";
+import tailwindConfig from "../tailwind.config.js";
 
 const configs = [
   "vite.boot.config.ts",
@@ -34,6 +38,40 @@ export default defineWxtModule({
           process.exit(1);
         }
       }
+
+      const stylesOutDir = wxt.config.outDir + "/client/styles";
+
+      buildCSS(["./client/styles/annotator/annotator.scss"], {
+        tailwindConfig: annotatorTailwindConfig as any,
+        outDir: stylesOutDir,
+      });
+
+      buildCSS(
+        [
+          // sidebar styles (with tailwind)
+          "./client/styles/sidebar/sidebar.scss",
+        ],
+        {
+          tailwindConfig: sidebarTailwindConfig as any,
+          outDir: stylesOutDir,
+        }
+      );
+
+      buildCSS(
+        [
+          // styles processed by tailwind, used by annotator
+          "./client/styles/annotator/highlights.scss",
+          // other styles used by annotator (standalone)
+          "./client/styles/annotator/pdfjs-overrides.scss",
+
+          // Vendor
+          // "./node_modules/katex/dist/katex.min.css",
+        ],
+        {
+          tailwindConfig: tailwindConfig as any,
+          outDir: stylesOutDir,
+        }
+      );
     });
   },
 });

@@ -11,26 +11,6 @@ import { getExtensionId, hasExtensionConfig } from "./browser-extension-utils";
 import { parseJsonConfig } from "./parse-json-config";
 import { processUrlTemplate } from "./url-template";
 
-/**
- * @NOTE Should find a way to generate manifest file with cache-busted URLs.
- */
-// const manifest: Record<string, string> = {
-//   "annotator.js": "annotator.js?fceda4",
-//   "annotator.js.map": "annotator.js.map?11a837",
-//   "sidebar.js": "sidebar.js?51aaf7",
-//   "sidebar.js.map": "sidebar.js.map?d212f6",
-//   "styles/annotator.css": "styles/annotator.css?c1d2f9",
-//   "styles/annotator.css.map": "styles/annotator.css.map?1ba208",
-//   "styles/highlights.css": "styles/highlights.css?470b72",
-//   "styles/highlights.css.map": "styles/highlights.css.map?f23b53",
-//   "styles/katex.min.css": "styles/katex.min.css?921c28",
-//   "styles/katex.min.css.map": "styles/katex.min.css.map?7e544d",
-//   "styles/pdfjs-overrides.css": "styles/pdfjs-overrides.css?c95edf",
-//   "styles/pdfjs-overrides.css.map": "styles/pdfjs-overrides.css.map?9b78be",
-//   "styles/sidebar.css": "styles/sidebar.css?ad2b5d",
-//   "styles/sidebar.css.map": "styles/sidebar.css.map?1f3bc6",
-// };
-
 const manifest = __CACHE_BUSTER__;
 
 if (isBrowserSupported()) {
@@ -41,10 +21,6 @@ if (isBrowserSupported()) {
 
   // Check whether this is a mini-app (indicated by the presence of a
   // `<hypothesis-app>` element) and load the appropriate part of the client.
-  /**
-   * @NOTE This likely is the desktop app or something like that for RDA this will not be needed.
-   * We will likely have to look if this can be scrapped easily.
-   */
   if (document.querySelector("hypothesis-app")) {
     const sidebarConfig = config as SidebarAppConfig;
     bootSidebarApp(document, {
@@ -68,11 +44,6 @@ if (isBrowserSupported()) {
     const profileAppUrl = processUrlTemplate(annotatorConfig.profileAppUrl);
     const sidebarAppUrl = processUrlTemplate(annotatorConfig.sidebarAppUrl);
 
-    /**
-     * @NOTE The manifest file is normally generated and imported.
-     * The current issue is that WXT + VITE's build step doesn't let us easily import it.
-     * For now this will work but it will need to be changed later.
-     */
     bootHypothesisClient(document, {
       assetRoot,
       notebookAppUrl,

@@ -35,7 +35,7 @@ async function init() {
   document.head.appendChild(configScript);
 
   const embedScript = document.createElement("script");
-  embedScript.src = "/client/build/boot.js";
+  embedScript.src = "/client/boot.js";
   document.body.appendChild(embedScript);
 }
 
