@@ -7,9 +7,20 @@ export default defineConfig({
   vite: () => ({
     plugins: [tailwindcss()],
   }),
-  manifest: {
+  manifest: (env) => ({
+    name: (env.mode === "development" ? "[DEV] " : "") + "RDA TIGER Annotation",
+    permissions: ["storage", "identity"],
+    host_permissions: [import.meta.env.HOST_PERMISSION],
     web_accessible_resources: [
       { resources: ["sidebar.html"], matches: ["<all_urls>"] },
     ],
-  },
+    action: {
+      default_icon: {
+        "16": "icon/16.png",
+        "32": "icon/32.png",
+        "48": "icon/48.png",
+        "128": "icon/128.png",
+      },
+    },
+  }),
 });
