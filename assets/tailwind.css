@@ -1,29 +1,34 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
 @import "tailwindcss";
 
 @theme {
-    --color-rda-50: #EAF6E5;
-    --color-rda-100: #D8EECE;
-    --color-rda-200: #AEDB99;
-    --color-rda-300: #87CA68;
-    --color-rda-400: #61AD3D;
-    --color-rda-500: #467D2C;
-    --color-rda-600: #376223;
-    --color-rda-700: #2A4B1B;
-    --color-rda-800: #1B3111;
-    --color-rda-900: #0F1A09;
-    --color-rda-950: #060B04;
+  --color-rda-50: #eaf6e5;
+  --color-rda-100: #d8eece;
+  --color-rda-200: #aedb99;
+  --color-rda-300: #87ca68;
+  --color-rda-400: #61ad3d;
+  --color-rda-500: #467d2c;
+  --color-rda-600: #376223;
+  --color-rda-700: #2a4b1b;
+  --color-rda-800: #1b3111;
+  --color-rda-900: #0f1a09;
+  --color-rda-950: #060b04;
 }
 
 @theme {
-    --color-brown-50: #F5EAE5;
-    --color-brown-100: #ECD4CB;
-    --color-brown-200: #D9A996;
-    --color-brown-300: #C67E62;
-    --color-brown-400: #A45A3C;
-    --color-brown-500: #703D29;
-    --color-brown-600: #5A3121;
-    --color-brown-700: #432519;
-    --color-brown-800: #2D1810;
-    --color-brown-900: #160C08;
-    --color-brown-950: #0B0604;
+  --color-brown-50: #f5eae5;
+  --color-brown-100: #ecd4cb;
+  --color-brown-200: #d9a996;
+  --color-brown-300: #c67e62;
+  --color-brown-400: #a45a3c;
+  --color-brown-500: #703d29;
+  --color-brown-600: #5a3121;
+  --color-brown-700: #432519;
+  --color-brown-800: #2d1810;
+  --color-brown-900: #160c08;
+  --color-brown-950: #0b0604;
+}
+
+@theme {
+  --font-roboto: "Roboto", sans-serif;
 }
