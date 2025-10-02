@@ -1,0 +1,129 @@
+{
+  "title": "RDA Annotation Schema",
+  "version": 1,
+  "fields": [
+    {
+      "type": "text",
+      "label": "Title",
+      "name": "title",
+      "required": true,
+      "info": "Provide a title for your annotation - this will show up prominently, for example, in search results in the catalogue."
+    },
+    {
+      "type": "textarea",
+      "label": "Description",
+      "name": "description",
+      "required": false,
+      "info": "Provide a description for your annotation. This will be seen by all users."
+    },
+    {
+      "type": "textarea",
+      "label": "Notes",
+      "name": "notes",
+      "required": false,
+      "info": "Add notes for your own use."
+    },
+    {
+      "type": "combobox",
+      "label": "Language",
+      "name": "language",
+      "required": true,
+      "info": "The default language is English, only change of this is not the case.",
+      "vocabulary": "languages",
+      "defaultValue": "eng"
+    },
+    {
+      "type": "text",
+      "label": "Resource",
+      "name": "resource",
+      "required": true,
+      "disabled": true,
+      "info": "The URL to the resource you are annotation - automatically filled, and normally, no need to change.",
+      "preset": "resource_url"
+    },
+    {
+      "type": "combobox",
+      "label": "Resource Type",
+      "name": "resource_type",
+      "required": true,
+      "info": "The type of resource you are annotating. If you are unsure, use ‘Other’. The tag is used to filter annotations by resource group.",
+      "vocabulary": "resource_types"
+    },
+    {
+      "type": "combobox",
+      "label": "Keywords/Tags",
+      "name": "keywords",
+      "required": false,
+      "info": "Add keywords and tags to characterise or classify the annotation. The type-ahead list is filtered by the current group selections, but this can be turned off.",
+      "vocabulary": "keywords",
+      "multiple": true,
+      "allowCustomValue": true
+    },
+    {
+      "type": "combobox",
+      "label": "RDA Pathways",
+      "name": "pathways",
+      "required": false,
+      "info": "Select an RDA Pathway from the list. You can start typing to filter the list.",
+      "vocabulary": "rda_pathways",
+      "multiple": true
+    },
+    {
+      "type": "combobox",
+      "label": "GORC Elements",
+      "name": "gorc_elements",
+      "required": false,
+      "info": "Select a GORC Element from the list. You can start typing to filter the list. <a href=\"https://www.rd-alliance.org/group_output/gorc-ig-typology-and-definitions/\" target=\"_blank\" >Read more about GORC</a>.",
+      "vocabulary": "gorc_elements",
+      "multiple": true
+    },
+    {
+      "type": "combobox",
+      "label": "GORC Attributes",
+      "name": "gorc_attributes",
+      "required": false,
+      "info": "Select a GORC Attribute from the list. You can start typing to filter the list. <a href=\"https://www.rd-alliance.org/group_output/gorc-ig-typology-and-definitions/\" target=\"_blank\" >Read more about GORC</a>.",
+      "vocabulary": "gorc_attributes",
+      "multiple": true
+    },
+    {
+      "type": "combobox",
+      "label": "Interest Groups",
+      "name": "interest_groups",
+      "required": false,
+      "info": "Select an RDA Interest Group from the list. You can start typing to filter the list.",
+      "vocabulary": "interest_groups",
+      "multiple": true
+    },
+    {
+      "type": "combobox",
+      "label": "Working Groups",
+      "name": "working_groups",
+      "required": false,
+      "info": "Select an RDA Working Group from the list. You can start typing to filter the list.",
+      "vocabulary": "working_groups",
+      "multiple": true,
+      "dropdownUp": true
+    },
+    {
+      "type": "combobox",
+      "label": "Disciplines (Domains)",
+      "name": "disciplines",
+      "required": false,
+      "info": "Select an RDA Scientific Discipline (Domain) from the list. You can start typing to filter the list.",
+      "vocabulary": "disciplines",
+      "multiple": true,
+      "dropdownUp": true
+    },
+    {
+      "type": "combobox",
+      "label": "MOMSI",
+      "name": "momsi",
+      "required": false,
+      "info": "Select a MOMSI from the list. You can start typing to filter the list.",
+      "vocabulary": "momsi",
+      "multiple": true,
+      "dropdownUp": true
+    }
+  ]
+}
