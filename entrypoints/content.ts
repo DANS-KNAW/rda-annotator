@@ -2,7 +2,7 @@ import { onMessage, sendMessage } from "@/utils/messaging";
 
 const EXTENSION_NAME = "rda-annotator";
 const SIDEBAR_WIDTH = 400;
-const TOGGLE_TAB_WIDTH = 40;
+const TOGGLE_TAB_WIDTH = 30;
 
 export default defineContentScript({
   matches: ["*://*/*"],
@@ -61,10 +61,10 @@ export default defineContentScript({
           #toggle-button {
             position: absolute;
             left: 0;
-            top: 30px;
+            top: 20px;
             transform: translateY(-50%);
             width: ${TOGGLE_TAB_WIDTH}px;
-            height: 60px;
+            height: 40px;
             background: #467d2c;
             color: white;
             border: none;
