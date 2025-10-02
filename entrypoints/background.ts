@@ -21,12 +21,40 @@ export default defineBackground(() => {
         version: 1,
         fallback: null,
       });
+
+      storage.defineItem("local:extension-enabled", {
+        version: 1,
+        fallback: false,
+      });
     }
   });
 
   browser.action.onClicked.addListener(async (tab) => {
+    const currentState = await storage.getItem("local:extension-enabled");
+    const newState = !currentState;
+    await storage.setItem("local:extension-enabled", newState);
+
+    // Update badge to show enabled/disabled state
+    await browser.action.setBadgeText({
+      text: newState ? "ON" : "",
+    });
+    await browser.action.setBadgeBackgroundColor({
+      color: newState ? "#467d2c" : "#666666",
+    });
+
+    // If there's a current tab, send message to toggle it
     if (tab?.id != null) {
-      await sendMessage("toggleSidebar", undefined, tab.id);
+      await sendMessage("toggleSidebar", { action: "toggle" }, tab.id);
+    }
+  });
+
+  browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (changeInfo.status === "complete") {
+      const isEnabled = await storage.getItem("local:extension-enabled");
+
+      if (isEnabled) {
+        await sendMessage("toggleSidebar", { action: "mount" }, tabId);
+      }
     }
   });
 });
