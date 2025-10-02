@@ -17,6 +17,11 @@ const faqs = [
       </>
     ),
   },
+  {
+    question: "How can I create an annotation?",
+    answer:
+      "Select any text on the page; a widget appears next to the selection. Click Annotate, fill in the metadata form, and Save.",
+  },
 ];
 
 export default function FAQ() {

@@ -47,7 +47,7 @@ export default function Accordion({ question, answer }: AccordionProps) {
         </DisclosureButton>
       </dt>
       <DisclosurePanel as="dd" className="mt-2">
-        <p className="text-sm/6 text-gray-600">{answer}</p>
+        <div className="text-sm/6 text-gray-600">{answer}</div>
       </DisclosurePanel>
     </Disclosure>
   );
