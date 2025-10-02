@@ -73,10 +73,55 @@ export default function Create() {
     }
   }, [annotationData]);
 
-  const handleSubmit = (data: Record<string, any>) => {
+  // Load remembered choices when settings are loaded
+  useEffect(() => {
+    if (!isLoadingSettings && settings.rememberChoices && formRef.current) {
+      Object.entries(settings.rememberChoices).forEach(([fieldName, value]) => {
+        formRef.current?.setValue(fieldName, value);
+      });
+    }
+  }, [isLoadingSettings, settings.rememberChoices]);
+
+  const handleSubmit = async (data: Record<string, any>) => {
     console.log("Form submitted with data:", data);
 
-    if ("rememberChoices" in data) {
+    if (data.rememberChoices === true) {
+      const comboboxFields = (AnnotationFormSchema as AnnotationSchema).fields
+        .filter((field) => field.type === "combobox")
+        .map((field) => field.name);
+
+      const rememberChoices: Record<string, any> = {};
+      comboboxFields.forEach((fieldName) => {
+        if (
+          data[fieldName] !== undefined &&
+          data[fieldName] !== null &&
+          data[fieldName] !== ""
+        ) {
+          rememberChoices[fieldName] = data[fieldName];
+        }
+      });
+
+      try {
+        const updatedSettings = {
+          ...settings,
+          rememberChoices,
+        };
+        await storage.setItem("local:settings", updatedSettings);
+        setSettings(updatedSettings);
+      } catch (error) {
+        console.error("Failed to save remembered choices:", error);
+      }
+    } else if (data.rememberChoices === false && settings.rememberChoices) {
+      try {
+        const updatedSettings = {
+          ...settings,
+          rememberChoices: undefined,
+        };
+        await storage.setItem("local:settings", updatedSettings);
+        setSettings(updatedSettings);
+      } catch (error) {
+        console.error("Failed to clear remembered choices:", error);
+      }
     }
   };
 
@@ -163,7 +208,7 @@ export default function Create() {
   return (
     <>
       <h2 className="text-xl mx-2 mt-6">Create Annotation</h2>
-      <Form ref={formRef} onSubmit={(data) => console.log(data)}>
+      <Form ref={formRef} onSubmit={handleSubmit}>
         <div className="mx-2 mt-4 space-y-4">{FormFields}</div>
 
         <div className="mx-2 my-4">
@@ -179,6 +224,7 @@ export default function Create() {
               </div>
             }
             name="rememberChoices"
+            defaultChecked={!!settings.rememberChoices}
           />
         </div>
 
