@@ -7,14 +7,12 @@ import TypeaheadInput from "@/components/form/Typeahead.input";
 import { AnnotationSchema } from "@/types/annotation-schema.interface";
 import { AuthenticationContext } from "@/context/authentication.context";
 import Toggle from "@/components/form/Toggle";
+import { storage } from "#imports";
+import { ISettings } from "@/types/settings.interface";
 
 interface AnnotationData {
   selectedText: string;
   url: string;
-}
-
-interface VocabularySettings {
-  [key: string]: boolean;
 }
 
 export default function Create() {
@@ -23,16 +21,16 @@ export default function Create() {
   const [annotationData, setAnnotationData] = useState<AnnotationData | null>(
     null
   );
-  const [settings, setSettings] = useState<VocabularySettings>({});
+  const [settings, setSettings] = useState<ISettings>({ vocabularies: {} });
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const storedSettings = await storage.getItem<VocabularySettings>(
+        const storedSettings = await storage.getItem<ISettings>(
           "local:settings"
         );
-        setSettings(storedSettings || {});
+        setSettings(storedSettings || { vocabularies: {} });
       } catch (error) {
         console.error("Failed to load settings:", error);
       } finally {
@@ -74,6 +72,13 @@ export default function Create() {
       formRef.current.setValue("resource", annotationData.url);
     }
   }, [annotationData]);
+
+  const handleSubmit = (data: Record<string, any>) => {
+    console.log("Form submitted with data:", data);
+
+    if ("rememberChoices" in data) {
+    }
+  };
 
   if (!isAuthenticated) {
     return (
@@ -117,7 +122,7 @@ export default function Create() {
           );
         case "combobox":
           if (field.type === "combobox" && field.vocabulary) {
-            if (settings[field.name] === false) {
+            if (settings.vocabularies?.[field.name] === false) {
               return null;
             }
           }

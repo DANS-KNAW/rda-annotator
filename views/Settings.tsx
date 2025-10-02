@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { Form } from "@/components/form/Form";
 import Toggle from "@/components/form/Toggle";
 import AnnotationFormSchema from "@/assets/schema.json";
@@ -6,6 +6,8 @@ import { AnnotationSchema } from "@/types/annotation-schema.interface";
 import { AuthenticationContext } from "@/context/authentication.context";
 import Button from "@/components/Button";
 import Modal from "@/components/Model";
+import { ISettings } from "@/types/settings.interface";
+import { storage } from "#imports";
 
 interface VocabularySettings {
   [key: string]: boolean;
@@ -31,17 +33,20 @@ export default function Settings() {
 
   const initializeSettings = async () => {
     try {
-      const existingSettings = await storage.getItem<VocabularySettings>(
+      const existingSettings = await storage.getItem<ISettings>(
         "local:settings"
       );
 
       const updatedSettings: VocabularySettings = {};
 
       comboboxes.forEach((field) => {
-        updatedSettings[field.name] = existingSettings?.[field.name] ?? true;
+        updatedSettings[field.name] =
+          existingSettings?.vocabularies?.[field.name] ?? true;
       });
 
-      await storage.setItem("local:settings", updatedSettings);
+      await storage.setItem("local:settings", {
+        vocabularies: updatedSettings,
+      });
 
       setSettings(updatedSettings);
       setIsLoading(false);
@@ -57,7 +62,9 @@ export default function Settings() {
       comboboxes.forEach((field) => {
         newSettings[field.name] = data[field.name] === true;
       });
-      await storage.setItem("local:settings", newSettings);
+      await storage.setItem("local:settings", {
+        vocabularies: newSettings,
+      });
       setSettings(newSettings);
     } catch (error) {
       console.error("Failed to save settings:", error);
