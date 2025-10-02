@@ -250,9 +250,7 @@ export default function TypeaheadInput({
             required={
               rest.required && (!multiple || selectedValues.length === 0)
             }
-            placeholder={
-              loading ? "Loading..." : multiple ? "Search to add..." : undefined
-            }
+            placeholder={loading ? "Loading..." : undefined}
           />
           <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-hidden">
             <svg
