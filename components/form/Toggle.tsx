@@ -20,9 +20,15 @@ export default function Toggle({
           {label}
         </label>
       </div>
-
-      <div className="group relative inline-flex w-11 shrink-0 rounded-full bg-gray-200 p-0.5 inset-ring inset-ring-gray-900/5 outline-offset-2 outline-rda-500 transition-colors duration-200 ease-in-out has-checked:bg-rda-500 has-focus-visible:outline-2">
-        <span className="relative size-5 rounded-full bg-white shadow-xs ring-1 ring-gray-900/5 transition-transform duration-200 ease-in-out group-has-checked:translate-x-5">
+      <div className="group relative flex w-11 shrink-0 rounded-full bg-gray-200 p-0.5 inset-ring inset-ring-gray-900/5 outline-offset-2 outline-rda-500 transition-colors duration-200 ease-in-out has-checked:bg-rda-500 has-focus-visible:outline-2">
+        <input
+          type="checkbox"
+          id={name + "-input"}
+          className="absolute inset-0 w-full h-full opacity-0 appearance-none focus:outline-hidden cursor-pointer z-10"
+          {...(register ? register(name) : {})}
+          {...rest}
+        />
+        <span className="relative size-5 rounded-full bg-white shadow-xs ring-1 ring-gray-900/5 transition-transform duration-200 ease-in-out group-has-checked:translate-x-5 pointer-events-none">
           <span
             aria-hidden="true"
             className="absolute inset-0 flex size-full items-center justify-center opacity-100 transition-opacity duration-200 ease-in group-has-checked:opacity-0 group-has-checked:duration-100 group-has-checked:ease-out"
@@ -54,13 +60,6 @@ export default function Toggle({
             </svg>
           </span>
         </span>
-        <input
-          type="checkbox"
-          id={name + "-input"}
-          className="absolute inset-0 opacity-0 appearance-none focus:outline-hidden"
-          {...(register ? register(name) : {})}
-          {...rest}
-        />
       </div>
     </div>
   );

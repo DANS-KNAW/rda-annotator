@@ -6,6 +6,7 @@ import { Textarea } from "@/components/form/Textarea";
 import TypeaheadInput from "@/components/form/Typeahead.input";
 import { AnnotationSchema } from "@/types/annotation-schema.interface";
 import { AuthenticationContext } from "@/context/authentication.context";
+import Toggle from "@/components/form/Toggle";
 
 interface AnnotationData {
   selectedText: string;
@@ -159,23 +160,24 @@ export default function Create() {
       <h2 className="text-xl mx-2 mt-6">Create Annotation</h2>
       <Form ref={formRef} onSubmit={(data) => console.log(data)}>
         <div className="mx-2 mt-4 space-y-4">{FormFields}</div>
-        <div className="relative flex items-start mt-6 mb-2 mx-2">
-          <div className="flex h-6 items-center">
-            <input
-              type="checkbox"
-              className="size-6 rounded border-gray-300 text-rda-500 focus:ring-rda-500"
-            />
-          </div>
-          <div className="ml-3 text-sm">
-            <label htmlFor="comments" className="font-medium text-gray-900">
-              Remember my choices for next time
-            </label>
-            <p id="candidates-description" className="text-gray-500">
-              This includes all vocabulary and keyword choices.
-            </p>
-          </div>
+
+        <div className="mx-2 my-4">
+          <Toggle
+            label={
+              <div>
+                <p className="font-medium text-gray-900">
+                  Remember my choices for next time
+                </p>
+                <p className="text-gray-500">
+                  This includes all vocabulary and keyword choices.
+                </p>
+              </div>
+            }
+            name="rememberChoices"
+          />
         </div>
-        <div className="flex w-full">
+
+        <div className="flex w-full mb-8">
           <button
             type="submit"
             className="mt-4 rounded-md w-full bg-rda-500 px-2.5 mx-2 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-rda-400 focus-visible:outline-2 cursor-pointer focus-visible:outline-offset-2 focus-visible:outline-rda-500"
