@@ -1,9 +1,7 @@
+import { onMessage } from "@/utils/messaging";
+
 const EXTENSION_NAME = "rda-annotator";
 const SIDEBAR_WIDTH = 400;
-
-// We use rem unit for more conisistent sizing across different browsers.
-// This assumes the default font size is 16px.
-const widthRem = SIDEBAR_WIDTH / 16;
 
 export default defineContentScript({
   matches: ["*://*/*"],
@@ -26,7 +24,7 @@ export default defineContentScript({
             right: 0;
             z-index: 2147483647;
 
-            width: ${widthRem}rem;
+            width: ${SIDEBAR_WIDTH}px;
             height: 100vh;
             
             box-sizing: border-box;
@@ -40,7 +38,7 @@ export default defineContentScript({
           anchor: div,
 
           onMount(wrapper, iframe) {
-            wrapper.style.width = `${widthRem}rem`;
+            wrapper.style.width = `${SIDEBAR_WIDTH}px`;
             wrapper.style.height = "100vh";
 
             iframe.width = "100%";
@@ -53,6 +51,20 @@ export default defineContentScript({
       },
     });
 
-    sidebarShadow.mount();
+    let mounted = false;
+
+    const toggle = async () => {
+      if (mounted) {
+        sidebarShadow.remove();
+        mounted = false;
+      } else {
+        sidebarShadow.mount();
+        mounted = true;
+      }
+    };
+
+    onMessage("toggleSidebar", () => {
+      toggle();
+    });
   },
 });
