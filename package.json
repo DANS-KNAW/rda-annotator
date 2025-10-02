@@ -1,8 +1,8 @@
 {
-  "name": "wxt-react-starter",
-  "description": "manifest.json description",
+  "name": "rda-annotator",
+  "description": "RDA Annotator - a browser extension to create and view annotations for research data management resources",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.88.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -25,6 +25,8 @@
     "react-router": "^7.9.3"
   },
   "devDependencies": {
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.13",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
