@@ -40,7 +40,7 @@ export default defineContentScript({
           :host {
             position: fixed;
             top: 0; 
-            right: -${SIDEBAR_WIDTH - 10}px;
+            right: -${SIDEBAR_WIDTH}px;
             z-index: 2147483647;
             width: ${SIDEBAR_WIDTH + TOGGLE_TAB_WIDTH}px;
             height: 100vh;
