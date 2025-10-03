@@ -3,6 +3,7 @@ import { Authentication } from "@/utils/authentication";
 import { AuthenticationContext } from "./authentication.context";
 import { Keycloak } from "@/types/keycloak.interface";
 import { useNavigate } from "react-router";
+import { set } from "react-hook-form";
 
 interface AuthenticationProviderProps {
   children: React.ReactNode;
@@ -72,9 +73,16 @@ export default function AuthenticationProvider({
   };
 
   const refreshToken = async () => {
-    if (!authenticated) return;
-    const refreshed = await auth.refreshToken();
-    console.log("Token refreshed:", refreshed);
+    try {
+      if (!authenticated) return;
+      const refreshToken = await auth.refreshToken();
+      setOauth(refreshToken);
+      setAuthenticated(true);
+    } catch (error) {
+      setAuthenticated(false);
+      setOauth(undefined);
+      await storage.removeItem("local:oauth");
+    }
   };
 
   /**
@@ -91,7 +99,6 @@ export default function AuthenticationProvider({
 
       return () => clearInterval(interval);
     } catch (error) {
-      console.error("Error setting up token refresh interval:", error);
       setAuthenticated(false);
       setOauth(undefined);
     }

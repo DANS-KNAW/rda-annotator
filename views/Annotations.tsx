@@ -110,8 +110,6 @@ export default function Annotations() {
     if (!currentUrl) return;
 
     async function fetchAnnotationsForUrl() {
-      console.log("fetchig");
-
       const response = await fetch(
         `https://elasticproxy.kubernetes.dansdemo.nl/rda/_search`,
         {
