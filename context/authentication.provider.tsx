@@ -35,7 +35,6 @@ export default function AuthenticationProvider({
             setAuthenticated(true);
             return;
           } catch (error) {
-            console.error("Error refreshing token:", error);
             await storage.removeItem("local:oauth");
             setAuthenticated(false);
             setOauth(undefined);
@@ -59,14 +58,18 @@ export default function AuthenticationProvider({
   }, []);
 
   const login = async () => {
-    const oauth = await auth.authenticate();
-    setAuthenticated(true);
-    setOauth(oauth);
+    try {
+      const oauth = await auth.authenticate();
+      setAuthenticated(true);
+      setOauth(oauth);
+    } catch (error) {}
   };
 
   const logout = async () => {
-    await auth.deauthenticate();
-    await storage.removeItem("local:oauth");
+    try {
+      await auth.deauthenticate();
+      await storage.removeItem("local:oauth");
+    } catch (error) {}
     setAuthenticated(false);
     setOauth(undefined);
     navigate("/annotations");
