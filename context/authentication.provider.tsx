@@ -3,7 +3,6 @@ import { Authentication } from "@/utils/authentication";
 import { AuthenticationContext } from "./authentication.context";
 import { Keycloak } from "@/types/keycloak.interface";
 import { useNavigate } from "react-router";
-import { set } from "react-hook-form";
 
 interface AuthenticationProviderProps {
   children: React.ReactNode;
@@ -88,6 +87,33 @@ export default function AuthenticationProvider({
     }
   };
 
+  const ensureValidToken = async () => {
+    const storedOauth = await storage.getItem<Keycloak>("local:oauth");
+
+    if (!storedOauth) {
+      throw new Error("No authentication token available");
+    }
+
+    const currentTime = Math.floor(Date.now() / 1000);
+
+    if (storedOauth.expires_at < currentTime + 30) {
+      await refreshToken();
+    }
+  };
+
+  const getUserProfile = async () => {
+    try {
+      await ensureValidToken();
+
+      const profile = await auth.getUserProfile();
+      return profile;
+    } catch (error) {
+      setAuthenticated(false);
+      setOauth(undefined);
+      await storage.removeItem("local:oauth");
+    }
+  };
+
   /**
    * We set an interval to refresh the token a bit before it expires
    * We clear the interval when the component unmounts or when the user logs out
@@ -95,17 +121,24 @@ export default function AuthenticationProvider({
    */
   useEffect(() => {
     if (!authenticated || !oauth) return;
-    try {
-      const interval = setInterval(() => {
-        refreshToken();
-      }, oauth.expires_in * 1000 - 30 * 1000);
 
-      return () => clearInterval(interval);
+    try {
+      const currentTime = Math.floor(Date.now() / 1000);
+      const timeUntilExpiry = oauth.expires_at - currentTime;
+
+      // Refresh 30 seconds before expiry, or immediately if already expired
+      const refreshIn = Math.max((timeUntilExpiry - 30) * 1000, 0);
+
+      const timeout = setTimeout(() => {
+        refreshToken();
+      }, refreshIn);
+
+      return () => clearTimeout(timeout);
     } catch (error) {
       setAuthenticated(false);
       setOauth(undefined);
     }
-  }, [authenticated]);
+  }, [authenticated, oauth]);
 
   return (
     <AuthenticationContext.Provider
@@ -115,6 +148,7 @@ export default function AuthenticationProvider({
         login,
         logout,
         refreshToken,
+        getUserProfile,
       }}
     >
       {children}

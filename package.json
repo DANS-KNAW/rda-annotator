@@ -2,7 +2,7 @@
   "name": "rda-annotator",
   "description": "RDA Annotator - a browser extension to create and view annotations for research data management resources",
   "private": true,
-  "version": "0.88.0",
+  "version": "0.97.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",

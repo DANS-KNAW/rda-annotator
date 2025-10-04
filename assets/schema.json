@@ -114,16 +114,6 @@
       "vocabulary": "disciplines",
       "multiple": true,
       "dropdownUp": true
-    },
-    {
-      "type": "combobox",
-      "label": "MOMSI",
-      "name": "momsi",
-      "required": false,
-      "info": "Select a MOMSI from the list. You can start typing to filter the list.",
-      "vocabulary": "momsi",
-      "multiple": true,
-      "dropdownUp": true
     }
   ]
 }

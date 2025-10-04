@@ -16,7 +16,9 @@ interface AnnotationData {
 }
 
 export default function Create() {
-  const { isAuthenticated, login } = useContext(AuthenticationContext);
+  const { isAuthenticated, login, getUserProfile } = useContext(
+    AuthenticationContext
+  );
   const formRef = useRef<FormHandle>(null);
   const [annotationData, setAnnotationData] = useState<AnnotationData | null>(
     null
@@ -83,7 +85,12 @@ export default function Create() {
   }, [isLoadingSettings, settings.rememberChoices]);
 
   const handleSubmit = async (data: Record<string, any>) => {
-    console.log("Form submitted with data:", data);
+    const user = await getUserProfile();
+
+    if (!user || !user.sub) {
+      console.error("User profile not available");
+      return;
+    }
 
     if (data.rememberChoices === true) {
       const comboboxFields = (AnnotationFormSchema as AnnotationSchema).fields
@@ -122,6 +129,49 @@ export default function Create() {
       } catch (error) {
         console.error("Failed to clear remembered choices:", error);
       }
+    }
+
+    try {
+      const response = await fetch(
+        import.meta.env.WXT_API_ENDPOINT + "/annotation",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ...data, submitter: user?.sub }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to create annotation: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log("Annotation created successfully:", result);
+
+      if (annotationData) {
+        sessionStorage.removeItem("pendingAnnotation");
+        setAnnotationData(null);
+      }
+
+      if (data.rememberChoices === true && settings.rememberChoices) {
+        // If rememberChoices is enabled, only reset non-combobox fields
+        const fieldsToReset = (AnnotationFormSchema as AnnotationSchema).fields
+          .filter((field) => field.type !== "combobox")
+          .map((field) => field.name);
+
+        // Reset those fields plus selectedText
+        fieldsToReset.forEach((fieldName) => {
+          formRef.current?.setValue(fieldName, "");
+        });
+        formRef.current?.setValue("selectedText", "");
+      } else {
+        // If rememberChoices is disabled, reset everything
+        formRef.current?.reset();
+      }
+    } catch (error) {
+      console.error("Failed to create annotation:", error);
     }
   };
 

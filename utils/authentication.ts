@@ -187,6 +187,43 @@ export class Authentication {
     tokenResponse.refresh_expires_at =
       Math.floor(Date.now() / 1000) + tokenResponse.refresh_expires_in;
 
+    await storage.setItem("local:oauth", tokenResponse);
+
     return tokenResponse;
+  }
+
+  /**
+   * Retrieves the authenticated user's profile information from Keycloak.
+   *
+   * This method fetches the user profile by making a GET request to the Keycloak userinfo endpoint
+   * using the stored access token. The profile typically includes claims such as sub (subject/user ID),
+   * email, name, preferred_username, and other attributes based on the requested scopes.
+   *
+   * @returns {Promise<any>} A promise that resolves to the user profile object containing user information.
+   * @throws {Error} If there is no stored OAuth token or if the profile request fails.
+   */
+  async getUserProfile(): Promise<any> {
+    const oauth = await storage.getItem<Keycloak>("local:oauth");
+
+    if (oauth === null) {
+      throw new Error("No OAuth token available");
+    }
+
+    const userinfoUrl = `${this.issuer}/protocol/openid-connect/userinfo`;
+
+    const response = await fetch(userinfoUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${oauth.access_token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch user profile");
+    }
+
+    const userProfile = await response.json();
+
+    return userProfile;
   }
 }

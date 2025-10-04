@@ -6,7 +6,7 @@ export function Topbar() {
       <div className="flex justify-between items-center pt-2">
         <h1 className="uppercase italic text-white text-2xl -mt-1">
           <span className="font-black">RDA&nbsp;Annotator</span>
-          <span className="font-normal text-base ml-2">v0.88</span>
+          <span className="font-normal text-base ml-2">v0.97</span>
         </h1>
         <div className="relative h-20 w-32">
           <img

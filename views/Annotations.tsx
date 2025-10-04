@@ -111,7 +111,7 @@ export default function Annotations() {
 
     async function fetchAnnotationsForUrl() {
       const response = await fetch(
-        `https://elasticproxy.kubernetes.dansdemo.nl/rda/_search`,
+        `${import.meta.env.WXT_API_ENDPOINT}/rda/_search`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -121,7 +121,7 @@ export default function Annotations() {
             query: {
               bool: {
                 must: [
-                  { term: { "source.keyword": "Annotation" } },
+                  { term: { "resource_source.keyword": "Annotation" } },
                   { term: { "uri.keyword": currentUrl } },
                 ],
               },
@@ -171,7 +171,11 @@ export default function Annotations() {
 
               <Button
                 label="View in RDA Discovery Facility"
-                href={"https://kb-rda.org/record/" + selected?._id}
+                href={
+                  import.meta.env.WXT_KNOWLEDGE_BASE_URL +
+                  "/record/" +
+                  selected?._id
+                }
                 newTab={true}
                 className="flex justify-center mt-4"
               />
