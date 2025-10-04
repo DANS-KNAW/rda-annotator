@@ -345,7 +345,6 @@ export default function Annotations() {
               className="bg-white p-2 rounded-md shadow cursor-pointer min-h-14 hover:bg-rda-50"
             >
               <div className="flex justify-between items-center mb-2">
-                <span>@LaurensTobias</span>
                 <span>{annotation._source.dc_date}</span>
               </div>
               <p className="text-gray-600 line-clamp-3 bg-gray-100 p-2 rounded-md">
