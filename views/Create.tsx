@@ -9,6 +9,8 @@ import { AuthenticationContext } from "@/context/authentication.context";
 import Toggle from "@/components/form/Toggle";
 import { storage } from "#imports";
 import { ISettings } from "@/types/settings.interface";
+import Alert from "@/components/Alert";
+import { useNavigate } from "react-router";
 
 interface AnnotationData {
   selectedText: string;
@@ -25,6 +27,8 @@ export default function Create() {
   );
   const [settings, setSettings] = useState<ISettings>({ vocabularies: {} });
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [errorMessages, setErrorMessages] = useState<string[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -86,9 +90,13 @@ export default function Create() {
 
   const handleSubmit = async (data: Record<string, any>) => {
     const user = await getUserProfile();
+    setErrorMessages([]);
 
     if (!user || !user.sub) {
       console.error("User profile not available");
+      setErrorMessages([
+        "User profile not available. Please try logging in again.",
+      ]);
       return;
     }
 
@@ -170,8 +178,12 @@ export default function Create() {
         // If rememberChoices is disabled, reset everything
         formRef.current?.reset();
       }
+      navigate("/annotations");
     } catch (error) {
       console.error("Failed to create annotation:", error);
+      setErrorMessages([
+        "An unexpected error occurred while creating the annotation. Please try again.",
+      ]);
     }
   };
 
@@ -257,6 +269,9 @@ export default function Create() {
 
   return (
     <>
+      {errorMessages.length > 0 && (
+        <Alert title="Error Creating Annotation" messages={errorMessages} />
+      )}
       <h2 className="text-xl mx-2 mt-6">Create Annotation</h2>
       <Form ref={formRef} onSubmit={handleSubmit}>
         <div className="mx-2 mt-4 space-y-4">{FormFields}</div>
