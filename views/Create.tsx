@@ -18,9 +18,7 @@ interface AnnotationData {
 }
 
 export default function Create() {
-  const { isAuthenticated, login, getUserProfile } = useContext(
-    AuthenticationContext
-  );
+  const { isAuthenticated, login, profile } = useContext(AuthenticationContext);
   const formRef = useRef<FormHandle>(null);
   const [annotationData, setAnnotationData] = useState<AnnotationData | null>(
     null
@@ -89,10 +87,9 @@ export default function Create() {
   }, [isLoadingSettings, settings.rememberChoices]);
 
   const handleSubmit = async (data: Record<string, any>) => {
-    const user = await getUserProfile();
     setErrorMessages([]);
 
-    if (!user || !user.sub) {
+    if (!profile || !profile.sub) {
       console.error("User profile not available");
       setErrorMessages([
         "User profile not available. Please try logging in again.",
@@ -147,7 +144,7 @@ export default function Create() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ ...data, submitter: user?.sub }),
+          body: JSON.stringify({ ...data, submitter: profile.sub }),
         }
       );
 

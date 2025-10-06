@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Authentication } from "@/utils/authentication";
 import { AuthenticationContext } from "./authentication.context";
-import { Keycloak } from "@/types/keycloak.interface";
+import { Keycloak, UserProfile } from "@/types/keycloak.interface";
 import { useNavigate } from "react-router";
 import { AuthStorage } from "@/utils/auth-storage";
 
@@ -14,6 +14,7 @@ export default function AuthenticationProvider({
 }: AuthenticationProviderProps) {
   const [authenticated, setAuthenticated] = useState(false);
   const [oauth, setOauth] = useState<Keycloak | undefined>(undefined);
+  const [profile, setProfile] = useState<UserProfile | undefined>(undefined);
   const navigate = useNavigate();
 
   const auth = new Authentication(
@@ -66,7 +67,8 @@ export default function AuthenticationProvider({
   const login = async () => {
     try {
       const oauth = await auth.authenticate();
-      await auth.getUserProfile();
+      const profile = await auth.getUserProfile();
+      setProfile(profile);
       setAuthState(oauth);
     } catch (error) {
       await clearAuthState();
@@ -108,16 +110,6 @@ export default function AuthenticationProvider({
     }
   };
 
-  const getUserProfile = async () => {
-    try {
-      await ensureValidToken();
-
-      return await auth.getUserProfile();
-    } catch (error) {
-      await clearAuthState();
-    }
-  };
-
   /**
    * We set an interval to refresh the token a bit before it expires
    * We clear the interval when the component unmounts or when the user logs out
@@ -144,10 +136,10 @@ export default function AuthenticationProvider({
       value={{
         isAuthenticated: authenticated,
         oauth,
+        profile,
         login,
         logout,
         refreshToken,
-        getUserProfile,
       }}
     >
       {children}

@@ -1,4 +1,4 @@
-import { Keycloak } from "@/types/keycloak.interface";
+import { Keycloak, UserProfile } from "@/types/keycloak.interface";
 
 export class AuthStorage {
   private static readonly OAUTH_KEY = "local:oauth";
@@ -12,11 +12,11 @@ export class AuthStorage {
     await storage.setItem(this.OAUTH_KEY, oauth);
   }
 
-  static async getUser(): Promise<any | null> {
-    return await storage.getItem<any>(this.USER_KEY);
+  static async getUser(): Promise<UserProfile | null> {
+    return await storage.getItem<UserProfile>(this.USER_KEY);
   }
 
-  static async setUser(user: any): Promise<void> {
+  static async setUser(user: UserProfile): Promise<void> {
     await storage.setItem(this.USER_KEY, user);
   }
 
