@@ -1,10 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { searchAnnotationsByUrl } from "@/utils/elasticsearch-fetch";
 import { AnnotationHit } from "@/types/elastic-search-document.interface";
 import { AuthStorage } from "@/utils/auth-storage";
 import AnnotateionModel from "@/components/AnnotationModel";
+import { AuthenticationContext } from "@/context/authentication.context";
 
 export default function Annotations() {
+  const { isAuthenticated } = useContext(AuthenticationContext);
+
   const [annotations, setAnnotations] = useState<AnnotationHit[]>([]);
   const [myAnnotations, setMyAnnotations] = useState<AnnotationHit[]>([]);
   const [selected, setSelected] = useState<AnnotationHit | null>(null);
@@ -32,7 +35,7 @@ export default function Annotations() {
       const userData = await searchAnnotationsBySubmitter(userProfile.sub);
       setMyAnnotations(userData.hits.hits);
     })();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!currentUrl) return;
