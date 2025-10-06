@@ -10,6 +10,7 @@ export interface Keycloak {
   "not-before-policy": number;
   session_state: string;
   scope: string;
+  identity_provider_identity: string;
 }
 
 export interface UserProfile {

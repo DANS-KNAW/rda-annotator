@@ -30,9 +30,11 @@ export default function Annotations() {
 
   useEffect(() => {
     (async () => {
-      const userProfile = await AuthStorage.getUser();
-      if (!userProfile) return;
-      const userData = await searchAnnotationsBySubmitter(userProfile.sub);
+      const oauth = await AuthStorage.getOauth();
+      if (!oauth || oauth.identity_provider_identity) return;
+      const userData = await searchAnnotationsBySubmitter(
+        oauth.identity_provider_identity
+      );
       setMyAnnotations(userData.hits.hits);
     })();
   }, [isAuthenticated]);

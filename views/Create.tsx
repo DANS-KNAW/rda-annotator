@@ -18,7 +18,7 @@ interface AnnotationData {
 }
 
 export default function Create() {
-  const { isAuthenticated, login, profile } = useContext(AuthenticationContext);
+  const { isAuthenticated, login, oauth } = useContext(AuthenticationContext);
   const formRef = useRef<FormHandle>(null);
   const [annotationData, setAnnotationData] = useState<AnnotationData | null>(
     null
@@ -89,10 +89,10 @@ export default function Create() {
   const handleSubmit = async (data: Record<string, any>) => {
     setErrorMessages([]);
 
-    if (!profile || !profile.sub) {
-      console.error("User profile not available");
+    if (!oauth || !oauth.identity_provider_identity) {
+      console.error("Identifier not available");
       setErrorMessages([
-        "User profile not available. Please try logging in again.",
+        "User Identifier not available. Please try logging in again.",
       ]);
       return;
     }
@@ -144,7 +144,10 @@ export default function Create() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ ...data, submitter: profile.sub }),
+          body: JSON.stringify({
+            ...data,
+            submitter: oauth.identity_provider_identity,
+          }),
         }
       );
 
