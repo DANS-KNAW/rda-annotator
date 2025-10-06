@@ -1,0 +1,173 @@
+import { ContentScriptContext } from "#imports";
+import { EXTENSION_NAME } from "./constant";
+import { sendMessage } from "@/utils/messaging";
+
+interface AnnotatorPopupProps {
+  ctx: ContentScriptContext;
+  onAnnotate: () => Promise<void>;
+}
+
+export default async function createAnnotatorPopup({
+  ctx,
+  onAnnotate,
+}: AnnotatorPopupProps) {
+  let currentSelection: Selection | null = null;
+  let mouseUpHandler: ((e: MouseEvent) => void) | null = null;
+  let mouseDownHandler: ((e: MouseEvent) => void) | null = null;
+
+  const annotatorPopup = await createShadowRootUi(ctx, {
+    name: `${EXTENSION_NAME}-popup`,
+    position: "inline",
+    anchor: "body",
+    mode: "closed",
+
+    onMount(_, shadowRoot, shadowHost) {
+      const container = document.createElement("div");
+      container.id = "annotator-popup";
+      shadowRoot.replaceChildren(container);
+
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(`
+        :host {
+          position: absolute;
+          z-index: 2147483646;
+          display: none;
+        }
+
+        #annotator-popup {
+          background: #fff;
+          border: 1px solid #ddd;
+          border-radius: 6px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+          padding: 4px;
+        }
+
+        button {
+          background: #467d2c;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          white-space: nowrap;
+          transition: background 0.2s;
+        }
+
+        button:hover {
+          background: #2563eb;
+        }
+
+        button:active {
+          background: #1d4ed8;
+        }
+      `);
+      shadowRoot.adoptedStyleSheets = [sheet];
+
+      const button = document.createElement("button");
+      button.textContent = "Annotate text";
+      button.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleAnnotateClick();
+      });
+      container.appendChild(button);
+
+      // Set up document event listeners
+      mouseUpHandler = (e: MouseEvent) => {
+        setTimeout(() => {
+          handleTextSelection();
+        }, 10);
+      };
+
+      mouseDownHandler = (e: MouseEvent) => {
+        if (
+          annotatorPopup.shadowHost &&
+          !annotatorPopup.shadowHost.contains(e.target as Node)
+        ) {
+          const selection = window.getSelection();
+          if (!selection || selection.isCollapsed) {
+            hideAnnotatorPopup();
+          }
+        }
+      };
+
+      document.addEventListener("mouseup", mouseUpHandler);
+      document.addEventListener("mousedown", mouseDownHandler);
+    },
+
+    onRemove() {
+      // Clean up event listeners
+      if (mouseUpHandler) {
+        document.removeEventListener("mouseup", mouseUpHandler);
+        mouseUpHandler = null;
+      }
+      if (mouseDownHandler) {
+        document.removeEventListener("mousedown", mouseDownHandler);
+        mouseDownHandler = null;
+      }
+
+      // Clear current selection
+      currentSelection = null;
+    },
+  });
+
+  const showAnnotatorPopup = (x: number, y: number) => {
+    if (annotatorPopup.shadowHost) {
+      const host = annotatorPopup.shadowHost as HTMLElement;
+      host.style.display = "block";
+      host.style.left = `${x}px`;
+      host.style.top = `${y}px`;
+    }
+  };
+
+  const hideAnnotatorPopup = () => {
+    if (annotatorPopup.shadowHost) {
+      const host = annotatorPopup.shadowHost as HTMLElement;
+      host.style.display = "none";
+    }
+  };
+
+  const handleAnnotateClick = async () => {
+    if (currentSelection) {
+      const selectedText = currentSelection.toString();
+
+      await onAnnotate();
+
+      sendMessage("createAnnotation", {
+        selectedText: selectedText.trim(),
+        url: window.location.href,
+      });
+
+      hideAnnotatorPopup();
+      window.getSelection()?.removeAllRanges();
+    }
+  };
+
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+
+    if (
+      !selection ||
+      selection.isCollapsed ||
+      selection.toString().trim().length === 0
+    ) {
+      hideAnnotatorPopup();
+      currentSelection = null;
+      return;
+    }
+
+    currentSelection = selection;
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    // Position popup below the selection
+    const x = rect.left + rect.width / 2 - 60; // Center the button
+    const y = rect.bottom + window.scrollY + 8;
+
+    showAnnotatorPopup(x, y);
+  };
+
+  return annotatorPopup;
+}
