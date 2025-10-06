@@ -144,6 +144,7 @@ export class Authentication {
     }
 
     await storage.removeItem("local:oauth");
+    await storage.removeItem("local:user");
   }
 
   /**
@@ -223,7 +224,7 @@ export class Authentication {
     }
 
     const userProfile = await response.json();
-
+    await storage.setItem("local:user", userProfile);
     return userProfile;
   }
 }
