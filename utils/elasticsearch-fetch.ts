@@ -61,17 +61,31 @@ export async function searchAnnotationsByUrl(
  * Search for annotations by submitter UUID
  *
  * @param submitterUuid - The submitter's UUID
+ * @param oldSubmitterUuid - Optional old submitter UUID to also search
  * @returns Elasticsearch response with annotation data
  */
 export async function searchAnnotationsBySubmitter(
-  submitterUuid: string
+  submitterUuid: string,
+  oldSubmitterUuid?: string
 ): Promise<ElasticsearchResponse> {
+  const submitterQuery = oldSubmitterUuid
+    ? {
+        bool: {
+          should: [
+            { term: { "submitter.keyword": submitterUuid } },
+            { term: { "submitter.keyword": oldSubmitterUuid } },
+          ],
+          minimum_should_match: 1,
+        },
+      }
+    : { term: { "submitter.keyword": submitterUuid } };
+
   return elasticsearchFetch({
     query: {
       bool: {
         must: [
           { term: { "resource_source.keyword": "Annotation" } },
-          { term: { "submitter.keyword": submitterUuid } },
+          submitterQuery,
         ],
       },
     },

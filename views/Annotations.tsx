@@ -6,7 +6,7 @@ import AnnotateionModel from "@/components/AnnotationModel";
 import { AuthenticationContext } from "@/context/authentication.context";
 
 export default function Annotations() {
-  const { isAuthenticated } = useContext(AuthenticationContext);
+  const { isAuthenticated, oauth } = useContext(AuthenticationContext);
 
   const [annotations, setAnnotations] = useState<AnnotationHit[]>([]);
   const [myAnnotations, setMyAnnotations] = useState<AnnotationHit[]>([]);
@@ -30,10 +30,17 @@ export default function Annotations() {
 
   useEffect(() => {
     (async () => {
-      const oauth = await AuthStorage.getOauth();
-      if (!oauth || oauth.identity_provider_identity) return;
+      const profile = await AuthStorage.getUser();
+      if (
+        !oauth ||
+        !oauth.identity_provider_identity ||
+        !profile ||
+        !profile.sub
+      )
+        return;
       const userData = await searchAnnotationsBySubmitter(
-        oauth.identity_provider_identity
+        oauth.identity_provider_identity,
+        profile.sub
       );
       setMyAnnotations(userData.hits.hits);
     })();
