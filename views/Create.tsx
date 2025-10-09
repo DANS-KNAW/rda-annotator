@@ -138,7 +138,7 @@ export default function Create() {
 
     try {
       const response = await fetch(
-        import.meta.env.WXT_API_ENDPOINT + "/annotation",
+        import.meta.env.WXT_API_ENDPOINT + "/knowledge-base/annotation",
         {
           method: "POST",
           headers: {

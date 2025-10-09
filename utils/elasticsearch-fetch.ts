@@ -20,7 +20,7 @@ export async function elasticsearchFetch(
   };
 
   const response = await fetch(
-    `${import.meta.env.WXT_API_ENDPOINT}/rda/_search`,
+    `${import.meta.env.WXT_API_ENDPOINT}/knowledge-base/rda/_search`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -1,6 +1,7 @@
+import React from "react";
 interface AlertProps {
   title: string;
-  messages: string[];
+  messages: (string | React.ReactNode)[];
 }
 
 export default function Alert({ title, messages }: AlertProps) {
