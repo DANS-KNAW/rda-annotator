@@ -11,6 +11,7 @@ import { UseFormRegister, Control, useController } from "react-hook-form";
 import Modal from "@/components/Model";
 import useDataSource from "@/hooks/useDataSource";
 import { DataSource, PredefinedDataSource } from "@/types/datasource.interface";
+import { VocabularyOptions } from "@/types/annotation-schema.interface";
 
 interface TypeaheadProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "name" | "value"> {
@@ -22,6 +23,7 @@ interface TypeaheadProps
   value?: string | string[];
   name: string;
   multiple?: boolean;
+  vocabularyOptions?: VocabularyOptions;
 }
 
 export default function TypeaheadInput({
@@ -32,11 +34,12 @@ export default function TypeaheadInput({
   value,
   info,
   multiple = false,
+  vocabularyOptions,
   ...rest
 }: TypeaheadProps) {
   const [query, setQuery] = useState("");
   const [showInfo, setShowInfo] = useState(false);
-  const { data, loading, error } = useDataSource(datasource);
+  const { data, loading, error } = useDataSource(datasource, vocabularyOptions);
 
   if (!control) {
     console.error("TypeaheadInput requires control prop from react-hook-form");

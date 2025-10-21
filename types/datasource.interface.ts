@@ -14,4 +14,5 @@ export type PredefinedDataSource =
   | "interest_groups"
   | "gorc_elements"
   | "gorc_attributes"
-  | "keywords";
+  | "keywords"
+  | "open_vocabularies";

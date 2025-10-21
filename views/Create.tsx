@@ -243,6 +243,7 @@ export default function Create() {
               required={field.required}
               value={field.defaultValue}
               multiple={field.multiple || false}
+              vocabularyOptions={field.vocabularyOptions}
             />
           );
         default:

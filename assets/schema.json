@@ -102,8 +102,7 @@
       "required": false,
       "info": "Select an RDA Working Group from the list. You can start typing to filter the list.",
       "vocabulary": "working_groups",
-      "multiple": true,
-      "dropdownUp": true
+      "multiple": true
     },
     {
       "type": "combobox",
@@ -112,8 +111,19 @@
       "required": false,
       "info": "Select an RDA Scientific Discipline (Domain) from the list. You can start typing to filter the list.",
       "vocabulary": "disciplines",
+      "multiple": true
+    },
+    {
+      "type": "combobox",
+      "label": "MOMSI",
+      "name": "momsi",
+      "required": false,
+      "info": "Select a MOMSI category from the list. You can start typing to filter the list.",
+      "vocabulary": "open_vocabularies",
       "multiple": true,
-      "dropdownUp": true
+      "vocabularyOptions": {
+        "namespace": "momsi"
+      }
     }
   ]
 }

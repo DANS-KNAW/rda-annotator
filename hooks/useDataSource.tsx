@@ -1,3 +1,4 @@
+import { VocabularyOptions } from "@/types/annotation-schema.interface";
 import { DataSource, PredefinedDataSource } from "@/types/datasource.interface";
 import fetchDisciplines from "@/utils/datasources/fetch-disciplines";
 import fetchGORCAttributes from "@/utils/datasources/fetch-gorc-attributes";
@@ -5,12 +6,14 @@ import fetchGORCElements from "@/utils/datasources/fetch-gorc-elements";
 import fetchInterestGroups from "@/utils/datasources/fetch-interest-groups";
 import fetchKeywords from "@/utils/datasources/fetch-keywords";
 import fetchLanguages from "@/utils/datasources/fetch-languages";
+import fetchOpenVocabularies from "@/utils/datasources/fetch-open-vocabularies";
 import fetchRDAPathways from "@/utils/datasources/fetch-rda-pathways";
 import fetchResourceTypes from "@/utils/datasources/fetch-resource-types";
 import fetchWorkingGroups from "@/utils/datasources/fetch-working-groups";
 
 export default function useDataSource(
-  datasource: PredefinedDataSource | DataSource[]
+  datasource: PredefinedDataSource | DataSource[],
+  options?: VocabularyOptions
 ) {
   const [data, setData] = useState<DataSource[]>([]);
   const [loading, setLoading] = useState(false);
@@ -66,7 +69,9 @@ export default function useDataSource(
           case "keywords":
             result = await fetchKeywords();
             break;
-
+          case "open_vocabularies":
+            result = await fetchOpenVocabularies(options || {});
+            break;
           default:
             throw new Error(`Unknown datasource: ${datasource}`);
         }
@@ -81,7 +86,7 @@ export default function useDataSource(
     }
 
     loadData();
-  }, [datasource]);
+  }, [datasource, JSON.stringify(options)]);
 
   return { data, loading, error };
 }

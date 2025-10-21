@@ -31,4 +31,13 @@ interface ComboboxField extends BaseField {
   type: "combobox";
   vocabulary: PredefinedDataSource;
   multiple?: boolean;
+  vocabularyOptions?: VocabularyOptions;
+}
+
+export interface VocabularyOptions {
+  subject_scheme?: string;
+  scheme_uri?: string;
+  value_scheme?: string;
+  value_uri?: string;
+  namespace?: string;
 }
