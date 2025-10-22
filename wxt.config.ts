@@ -25,4 +25,7 @@ export default defineConfig({
       },
     },
   }),
+  webExt: {
+    startUrls: ["https://www.wikipedia.org/"],
+  },
 });
