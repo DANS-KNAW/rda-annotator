@@ -1,19 +1,17 @@
 import { ContentScriptContext } from "#imports";
 import { EXTENSION_NAME } from "./constant";
-import { sendMessage } from "@/utils/messaging";
+import { storage } from "#imports";
 
 interface AnnotatorPopupProps {
   ctx: ContentScriptContext;
   onAnnotate: () => Promise<void>;
 }
 
-export default async function createAnnotatorPopup({
+export async function createAnnotatorPopup({
   ctx,
   onAnnotate,
 }: AnnotatorPopupProps) {
   let currentSelection: Selection | null = null;
-  let mouseUpHandler: ((e: MouseEvent) => void) | null = null;
-  let mouseDownHandler: ((e: MouseEvent) => void) | null = null;
 
   const annotatorPopup = await createShadowRootUi(ctx, {
     name: `${EXTENSION_NAME}-popup`,
@@ -22,6 +20,8 @@ export default async function createAnnotatorPopup({
     mode: "closed",
 
     onMount(_, shadowRoot, shadowHost) {
+      console.log("[RDA Annotator] Mounted");
+
       const container = document.createElement("div");
       container.id = "annotator-popup";
       shadowRoot.replaceChildren(container);
@@ -29,9 +29,10 @@ export default async function createAnnotatorPopup({
       const sheet = new CSSStyleSheet();
       sheet.replaceSync(`
         :host {
-          position: absolute;
+          position: fixed;
           z-index: 2147483646;
           display: none;
+          pointer-events: none;
         }
 
         #annotator-popup {
@@ -40,6 +41,7 @@ export default async function createAnnotatorPopup({
           border-radius: 6px;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
           padding: 4px;
+          pointer-events: auto;
         }
 
         button {
@@ -74,18 +76,12 @@ export default async function createAnnotatorPopup({
       });
       container.appendChild(button);
 
-      // Set up document event listeners
-      mouseUpHandler = (e: MouseEvent) => {
-        setTimeout(() => {
-          handleTextSelection();
-        }, 10);
+      const handleMouseUp = () => {
+        setTimeout(() => handleTextSelection(), 10);
       };
 
-      mouseDownHandler = (e: MouseEvent) => {
-        if (
-          annotatorPopup.shadowHost &&
-          !annotatorPopup.shadowHost.contains(e.target as Node)
-        ) {
+      const handleMouseDown = (e: MouseEvent) => {
+        if (!shadowHost.contains(e.target as Node)) {
           const selection = window.getSelection();
           if (!selection || selection.isCollapsed) {
             hideAnnotatorPopup();
@@ -93,22 +89,12 @@ export default async function createAnnotatorPopup({
         }
       };
 
-      document.addEventListener("mouseup", mouseUpHandler);
-      document.addEventListener("mousedown", mouseDownHandler);
+      ctx.addEventListener(document, "mouseup", handleMouseUp);
+      ctx.addEventListener(document, "mousedown", handleMouseDown);
     },
 
     onRemove() {
-      // Clean up event listeners
-      if (mouseUpHandler) {
-        document.removeEventListener("mouseup", mouseUpHandler);
-        mouseUpHandler = null;
-      }
-      if (mouseDownHandler) {
-        document.removeEventListener("mousedown", mouseDownHandler);
-        mouseDownHandler = null;
-      }
-
-      // Clear current selection
+      console.log("[RDA Annotator] Removed");
       currentSelection = null;
     },
   });
@@ -132,13 +118,14 @@ export default async function createAnnotatorPopup({
   const handleAnnotateClick = async () => {
     if (currentSelection) {
       const selectedText = currentSelection.toString();
-
-      await onAnnotate();
-
-      sendMessage("createAnnotation", {
+      const annotationData = {
         selectedText: selectedText.trim(),
         url: window.location.href,
-      });
+        timestamp: Date.now(),
+      };
+
+      sendMessage("storeAnnotation", annotationData);
+      await onAnnotate();
 
       hideAnnotatorPopup();
       window.getSelection()?.removeAllRanges();
@@ -162,9 +149,8 @@ export default async function createAnnotatorPopup({
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
 
-    // Position popup below the selection
-    const x = rect.left + rect.width / 2 - 60; // Center the button
-    const y = rect.bottom + window.scrollY + 8;
+    const x = rect.left + rect.width / 2 - 60;
+    const y = rect.bottom + 8;
 
     showAnnotatorPopup(x, y);
   };

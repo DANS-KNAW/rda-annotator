@@ -26,24 +26,54 @@ function IndexRoute() {
     })();
   }, []);
 
-  // while waiting, render nothing or a loader
   if (initialPath === null) return null;
 
   return <Navigate to={initialPath} replace />;
 }
 
-function MessageListener() {
+// Simple storage watcher - no messages needed
+function PendingAnnotationWatcher() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onMessage("createAnnotation", (message) => {
-      sessionStorage.setItem("pendingAnnotation", JSON.stringify(message.data));
-      window.dispatchEvent(new Event("pendingAnnotationUpdated"));
-      navigate("/create");
+    let isActive = true;
+
+    const checkForPendingAnnotation = async () => {
+      const pendingData = await storage.getItem("session:pendingAnnotation");
+
+      if (pendingData && isActive) {
+        console.log(
+          "[PendingAnnotationWatcher] Found pending annotation",
+          pendingData
+        );
+
+        sessionStorage.setItem(
+          "pendingAnnotation",
+          JSON.stringify(pendingData)
+        );
+        window.dispatchEvent(new Event("pendingAnnotationUpdated"));
+
+        await storage.removeItem("session:pendingAnnotation");
+
+        // Navigate to create page
+        navigate("/create");
+      }
+    };
+
+    checkForPendingAnnotation();
+
+    const unwatch = storage.watch("session:pendingAnnotation", (newValue) => {
+      if (newValue && isActive) {
+        console.log(
+          "[PendingAnnotationWatcher] Storage changed, new pending annotation"
+        );
+        checkForPendingAnnotation();
+      }
     });
 
     return () => {
-      unsubscribe();
+      isActive = false;
+      unwatch();
     };
   }, [navigate]);
 
@@ -75,7 +105,7 @@ export default function App() {
         }
       } catch (error) {}
     })();
-  });
+  }, []);
 
   return (
     <div className="h-screen w-full bg-gray-100 font-roboto">
@@ -103,7 +133,7 @@ export default function App() {
       {upToDate && (
         <BrowserRouter basename="/sidebar.html">
           <AuthenticationProvider>
-            <MessageListener />
+            <PendingAnnotationWatcher />
             <Routes>
               <Route element={<Layout />}>
                 <Route index element={<IndexRoute />} />

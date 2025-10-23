@@ -48,6 +48,7 @@ export default function Create() {
   useEffect(() => {
     const loadPendingData = () => {
       const pendingData = sessionStorage.getItem("pendingAnnotation");
+
       if (pendingData) {
         const data = JSON.parse(pendingData) as AnnotationData;
         setAnnotationData(data);
@@ -59,14 +60,10 @@ export default function Create() {
 
     loadPendingData();
 
-    const handleCustomEvent = () => {
-      loadPendingData();
-    };
-
-    window.addEventListener("pendingAnnotationUpdated", handleCustomEvent);
+    window.addEventListener("pendingAnnotationUpdated", loadPendingData);
 
     return () => {
-      window.removeEventListener("pendingAnnotationUpdated", handleCustomEvent);
+      window.removeEventListener("pendingAnnotationUpdated", loadPendingData);
     };
   }, [isAuthenticated]);
 

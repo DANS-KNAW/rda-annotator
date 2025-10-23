@@ -2,11 +2,10 @@ import { ContentScriptContext } from "#imports";
 import { EXTENSION_NAME, SIDEBAR_WIDTH, TOGGLE_TAB_WIDTH } from "./constant";
 
 interface SidebarProps {
-  isOpen: boolean;
   ctx: ContentScriptContext;
 }
 
-export default async function createSidebar({ ctx, isOpen }: SidebarProps) {
+export async function createSidebar({ ctx }: SidebarProps) {
   const sidebarShadow = await createShadowRootUi(ctx, {
     name: `${EXTENSION_NAME}-sidebar`,
     position: "inline",
@@ -14,6 +13,8 @@ export default async function createSidebar({ ctx, isOpen }: SidebarProps) {
     mode: "closed",
 
     onMount(_, shadowRoot, shadowHost) {
+      console.log("[RDA Sidebar] Mounted");
+
       const container = document.createElement("div");
       container.id = "sidebar-container";
       shadowRoot.replaceChildren(container);
@@ -21,10 +22,10 @@ export default async function createSidebar({ ctx, isOpen }: SidebarProps) {
       const toggleButton = document.createElement("button");
       toggleButton.id = "toggle-button";
       toggleButton.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="chevron-icon">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-          </svg>
-        `;
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="chevron-icon">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+        </svg>
+      `;
       container.appendChild(toggleButton);
 
       const contentWrapper = document.createElement("div");
@@ -33,93 +34,88 @@ export default async function createSidebar({ ctx, isOpen }: SidebarProps) {
 
       const sheet = new CSSStyleSheet();
       sheet.replaceSync(`
-          :host {
-            position: fixed;
-            top: 0; 
-            right: -${SIDEBAR_WIDTH}px;
-            z-index: 2147483647;
-            width: ${SIDEBAR_WIDTH + TOGGLE_TAB_WIDTH}px;
-            height: 100vh;
-            box-sizing: border-box;
-            transition: right 0.3s ease-in-out;
-          }
+        :host {
+          position: fixed;
+          top: 0; 
+          right: 0;
+          z-index: 2147483647;
+          width: ${SIDEBAR_WIDTH + TOGGLE_TAB_WIDTH}px;
+          height: 100vh;
+          box-sizing: border-box;
+          transform: translateX(${SIDEBAR_WIDTH}px);
+          transition: transform 0.3s ease-in-out;
+        }
 
-          :host(.open) {
-            right: 0;
-          }
+        :host(.open) {
+          transform: translateX(0);
+        }
 
-          #sidebar-container {
-            width: 100%;
-            height: 100%;
-            position: relative;
-          }
+        #sidebar-container {
+          width: 100%;
+          height: 100%;
+          position: relative;
+        }
 
-          #toggle-button {
-            position: absolute;
-            left: 0;
-            top: 20px;
-            transform: translateY(-50%);
-            width: ${TOGGLE_TAB_WIDTH}px;
-            height: 40px;
-            background: #467d2c;
-            color: white;
-            border: none;
-            border-radius: 6px 0 0 6px;
-            cursor: pointer;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1;
-            transition: background 0.2s;
-            padding: 0;
-          }
+        #toggle-button {
+          position: absolute;
+          left: 0;
+          top: 0px;
+          width: ${TOGGLE_TAB_WIDTH}px;
+          height: 40px;
+          background: #467d2c;
+          color: white;
+          border: none;
+          border-radius: 6px 0 0 6px;
+          cursor: pointer;
+          font-size: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1;
+          transition: background 0.2s;
+          padding: 0;
+        }
 
-          #toggle-button:hover {
-            background: #2563eb;
-          }
+        #toggle-button:hover {
+          background: #2563eb;
+        }
 
-          .chevron-icon {
-            width: 32px;
-            height: 32px;
-          }
+        .chevron-icon {
+          width: 32px;
+          height: 32px;
+        }
 
-          #content-wrapper {
-            width: 100%;
-            height: 100%;
-            padding-left: ${TOGGLE_TAB_WIDTH}px;
-            box-sizing: border-box;
-          }
-        `);
+        #content-wrapper {
+          width: 100%;
+          height: 100%;
+          padding-left: ${TOGGLE_TAB_WIDTH}px;
+          box-sizing: border-box;
+        }
+      `);
       shadowRoot.adoptedStyleSheets = [sheet];
 
+      // Toggle button handler
       toggleButton.addEventListener("click", () => {
-        isOpen = !isOpen;
-        shadowHost.classList.toggle("open", isOpen);
+        const isOpen = shadowHost.classList.contains("open");
+        shadowHost.classList.toggle("open");
+
         toggleButton.innerHTML = isOpen
           ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="chevron-icon">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-              </svg>`
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+            </svg>`
           : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="chevron-icon">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-              </svg>`;
+              <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+            </svg>`;
       });
 
-      if (isOpen) {
-        shadowHost.classList.add("open");
-        toggleButton.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="chevron-icon">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-            </svg>
-          `;
-      }
-
+      // Create iframe with sidebar content
       const shadowFrame = createIframeUi(ctx, {
         page: "/sidebar.html",
         position: "inline",
         anchor: contentWrapper,
 
         onMount(wrapper, iframe) {
+          console.log("[RDA Sidebar] Iframe mounted");
           wrapper.style.width = "100%";
           wrapper.style.height = "100vh";
 
@@ -130,6 +126,10 @@ export default async function createSidebar({ ctx, isOpen }: SidebarProps) {
       });
 
       shadowFrame.mount();
+    },
+
+    onRemove() {
+      console.log("[RDA Sidebar] Removed");
     },
   });
 
