@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext } from "react";
+import { useLocation } from "react-router";
 import { searchAnnotationsByUrl } from "@/utils/elasticsearch-fetch";
 import { AnnotationHit } from "@/types/elastic-search-document.interface";
 import { AuthStorage } from "@/utils/auth-storage";
@@ -8,6 +9,7 @@ import { sendMessage } from "@/utils/messaging";
 
 export default function Annotations() {
   const { isAuthenticated, oauth } = useContext(AuthenticationContext);
+  const location = useLocation();
 
   const [annotations, setAnnotations] = useState<AnnotationHit[]>([]);
   const [myAnnotations, setMyAnnotations] = useState<AnnotationHit[]>([]);
@@ -70,7 +72,7 @@ export default function Annotations() {
       );
       setMyAnnotations(userData.hits.hits);
     })();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, location]);
 
   useEffect(() => {
     if (!currentUrl) return;
@@ -84,7 +86,7 @@ export default function Annotations() {
         setAnnotations([]);
       }
     })();
-  }, [currentUrl]);
+  }, [currentUrl, location]);
 
   if (activeTab === "My Annotations") {
     return (

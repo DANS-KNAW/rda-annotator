@@ -2,6 +2,7 @@ import { ContentScriptContext } from "#imports";
 import { EXTENSION_NAME } from "./constant";
 import { AnnotationTarget } from "@/types/selector.interface";
 import { describeRange } from "@/utils/anchoring/describe";
+import { trimRange } from "@/utils/anchoring/trim-range";
 import { sendMessage } from "@/utils/messaging";
 
 interface AnnotatorPopupProps {
@@ -374,7 +375,25 @@ export async function createAnnotatorPopup({
 
   const handleAnnotateClick = async () => {
     if (currentSelection && currentSelection.rangeCount > 0) {
-      const range = currentSelection.getRangeAt(0);
+      let range = currentSelection.getRangeAt(0);
+
+      // Trim leading and trailing whitespace from the range.
+      // This ensures annotations don't include accidental whitespace at boundaries,
+      // which would create awkward visual highlights.
+      try {
+        range = trimRange(range);
+      } catch (error) {
+        console.warn("Failed to trim range, using original:", error);
+      }
+
+      // Validate that the range is not empty after trimming
+      if (range.collapsed || range.toString().trim().length === 0) {
+        console.warn("Range is empty after trimming whitespace");
+        hideAnnotatorPopup();
+        window.getSelection()?.removeAllRanges();
+        return;
+      }
+
       const selectors = describeRange(range, document.body);
 
       const target: AnnotationTarget = {
