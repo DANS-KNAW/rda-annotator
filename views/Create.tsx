@@ -11,10 +11,27 @@ import { storage } from "#imports";
 import { ISettings } from "@/types/settings.interface";
 import Alert from "@/components/Alert";
 import { useNavigate } from "react-router";
+import { AnnotationTarget } from "@/types/selector.interface";
 
 interface AnnotationData {
-  selectedText: string;
-  url: string;
+  target: AnnotationTarget;
+  timestamp: number;
+}
+
+/**
+ * Extracts the selected text from an AnnotationTarget
+ * Looks for a TextQuoteSelector and returns its exact text
+ */
+function getSelectedTextFromTarget(target: AnnotationTarget): string {
+  const textQuoteSelector = target.selector.find(
+    (s) => s.type === "TextQuoteSelector"
+  );
+
+  if (textQuoteSelector && textQuoteSelector.type === "TextQuoteSelector") {
+    return textQuoteSelector.exact;
+  }
+
+  return "";
 }
 
 export default function Create() {
@@ -69,8 +86,9 @@ export default function Create() {
 
   useEffect(() => {
     if (annotationData && formRef.current) {
-      formRef.current.setValue("selectedText", annotationData.selectedText);
-      formRef.current.setValue("resource", annotationData.url);
+      const selectedText = getSelectedTextFromTarget(annotationData.target);
+      formRef.current.setValue("selectedText", selectedText);
+      formRef.current.setValue("resource", annotationData.target.source);
     }
   }, [annotationData]);
 
@@ -134,6 +152,16 @@ export default function Create() {
     }
 
     try {
+      if (annotationData === null) {
+        throw new Error("No annotation target data available.");
+      }
+
+      const payload: Record<string, any> = {
+        ...data,
+        submitter: oauth.identity_provider_identity,
+        target: annotationData.target,
+      };
+
       const response = await fetch(
         import.meta.env.WXT_API_ENDPOINT + "/knowledge-base/annotation",
         {
@@ -141,10 +169,7 @@ export default function Create() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            ...data,
-            submitter: oauth.identity_provider_identity,
-          }),
+          body: JSON.stringify(payload),
         }
       );
 

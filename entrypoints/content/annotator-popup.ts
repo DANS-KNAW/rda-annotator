@@ -1,6 +1,8 @@
 import { ContentScriptContext } from "#imports";
 import { EXTENSION_NAME } from "./constant";
 import { storage } from "#imports";
+import { AnnotationTarget } from "@/types/selector.interface";
+import { describeRange } from "@/utils/anchoring/describe";
 
 interface AnnotatorPopupProps {
   ctx: ContentScriptContext;
@@ -116,11 +118,17 @@ export async function createAnnotatorPopup({
   };
 
   const handleAnnotateClick = async () => {
-    if (currentSelection) {
-      const selectedText = currentSelection.toString();
+    if (currentSelection && currentSelection.rangeCount > 0) {
+      const range = currentSelection.getRangeAt(0);
+      const selectors = describeRange(range, document.body);
+
+      const target: AnnotationTarget = {
+        source: window.location.href,
+        selector: selectors,
+      };
+
       const annotationData = {
-        selectedText: selectedText.trim(),
-        url: window.location.href,
+        target,
         timestamp: Date.now(),
       };
 
