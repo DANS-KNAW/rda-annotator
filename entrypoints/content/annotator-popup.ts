@@ -262,7 +262,6 @@ export async function createAnnotatorPopup({
 
   /**
    * Calculates the optimal position for the popup based on the selection
-   * Adapted from Hypothesis client positioning logic
    */
   const calculatePosition = (
     selectionRect: DOMRect,

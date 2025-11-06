@@ -29,7 +29,41 @@ export default defineContentScript({
     let annotationManager: AnnotationManager | null = null;
 
     if (isTopFrame) {
-      annotationManager = new AnnotationManager();
+      annotationManager = new AnnotationManager({
+        // Handle clicks on highlights - open sidebar and show annotation(s)
+        onHighlightClick: async (annotationIds) => {
+          if (!host) return;
+
+          // Ensure sidebar is open
+          if (!host.isMounted.sidebar) {
+            await host.mount();
+          }
+
+          // Open sidebar if needed
+          await host.openSidebar();
+
+          // Send message to sidebar to show these annotations
+          try {
+            await sendMessage("showAnnotationsFromHighlight", {
+              annotationIds,
+            });
+          } catch (error) {
+            console.error(
+              "[RDA] Failed to show annotations from highlight:",
+              error
+            );
+          }
+        },
+        // Handle hover on highlights - show preview styling in sidebar
+        onHighlightHover: async (annotationIds) => {
+          // Send hover state to sidebar for visual feedback
+          try {
+            await sendMessage("hoverAnnotations", { annotationIds });
+          } catch (error) {
+            console.error("[RDA] Failed to send hover state:", error);
+          }
+        },
+      });
 
       host = await createHost({
         ctx,

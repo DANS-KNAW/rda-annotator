@@ -6,11 +6,6 @@ import { anchorByTextQuote } from "./text-quote";
 /**
  * Anchor selectors to a range in the document.
  *
- * This implementation is based on Hypothesis's robust anchoring system.
- * Key improvement: We validate that any range resolved by RangeSelector or
- * TextPositionSelector actually contains the expected text (from TextQuoteSelector).
- * This prevents returning incorrect ranges when the DOM structure has changed.
- *
  * @param root - Root element to search within
  * @param selectors - Array of selectors describing the annotation
  * @returns Range representing the anchored annotation
@@ -19,7 +14,6 @@ export async function anchor(
   root: Element,
   selectors: Selector[]
 ): Promise<Range> {
-  // Extract all selector types
   const rangeSelector = selectors.find(
     (s) => s.type === "RangeSelector"
   ) as any;

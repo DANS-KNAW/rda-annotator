@@ -1,9 +1,4 @@
 /**
- * Selector types for robust text anchoring
- * Adapted from Hypothesis client architecture
- */
-
-/**
  * Identifies a region of text using the exact text content plus surrounding context.
  * This is the most robust selector type as it works even when the document structure changes.
  */

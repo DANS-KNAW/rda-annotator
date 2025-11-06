@@ -9,6 +9,7 @@ import { scrollElementIntoView } from "@/utils/scroll";
 import { searchAnnotationsByUrl } from "@/utils/elasticsearch-fetch";
 import type { AnnotationHit } from "@/types/elastic-search-document.interface";
 import { injectHighlightStyles } from "@/utils/inject-highlight-styles";
+import { getAnnotationIdsAtPoint } from "@/utils/highlights-at-point";
 
 interface AnchoredAnnotation {
   annotation: AnnotationHit;
@@ -19,9 +20,78 @@ export class AnnotationManager {
   private annotations: Map<string, AnchoredAnnotation> = new Map();
   private currentFocused: string | null = null;
   private temporaryHighlight: Highlight | null = null;
+  private onHighlightClick?: (annotationIds: string[]) => void;
+  private onHighlightHover?: (annotationIds: string[]) => void;
 
-  constructor() {
+  constructor(options?: {
+    onHighlightClick?: (annotationIds: string[]) => void;
+    onHighlightHover?: (annotationIds: string[]) => void;
+  }) {
     injectHighlightStyles();
+    this.onHighlightClick = options?.onHighlightClick;
+    this.onHighlightHover = options?.onHighlightHover;
+    this.setupEventListeners();
+  }
+
+  /**
+   * Setup document-level event listeners for highlight interactions.
+   */
+  private setupEventListeners(): void {
+    let lastHoveredIds: string[] = [];
+    let hoverTimeout: number | null = null;
+
+    // Handle clicks on highlights
+    document.addEventListener("mouseup", (event) => {
+      // Don't select annotations if user is making a text selection
+      const selection = window.getSelection();
+      if (selection && !selection.isCollapsed) {
+        return;
+      }
+
+      const annotationIds = getAnnotationIdsAtPoint(
+        event.clientX,
+        event.clientY
+      );
+      if (annotationIds.length > 0 && this.onHighlightClick) {
+        this.onHighlightClick(annotationIds);
+      }
+    });
+
+    // Throttled hover detection using mousemove
+    const handleMouseMove = (event: MouseEvent) => {
+      if (hoverTimeout) {
+        return; // Still in throttle period
+      }
+
+      hoverTimeout = window.setTimeout(() => {
+        hoverTimeout = null;
+      }, 50); // Throttle to every 50ms
+
+      const annotationIds = getAnnotationIdsAtPoint(
+        event.clientX,
+        event.clientY
+      );
+
+      // Only send message if hover state changed
+      const idsChanged =
+        annotationIds.length !== lastHoveredIds.length ||
+        !annotationIds.every((id) => lastHoveredIds.includes(id));
+
+      if (idsChanged && this.onHighlightHover) {
+        lastHoveredIds = annotationIds;
+        this.onHighlightHover(annotationIds);
+      }
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+
+    // Clear hover when mouse leaves the window
+    document.addEventListener("mouseleave", () => {
+      if (lastHoveredIds.length > 0 && this.onHighlightHover) {
+        lastHoveredIds = [];
+        this.onHighlightHover([]);
+      }
+    });
   }
 
   setHighlightsVisible(visible: boolean): void {
@@ -127,7 +197,10 @@ export class AnnotationManager {
           try {
             (parent as Element).normalize();
           } catch (error) {
-            console.warn("Failed to normalize parent after removing temporary highlight:", error);
+            console.warn(
+              "Failed to normalize parent after removing temporary highlight:",
+              error
+            );
           }
         }
       }
@@ -173,6 +246,29 @@ export class AnnotationManager {
 
     const firstElement = anchored.highlight.elements[0];
     await scrollElementIntoView(firstElement, { maxDuration: 500 });
+  }
+
+  /**
+   * Get annotation data by ID.
+   * Useful for when highlights are clicked and we need to show details.
+   */
+  getAnnotation(annotationId: string): AnnotationHit | null {
+    const anchored = this.annotations.get(annotationId);
+    return anchored ? anchored.annotation : null;
+  }
+
+  /**
+   * Get multiple annotations by their IDs.
+   */
+  getAnnotations(annotationIds: string[]): AnnotationHit[] {
+    const results: AnnotationHit[] = [];
+    for (const id of annotationIds) {
+      const annotation = this.getAnnotation(id);
+      if (annotation) {
+        results.push(annotation);
+      }
+    }
+    return results;
   }
 
   private focusAnnotation(annotationId: string): void {

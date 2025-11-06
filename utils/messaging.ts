@@ -11,6 +11,8 @@ interface ProtocolMap {
   removeTemporaryHighlight(): Promise<void>;
   reloadAnnotations(): Promise<void>;
   getExtensionState(): Promise<{ enabled: boolean }>;
+  showAnnotationsFromHighlight(data: { annotationIds: string[] }): Promise<void>;
+  hoverAnnotations(data: { annotationIds: string[] }): Promise<void>;
 }
 
 export const { sendMessage, onMessage } =

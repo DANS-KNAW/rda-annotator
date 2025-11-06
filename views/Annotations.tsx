@@ -5,7 +5,7 @@ import { AnnotationHit } from "@/types/elastic-search-document.interface";
 import { AuthStorage } from "@/utils/auth-storage";
 import AnnotateionModel from "@/components/AnnotationModel";
 import { AuthenticationContext } from "@/context/authentication.context";
-import { sendMessage } from "@/utils/messaging";
+import { sendMessage, onMessage } from "@/utils/messaging";
 
 export default function Annotations() {
   const { isAuthenticated, oauth } = useContext(AuthenticationContext);
@@ -16,6 +16,12 @@ export default function Annotations() {
   const [selected, setSelected] = useState<AnnotationHit | null>(null);
   const [currentUrl, setCurrentUrl] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("Page Annotations");
+  const [filteredAnnotationIds, setFilteredAnnotationIds] = useState<string[]>(
+    []
+  );
+  const [hoveredAnnotationIds, setHoveredAnnotationIds] = useState<string[]>(
+    []
+  );
 
   const handleAnnotationClick = async (
     annotation: AnnotationHit,
@@ -43,6 +49,17 @@ export default function Annotations() {
   };
 
   const tabs = [{ name: "Page Annotations" }, { name: "My Annotations" }];
+
+  // Filter annotations based on selected filter
+  const displayedAnnotations =
+    filteredAnnotationIds.length > 0
+      ? annotations.filter((ann) => filteredAnnotationIds.includes(ann._id))
+      : annotations;
+
+  // Clear filter handler
+  const clearFilter = () => {
+    setFilteredAnnotationIds([]);
+  };
 
   useEffect(() => {
     (async () => {
@@ -87,6 +104,58 @@ export default function Annotations() {
       }
     })();
   }, [currentUrl, location]);
+
+  // Listen for highlight clicks - set persistent filter
+  useEffect(() => {
+    const unsubscribe = onMessage(
+      "showAnnotationsFromHighlight",
+      async (message) => {
+        if (!message.data?.annotationIds) return;
+
+        const { annotationIds } = message.data;
+
+        // Set persistent filter (no timeout)
+        setFilteredAnnotationIds(annotationIds);
+
+        // If only one annotation, show it in the modal
+        if (annotationIds.length === 1) {
+          const annotation = annotations.find(
+            (ann) => ann._id === annotationIds[0]
+          );
+          if (annotation) {
+            setSelected(annotation);
+          }
+        }
+        // If multiple annotations, they're now filtered in the list
+        // User can click any to see details
+      }
+    );
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [annotations]);
+
+  // Listen for highlight hovers - set temporary hover state
+  useEffect(() => {
+    const unsubscribe = onMessage("hoverAnnotations", async (message) => {
+      if (!message.data?.annotationIds) {
+        setHoveredAnnotationIds([]);
+        return;
+      }
+
+      const { annotationIds } = message.data;
+      setHoveredAnnotationIds(annotationIds);
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, []);
 
   if (activeTab === "My Annotations") {
     return (
@@ -174,6 +243,42 @@ export default function Annotations() {
             ))}
           </nav>
         </div>
+
+        {/* Filter Section */}
+        {filteredAnnotationIds.length > 0 && (
+          <div className="mx-2 mt-3 mb-2 p-3 bg-rda-50 border border-rda-300 rounded-md">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="size-5 text-rda-600"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"
+                  />
+                </svg>
+
+                <span className="text-sm font-medium text-rda-900">
+                  Showing {filteredAnnotationIds.length} selected annotation
+                  {filteredAnnotationIds.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <button
+                onClick={clearFilter}
+                className="text-sm font-medium text-rda-600 hover:text-rda-900 underline cursor-pointer"
+              >
+                Clear filter
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {selected && (
@@ -184,7 +289,7 @@ export default function Annotations() {
         Page Annotations found:
       </h2>
 
-      {annotations.length === 0 && (
+      {displayedAnnotations.length === 0 && annotations.length === 0 && (
         <div className="mx-2 my-8 border border-rda-500 rounded-md shadow ">
           <p className="text-gray-600 px-4 pt-4 text-base/7 font-medium">
             No annotations found for this URL.
@@ -195,25 +300,49 @@ export default function Annotations() {
         </div>
       )}
 
-      <div className="my-4 mx-2 space-y-4">
-        {annotations.length > 0 &&
-          annotations.map((annotation) => (
-            <div
-              key={annotation._id}
-              onClick={() => handleAnnotationClick(annotation, true)}
-              className="bg-white p-2 rounded-md shadow cursor-pointer min-h-14 hover:bg-rda-50"
+      {displayedAnnotations.length === 0 && annotations.length > 0 && (
+        <div className="mx-2 my-8 border border-rda-500 rounded-md shadow ">
+          <p className="text-gray-600 px-4 pt-4 text-base/7 font-medium">
+            No annotations match the current filter.
+          </p>
+          <p className="text-gray-600 px-4 pb-4 text-base/7 font-medium">
+            <button
+              onClick={clearFilter}
+              className="text-rda-600 hover:text-rda-700 underline font-semibold"
             >
-              <div className="flex justify-between items-center mb-2">
-                <span>{annotation._source.dc_date}</span>
+              Clear filter
+            </button>{" "}
+            to see all annotations.
+          </p>
+        </div>
+      )}
+
+      <div className="my-4 mx-2 space-y-4">
+        {displayedAnnotations.length > 0 &&
+          displayedAnnotations.map((annotation) => {
+            const isHovered = hoveredAnnotationIds.includes(annotation._id);
+            return (
+              <div
+                key={annotation._id}
+                onClick={() => handleAnnotationClick(annotation, true)}
+                className={`p-2 rounded-md shadow cursor-pointer min-h-14 transition-all ${
+                  isHovered
+                    ? "bg-rda-100 border-2 border-rda-500 ring-2 ring-rda-300"
+                    : "bg-white hover:bg-rda-50"
+                }`}
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <span>{annotation._source.dc_date}</span>
+                </div>
+                <p className="text-gray-600 line-clamp-3 bg-gray-100 p-2 rounded-md">
+                  {annotation._source.fragment}
+                </p>
+                <p className="mt-2 line-clamp-3">
+                  {annotation._source.dc_description}
+                </p>
               </div>
-              <p className="text-gray-600 line-clamp-3 bg-gray-100 p-2 rounded-md">
-                {annotation._source.fragment}
-              </p>
-              <p className="mt-2 line-clamp-3">
-                {annotation._source.dc_description}
-              </p>
-            </div>
-          ))}
+            );
+          })}
       </div>
     </>
   );
