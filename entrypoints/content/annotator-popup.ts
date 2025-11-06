@@ -385,7 +385,15 @@ export async function createAnnotatorPopup({
         timestamp: Date.now(),
       };
 
-      sendMessage("storeAnnotation", annotationData);
+      try {
+        const response = await sendMessage("storeAnnotation", annotationData);
+        if (!response.success) {
+          console.error("[RDA Annotator] Failed to store annotation");
+        }
+      } catch (error) {
+        console.error("[RDA Annotator] Failed to send annotation:", error);
+      }
+
       await onAnnotate();
 
       hideAnnotatorPopup();

@@ -6,7 +6,7 @@ interface ProtocolMap {
   storeAnnotation(data: {
     target: AnnotationTarget;
     timestamp: number;
-  }): void;
+  }): Promise<{ success: boolean }>;
 }
 
 export const { sendMessage, onMessage } =

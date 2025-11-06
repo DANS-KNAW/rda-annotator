@@ -30,13 +30,11 @@ export default defineBackground(() => {
   });
 
   onMessage("storeAnnotation", async (message) => {
-    console.log("[Background] Storing annotation", message.data);
-
     try {
       await storage.setItem("session:pendingAnnotation", message.data);
-      console.log("[Background] Annotation stored successfully");
+      return { success: true };
     } catch (error) {
-      console.error("[Background] Failed to store annotation:", error);
+      return { success: false };
     }
   });
 
