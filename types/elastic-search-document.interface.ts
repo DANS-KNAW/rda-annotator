@@ -1,4 +1,5 @@
 import type { estypes } from "@elastic/elasticsearch";
+import type { Selector, AnnotationTarget } from "./selector.interface";
 
 export interface ElasticsearchResponse {
   took: number;
@@ -48,6 +49,7 @@ export interface Annotation {
   card_url: string | null;
   resource_source: "Annotation";
   fragment: string;
+  annotation_target?: AnnotationTarget;
   uuid_uri_type: string | null;
   notes: string | null;
   last_update: string | null;

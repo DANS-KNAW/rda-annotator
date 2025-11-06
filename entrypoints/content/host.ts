@@ -2,7 +2,13 @@ import { ContentScriptContext } from "#imports";
 import { createSidebar } from "./sidebar";
 import { createAnnotatorPopup } from "./annotator-popup";
 
-export async function createHost(ctx: ContentScriptContext) {
+interface CreateHostProps {
+  ctx: ContentScriptContext;
+  onCreateTemporaryHighlight?: (range: Range) => Promise<void>;
+  onMountStateChange?: (isMounted: boolean) => void;
+}
+
+export async function createHost({ ctx, onCreateTemporaryHighlight, onMountStateChange }: CreateHostProps) {
   let sidebarMounted = false;
   let annotatorMounted = false;
   let sidebarOpen = false;
@@ -16,6 +22,7 @@ export async function createHost(ctx: ContentScriptContext) {
       }
       await openSidebar();
     },
+    onCreateTemporaryHighlight,
   });
 
   async function mount() {
@@ -31,6 +38,11 @@ export async function createHost(ctx: ContentScriptContext) {
       annotatorPopup.mount();
       annotatorMounted = true;
     }
+
+    // Notify that the extension is now mounted
+    if (onMountStateChange) {
+      onMountStateChange(true);
+    }
   }
 
   async function unmount() {
@@ -44,6 +56,11 @@ export async function createHost(ctx: ContentScriptContext) {
     annotatorMounted = false;
     sidebarMounted = false;
     sidebarOpen = false;
+
+    // Notify that the extension is now unmounted
+    if (onMountStateChange) {
+      onMountStateChange(false);
+    }
   }
 
   async function toggle() {
@@ -56,7 +73,7 @@ export async function createHost(ctx: ContentScriptContext) {
 
   async function openSidebar() {
     if (!sidebarMounted) {
-      console.warn("[RDA Host] Cannot open sidebar - not mounted");
+      console.warn("Cannot open sidebar - not mounted");
       return;
     }
 

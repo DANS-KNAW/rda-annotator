@@ -49,7 +49,20 @@ async function sendInstallationMetrics() {
   }
 }
 
-export default defineBackground(() => {
+export default defineBackground(async () => {
+  storage.defineItem("local:extension-enabled", {
+    version: 1,
+    fallback: false,
+  });
+
+  const isEnabled = await storage.getItem("local:extension-enabled");
+  await browser.action.setBadgeText({
+    text: isEnabled ? "ON" : "",
+  });
+  await browser.action.setBadgeBackgroundColor({
+    color: isEnabled ? "#467d2c" : "#666666",
+  });
+
   browser.runtime.onInstalled.addListener(async (details) => {
     if (details.reason === browser.runtime.OnInstalledReason.INSTALL) {
       storage.setItem("local:install-date", new Date().toISOString());
@@ -70,11 +83,6 @@ export default defineBackground(() => {
         fallback: null,
       });
 
-      storage.defineItem("local:extension-enabled", {
-        version: 1,
-        fallback: false,
-      });
-
       // Send installation metrics to API
       await sendInstallationMetrics();
     }
@@ -89,12 +97,16 @@ export default defineBackground(() => {
     }
   });
 
+  onMessage("getExtensionState", async () => {
+    const enabled = await storage.getItem("local:extension-enabled");
+    return { enabled: !!enabled };
+  });
+
   browser.action.onClicked.addListener(async (tab) => {
     const currentState = await storage.getItem("local:extension-enabled");
     const newState = !currentState;
     await storage.setItem("local:extension-enabled", newState);
 
-    // Update badge to show enabled/disabled state
     await browser.action.setBadgeText({
       text: newState ? "ON" : "",
     });
@@ -102,7 +114,6 @@ export default defineBackground(() => {
       color: newState ? "#467d2c" : "#666666",
     });
 
-    // If there's a current tab, send message to toggle it
     if (tab?.id != null) {
       await sendMessage("toggleSidebar", { action: "toggle" }, tab.id);
     }

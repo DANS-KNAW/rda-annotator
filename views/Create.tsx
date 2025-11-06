@@ -12,6 +12,7 @@ import { ISettings } from "@/types/settings.interface";
 import Alert from "@/components/Alert";
 import { useNavigate } from "react-router";
 import { AnnotationTarget } from "@/types/selector.interface";
+import { sendMessage } from "@/utils/messaging";
 
 interface AnnotationData {
   target: AnnotationTarget;
@@ -92,7 +93,6 @@ export default function Create() {
     }
   }, [annotationData]);
 
-  // Load remembered choices when settings are loaded
   useEffect(() => {
     if (!isLoadingSettings && settings.rememberChoices && formRef.current) {
       Object.entries(settings.rememberChoices).forEach(([fieldName, value]) => {
@@ -100,6 +100,23 @@ export default function Create() {
       });
     }
   }, [isLoadingSettings, settings.rememberChoices]);
+
+  useEffect(() => {
+    return () => {
+      (async () => {
+        const pendingData = sessionStorage.getItem("pendingAnnotation");
+        if (!pendingData) {
+          const tabs = await browser.tabs.query({
+            active: true,
+            currentWindow: true,
+          });
+          if (tabs[0]?.id) {
+            await sendMessage("removeTemporaryHighlight", undefined, tabs[0].id);
+          }
+        }
+      })();
+    };
+  }, []);
 
   const handleSubmit = async (data: Record<string, any>) => {
     setErrorMessages([]);
@@ -185,19 +202,25 @@ export default function Create() {
         setAnnotationData(null);
       }
 
+      const tabs = await browser.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (tabs[0]?.id) {
+        await sendMessage("removeTemporaryHighlight", undefined, tabs[0].id);
+        await sendMessage("reloadAnnotations", undefined, tabs[0].id);
+      }
+
       if (data.rememberChoices === true && settings.rememberChoices) {
-        // If rememberChoices is enabled, only reset non-combobox fields
         const fieldsToReset = (AnnotationFormSchema as AnnotationSchema).fields
           .filter((field) => field.type !== "combobox")
           .map((field) => field.name);
 
-        // Reset those fields plus selectedText
         fieldsToReset.forEach((fieldName) => {
           formRef.current?.setValue(fieldName, "");
         });
         formRef.current?.setValue("selectedText", "");
       } else {
-        // If rememberChoices is disabled, reset everything
         formRef.current?.reset();
       }
       navigate("/annotations");

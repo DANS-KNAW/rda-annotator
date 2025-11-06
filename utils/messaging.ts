@@ -7,6 +7,10 @@ interface ProtocolMap {
     target: AnnotationTarget;
     timestamp: number;
   }): Promise<{ success: boolean }>;
+  scrollToAnnotation(data: { annotationId: string }): Promise<void>;
+  removeTemporaryHighlight(): Promise<void>;
+  reloadAnnotations(): Promise<void>;
+  getExtensionState(): Promise<{ enabled: boolean }>;
 }
 
 export const { sendMessage, onMessage } =

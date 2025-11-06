@@ -7,6 +7,7 @@ import { sendMessage } from "@/utils/messaging";
 interface AnnotatorPopupProps {
   ctx: ContentScriptContext;
   onAnnotate: () => Promise<void>;
+  onCreateTemporaryHighlight?: (range: Range) => Promise<void>;
 }
 
 enum ArrowDirection {
@@ -45,6 +46,7 @@ const ARROW_H_MARGIN = 20;
 export async function createAnnotatorPopup({
   ctx,
   onAnnotate,
+  onCreateTemporaryHighlight,
 }: AnnotatorPopupProps) {
   let currentSelection: Selection | null = null;
   let container: HTMLElement;
@@ -384,6 +386,14 @@ export async function createAnnotatorPopup({
         target,
         timestamp: Date.now(),
       };
+
+      try {
+        if (onCreateTemporaryHighlight) {
+          await onCreateTemporaryHighlight(range);
+        }
+      } catch (error) {
+        console.error("Failed to create temporary highlight:", error);
+      }
 
       try {
         const response = await sendMessage("storeAnnotation", annotationData);

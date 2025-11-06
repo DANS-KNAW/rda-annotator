@@ -1,6 +1,7 @@
-import { onMessage } from "@/utils/messaging";
+import { onMessage, sendMessage } from "@/utils/messaging";
 import { createHost } from "./host";
 import { FrameObserver } from "./frame-observer";
+import { AnnotationManager } from "./annotation-manager";
 
 export default defineContentScript({
   matches: ["*://*/*"],
@@ -25,9 +26,36 @@ export default defineContentScript({
     document.head.appendChild(marker);
 
     let host: Awaited<ReturnType<typeof createHost>> | null = null;
+    let annotationManager: AnnotationManager | null = null;
 
     if (isTopFrame) {
-      host = await createHost(ctx);
+      annotationManager = new AnnotationManager();
+
+      host = await createHost({
+        ctx,
+        onCreateTemporaryHighlight: async (range) => {
+          if (annotationManager) {
+            await annotationManager.createTemporaryHighlight(range);
+          }
+        },
+        onMountStateChange: (isMounted) => {
+          if (annotationManager) {
+            annotationManager.setHighlightsVisible(isMounted);
+          }
+        },
+      });
+
+      await annotationManager.loadAnnotations();
+
+      try {
+        const state = await sendMessage("getExtensionState", undefined);
+        if (state.enabled) {
+          await host.mount();
+          annotationManager.setHighlightsVisible(true);
+        }
+      } catch (error) {
+        console.error("Failed to get extension state:", error);
+      }
 
       const frameObserver = new FrameObserver(ctx, (frame) => {
         console.log("[RDA Boot] Frame detected:", {
@@ -35,31 +63,47 @@ export default defineContentScript({
           id: frame.id,
           name: frame.name,
         });
-        // TODO: In future, inject Guest into discovered frames
       });
       frameObserver.start();
 
-      // Listen for background script commands
       onMessage("toggleSidebar", async (message) => {
-        if (!host) return;
+        if (!host || !annotationManager) return;
 
         if (message?.data?.action === "toggle") {
           await host.toggle();
+          const isMounted = host.isMounted.sidebar && host.isMounted.annotator;
+          annotationManager.setHighlightsVisible(isMounted);
         } else if (message?.data?.action === "mount") {
           await host.mount();
+          annotationManager.setHighlightsVisible(true);
         }
+      });
+
+      onMessage("scrollToAnnotation", async (message) => {
+        if (!annotationManager || !message.data) return;
+        await annotationManager.scrollToAnnotation(message.data.annotationId);
+      });
+
+      onMessage("removeTemporaryHighlight", async () => {
+        if (!annotationManager) return;
+        annotationManager.removeTemporaryHighlight();
+      });
+
+      onMessage("reloadAnnotations", async () => {
+        if (!annotationManager) return;
+        await annotationManager.loadAnnotations();
       });
     } else {
       console.log("[RDA Boot] Initializing Guest (child frame)");
-      // In child frames, just create the annotator without sidebar
-      // For now, we'll skip this - log only
       console.log("[RDA Boot] Child frame support not yet implemented");
     }
 
-    // Cleanup on context invalidation
     ctx.onInvalidated(() => {
       if (host) {
         host.destroy();
+      }
+      if (annotationManager) {
+        annotationManager.destroy();
       }
     });
   },
