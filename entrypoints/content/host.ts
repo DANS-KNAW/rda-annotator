@@ -8,11 +8,6 @@ export async function createHost(ctx: ContentScriptContext) {
   let sidebarOpen = false;
 
   const sidebar = await createSidebar({ ctx });
-  sidebar.mount();
-  sidebarMounted = true;
-
-  console.log("[RDA Host] Sidebar pre-loaded (hidden)");
-
   const annotatorPopup = await createAnnotatorPopup({
     ctx,
     onAnnotate: async () => {
@@ -25,11 +20,8 @@ export async function createHost(ctx: ContentScriptContext) {
 
   async function mount() {
     if (sidebarMounted && annotatorMounted) {
-      console.log("[RDA Host] Already mounted");
       return;
     }
-
-    console.log("[RDA Host] Mounting components");
 
     if (!sidebarMounted) {
       sidebar.mount();
@@ -39,17 +31,12 @@ export async function createHost(ctx: ContentScriptContext) {
       annotatorPopup.mount();
       annotatorMounted = true;
     }
-
-    console.log("[RDA Host] Mount complete");
   }
 
   async function unmount() {
     if (!sidebarMounted && !annotatorMounted) {
-      console.log("[RDA Host] Not mounted");
       return;
     }
-
-    console.log("[RDA Host] Unmounting components");
 
     annotatorPopup.remove();
     sidebar.remove();
@@ -57,7 +44,6 @@ export async function createHost(ctx: ContentScriptContext) {
     annotatorMounted = false;
     sidebarMounted = false;
     sidebarOpen = false;
-    console.log("[RDA Host] Unmount complete");
   }
 
   async function toggle() {
@@ -74,7 +60,6 @@ export async function createHost(ctx: ContentScriptContext) {
       return;
     }
 
-    console.log("[RDA Host] Opening sidebar");
     sidebarOpen = true;
 
     if (sidebar.shadowHost) {
@@ -95,7 +80,6 @@ export async function createHost(ctx: ContentScriptContext) {
   }
 
   function destroy() {
-    console.log("[RDA Host] Destroying host");
     if (sidebarMounted || annotatorMounted) {
       unmount();
     }

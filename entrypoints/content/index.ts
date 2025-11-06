@@ -16,10 +16,7 @@ export default defineContentScript({
       origin: window.location.origin,
     };
 
-    console.log("[RDA Boot]", frameInfo);
-
     if (document.querySelector("[data-rda-injected]")) {
-      console.log("[RDA Boot] Already injected, aborting");
       return;
     }
 
@@ -30,7 +27,6 @@ export default defineContentScript({
     let host: Awaited<ReturnType<typeof createHost>> | null = null;
 
     if (isTopFrame) {
-      console.log("[RDA Boot] Initializing Host (top frame)");
       host = await createHost(ctx);
 
       const frameObserver = new FrameObserver(ctx, (frame) => {
@@ -50,9 +46,9 @@ export default defineContentScript({
         if (message?.data?.action === "toggle") {
           await host.toggle();
         } else if (message?.data?.action === "mount") {
+          await host.mount();
         }
       });
-      await host.mount();
     } else {
       console.log("[RDA Boot] Initializing Guest (child frame)");
       // In child frames, just create the annotator without sidebar
@@ -62,7 +58,6 @@ export default defineContentScript({
 
     // Cleanup on context invalidation
     ctx.onInvalidated(() => {
-      console.log("[RDA Boot] Context invalidated, cleaning up");
       if (host) {
         host.destroy();
       }
