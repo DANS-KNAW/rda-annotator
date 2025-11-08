@@ -1,57 +1,69 @@
-import Modal from "@/components/Model";
+import Drawer from "@/components/Drawer";
 import Button from "@/components/Button";
+import Accordion from "@/components/Accordion";
 import { AnnotationHit } from "@/types/elastic-search-document.interface";
 
-interface AnnotationModelProps {
+interface AnnotationDrawerProps {
   annotation: AnnotationHit;
   setAnnotation: (annotation: AnnotationHit | null) => void;
 }
 
-export default function AnnotateionModel({
+export default function AnnotationDrawer({
   annotation,
   setAnnotation,
-}: AnnotationModelProps) {
+}: AnnotationDrawerProps) {
   return (
-    <Modal
+    <Drawer
       title={annotation._source.title || ""}
       open={!!annotation}
       setOpen={() => setAnnotation(null)}
     >
-      <div className="text-sm mb-8 relative">
-        <div className="sticky -top-2 z-10 bg-white pb-2 pt-4">
-          <div className="text-base flex justify-between items-center">
-            <span className="font-semibold">{annotation._source.title}</span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              aria-label="Close"
-              className="size-6 hover:text-rda-500 cursor-pointer"
+      <div className="px-4 py-6 sm:px-6">
+        <div className="flex items-start justify-between">
+          <h2 className="text-base font-semibold text-gray-900">
+            {annotation._source.title}
+          </h2>
+          <div className="ml-3 flex h-7 items-center">
+            <button
+              type="button"
               onClick={() => setAnnotation(null)}
+              className="relative rounded-md text-gray-400 hover:text-gray-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rda-600"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18 18 6M6 6l12 12"
-              />
-            </svg>
+              <span className="absolute -inset-2.5" />
+              <span className="sr-only">Close panel</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                aria-hidden="true"
+                className="size-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18 18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
           </div>
-
-          <Button
-            label="View in RDA Discovery Facility"
-            href={
-              import.meta.env.WXT_KNOWLEDGE_BASE_URL +
-              "/record/" +
-              annotation._id
-            }
-            newTab={true}
-            className="flex justify-center mt-4"
-          />
         </div>
 
-        <div className="mt-4 space-y-4">
+        <Button
+          label="View in RDA Discovery Facility"
+          href={
+            import.meta.env.WXT_KNOWLEDGE_BASE_URL +
+            "/record/" +
+            annotation._id
+          }
+          newTab={true}
+          className="flex justify-center mt-4"
+        />
+      </div>
+
+      <div className="flex-1 px-4 sm:px-6 pb-6">
+        <div className="space-y-4 text-sm">
           <div>
             <span className="font-medium">Annotation:</span>
             <p className="mt-2 text-sm italic bg-gray-100 border border-gray-400 p-2 rounded-md">
@@ -188,6 +200,6 @@ export default function AnnotateionModel({
           />
         </div>
       </div>
-    </Modal>
+    </Drawer>
   );
 }
