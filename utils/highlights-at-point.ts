@@ -3,11 +3,16 @@
  *
  * @param x - Client X coordinate
  * @param y - Client Y coordinate
+ * @param targetDocument - Document to query (defaults to document)
  * @returns Array of annotation IDs at the point
  */
-export function getAnnotationIdsAtPoint(x: number, y: number): string[] {
+export function getAnnotationIdsAtPoint(
+  x: number,
+  y: number,
+  targetDocument: Document = document
+): string[] {
   // Get all elements at the given coordinates
-  const elements = document.elementsFromPoint(x, y);
+  const elements = targetDocument.elementsFromPoint(x, y);
 
   // Filter to only rda-highlight elements and extract their annotation IDs
   const annotationIds: string[] = [];
@@ -31,13 +36,15 @@ export function getAnnotationIdsAtPoint(x: number, y: number): string[] {
  *
  * @param x - Client X coordinate
  * @param y - Client Y coordinate
+ * @param targetDocument - Document to query (defaults to document)
  * @returns Array of highlight HTML elements
  */
 export function getHighlightElementsAtPoint(
   x: number,
-  y: number
+  y: number,
+  targetDocument: Document = document
 ): HTMLElement[] {
-  const elements = document.elementsFromPoint(x, y);
+  const elements = targetDocument.elementsFromPoint(x, y);
   return elements.filter(
     (el) => el.tagName.toLowerCase() === "rda-highlight"
   ) as HTMLElement[];

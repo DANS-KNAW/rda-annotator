@@ -4,6 +4,7 @@ import { AnnotationTarget } from "@/types/selector.interface";
 import { describeRange } from "@/utils/anchoring/describe";
 import { trimRange } from "@/utils/anchoring/trim-range";
 import { sendMessage } from "@/utils/messaging";
+import { getDocumentURL } from "@/utils/document-url";
 
 interface AnnotatorPopupProps {
   ctx: ContentScriptContext;
@@ -193,9 +194,6 @@ export async function createAnnotatorPopup({
     },
   });
 
-  /**
-   * Gets the dimensions of the popup container
-   */
   const getPopupDimensions = (): { width: number; height: number } => {
     if (!container) {
       return { width: 0, height: 0 };
@@ -204,9 +202,6 @@ export async function createAnnotatorPopup({
     return { width: rect.width, height: rect.height };
   };
 
-  /**
-   * Detects if the text selection is right-to-left
-   */
   const isRTLSelection = (selection: Selection): boolean => {
     if (selection.rangeCount === 0) return false;
 
@@ -222,9 +217,6 @@ export async function createAnnotatorPopup({
     return false;
   };
 
-  /**
-   * Finds the optimal z-index by sampling elements underneath the popup
-   */
   const findOptimalZIndex = (left: number, top: number): number => {
     if (!document.elementsFromPoint) {
       return 2147483646;
@@ -251,7 +243,6 @@ export async function createAnnotatorPopup({
       .filter((z) => Number.isInteger(z));
 
     let minZIndex = 0;
-    // Check for any existing highlights or annotations
     for (const el of document.querySelectorAll("[data-rda-highlight]")) {
       minZIndex = Math.max(minZIndex, getZIndex(el));
     }
@@ -260,16 +251,12 @@ export async function createAnnotatorPopup({
     return Math.max(...zIndexes, 1000) + 1;
   };
 
-  /**
-   * Calculates the optimal position for the popup based on the selection
-   */
   const calculatePosition = (
     selectionRect: DOMRect,
     isRTL: boolean
   ): PositionTarget => {
     const { width: adderWidth, height: adderHeight } = getPopupDimensions();
 
-    // Determine initial arrow direction based on selection direction and device type
     let arrowDirection: ArrowDirection;
     if (isRTL && !isTouchDevice()) {
       arrowDirection = ArrowDirection.DOWN;
@@ -307,21 +294,17 @@ export async function createAnnotatorPopup({
       arrowDirection = ArrowDirection.DOWN;
     }
 
-    // Position vertically based on arrow direction
     let top: number;
     if (arrowDirection === ArrowDirection.UP) {
-      // Show below selection
       top =
         selectionRect.top +
         selectionRect.height +
         ARROW_HEIGHT +
         touchScreenOffset;
     } else {
-      // Show above selection
       top = selectionRect.top - adderHeight - ARROW_HEIGHT;
     }
 
-    // Constrain to viewport bounds
     left = Math.max(left, 0);
     left = Math.min(left, window.innerWidth - adderWidth);
 
@@ -340,7 +323,6 @@ export async function createAnnotatorPopup({
     host.style.display = "block";
     host.style.visibility = "hidden";
 
-    // Calculate optimal position
     const { left, top, arrowDirection } = calculatePosition(
       selectionRect,
       isRTL
@@ -385,7 +367,6 @@ export async function createAnnotatorPopup({
         console.warn("Failed to trim range, using original:", error);
       }
 
-      // Validate that the range is not empty after trimming
       if (range.collapsed || range.toString().trim().length === 0) {
         console.warn("Range is empty after trimming whitespace");
         hideAnnotatorPopup();
@@ -393,10 +374,10 @@ export async function createAnnotatorPopup({
         return;
       }
 
-      const selectors = describeRange(range, document.body);
+      const selectors = await describeRange(range, document.body);
 
       const target: AnnotationTarget = {
-        source: window.location.href,
+        source: getDocumentURL(),
         selector: selectors,
       };
 

@@ -41,9 +41,21 @@ export interface RangeSelector {
 }
 
 /**
+ * Identifies a specific page in a PDF document.
+ * Used in conjunction with other selectors to provide page context for PDFs.
+ */
+export interface PageSelector {
+  type: "PageSelector";
+  /** Zero-based page index */
+  index: number;
+  /** Page label (displayed page number or sequential numbering) */
+  label?: string;
+}
+
+/**
  * Union type of all supported selector types
  */
-export type Selector = TextQuoteSelector | TextPositionSelector | RangeSelector;
+export type Selector = TextQuoteSelector | TextPositionSelector | RangeSelector | PageSelector;
 
 /**
  * The target of an annotation, containing multiple selector strategies

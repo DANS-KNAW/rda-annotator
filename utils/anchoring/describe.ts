@@ -6,6 +6,7 @@ import {
 } from "@/types/selector.interface";
 import { getTextPosition, getTextContext } from "./text-range";
 import { getXPathForNode } from "./xpath";
+import { isPDFDocument, describePDFRange } from "./pdf";
 
 /**
  * Creates a TextQuoteSelector from a Range
@@ -114,10 +115,14 @@ export function createRangeSelector(
  * @param root The root element (usually document.body)
  * @returns An array of selectors describing the range
  */
-export function describeRange(
+export async function describeRange(
   range: Range,
   root: Node = document.body
-): Selector[] {
+): Promise<Selector[]> {
+  if (isPDFDocument()) {
+    return await describePDFRange(range);
+  }
+
   const selectors: Selector[] = [];
 
   // TextQuoteSelector - most robust, try first

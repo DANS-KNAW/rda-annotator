@@ -15,6 +15,17 @@ export default defineConfig({
     host_permissions: [import.meta.env.HOST_PERMISSION],
     web_accessible_resources: [
       { resources: ["sidebar.html"], matches: ["<all_urls>"] },
+      {
+        resources: [
+          "pdfjs/**/*",
+          "pdfjs/web/viewer.html",
+          "pdfjs/web/viewer.mjs",
+          "pdfjs/web/viewer.css",
+          "pdfjs/build/**/*",
+          "pdfjs/pdfjs-init.js",
+        ],
+        matches: ["<all_urls>"],
+      },
     ],
     action: {
       default_icon: {

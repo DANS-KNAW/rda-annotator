@@ -10,6 +10,7 @@ import { searchAnnotationsByUrl } from "@/utils/elasticsearch-fetch";
 import type { AnnotationHit } from "@/types/elastic-search-document.interface";
 import { injectHighlightStyles } from "@/utils/inject-highlight-styles";
 import { getAnnotationIdsAtPoint } from "@/utils/highlights-at-point";
+import { getDocumentURL } from "@/utils/document-url";
 
 interface AnchoredAnnotation {
   annotation: AnnotationHit;
@@ -22,12 +23,17 @@ export class AnnotationManager {
   private temporaryHighlight: Highlight | null = null;
   private onHighlightClick?: (annotationIds: string[]) => void;
   private onHighlightHover?: (annotationIds: string[]) => void;
+  private rootElement: HTMLElement;
+  private targetDocument: Document;
 
   constructor(options?: {
     onHighlightClick?: (annotationIds: string[]) => void;
     onHighlightHover?: (annotationIds: string[]) => void;
+    rootElement?: HTMLElement;
   }) {
-    injectHighlightStyles();
+    this.rootElement = options?.rootElement || document.body;
+    this.targetDocument = this.rootElement.ownerDocument || document;
+    injectHighlightStyles(this.targetDocument);
     this.onHighlightClick = options?.onHighlightClick;
     this.onHighlightHover = options?.onHighlightHover;
     this.setupEventListeners();
@@ -41,16 +47,17 @@ export class AnnotationManager {
     let hoverTimeout: number | null = null;
 
     // Handle clicks on highlights
-    document.addEventListener("mouseup", (event) => {
+    this.targetDocument.addEventListener("mouseup", (event) => {
       // Don't select annotations if user is making a text selection
-      const selection = window.getSelection();
+      const selection = this.targetDocument.defaultView?.getSelection();
       if (selection && !selection.isCollapsed) {
         return;
       }
 
       const annotationIds = getAnnotationIdsAtPoint(
         event.clientX,
-        event.clientY
+        event.clientY,
+        this.targetDocument
       );
       if (annotationIds.length > 0 && this.onHighlightClick) {
         this.onHighlightClick(annotationIds);
@@ -69,7 +76,8 @@ export class AnnotationManager {
 
       const annotationIds = getAnnotationIdsAtPoint(
         event.clientX,
-        event.clientY
+        event.clientY,
+        this.targetDocument
       );
 
       // Only send message if hover state changed
@@ -83,10 +91,10 @@ export class AnnotationManager {
       }
     };
 
-    document.addEventListener("mousemove", handleMouseMove);
+    this.targetDocument.addEventListener("mousemove", handleMouseMove);
 
     // Clear hover when mouse leaves the window
-    document.addEventListener("mouseleave", () => {
+    this.targetDocument.addEventListener("mouseleave", () => {
       if (lastHoveredIds.length > 0 && this.onHighlightHover) {
         lastHoveredIds = [];
         this.onHighlightHover([]);
@@ -96,45 +104,25 @@ export class AnnotationManager {
 
   setHighlightsVisible(visible: boolean): void {
     if (visible) {
-      document.body.classList.add("rda-highlights-visible");
+      this.rootElement.classList.add("rda-highlights-visible");
     } else {
-      document.body.classList.remove("rda-highlights-visible");
+      this.rootElement.classList.remove("rda-highlights-visible");
     }
   }
 
-  /**
-   * Load and anchor all annotations for the current page.
-   *
-   * This method:
-   * 1. Removes any temporary highlights
-   * 2. Clears all existing annotations (with batched normalization)
-   * 3. Normalizes the entire document body to ensure clean DOM state
-   * 4. Fetches annotations from the backend
-   * 5. Anchors each annotation with timeout protection
-   *
-   * The explicit normalization step is critical to prevent anchoring errors
-   * caused by text node fragmentation from previous highlight operations.
-   */
   async loadAnnotations(): Promise<void> {
-    // Always remove temporary highlight before reloading to ensure clean DOM state
     this.removeTemporaryHighlight();
-
-    // Clear all existing annotations (this normalizes affected parents)
     this.clearAnnotations();
 
-    // Ensure the entire document body is normalized before anchoring.
-    // This is critical: even after clearAnnotations() normalizes affected parents,
-    // there may be fragmented text nodes elsewhere in the document from previous
-    // operations. Normalizing the whole body ensures a clean, consistent DOM state
-    // for accurate selector resolution.
     try {
-      document.body.normalize();
+      this.rootElement.normalize();
     } catch (error) {
-      console.warn("Failed to normalize document body:", error);
+      console.warn("Failed to normalize root element:", error);
     }
 
     try {
-      const response = await searchAnnotationsByUrl(window.location.href);
+      const url = getDocumentURL();
+      const response = await searchAnnotationsByUrl(url);
       const annotations = response.hits.hits;
 
       for (const annotation of annotations) {
@@ -146,7 +134,6 @@ export class AnnotationManager {
             ),
           ]);
         } catch (error) {
-          // Log failures with context to help debugging
           const fragment = annotation._source.fragment?.substring(0, 50);
           console.warn(
             `[Anchor] Failed to anchor annotation ${annotation._id}`,
@@ -171,13 +158,6 @@ export class AnnotationManager {
     }
   }
 
-  /**
-   * Remove the temporary highlight and normalize affected DOM nodes.
-   *
-   * Temporary highlights are created when the user selects text but hasn't
-   * submitted the annotation yet. This method cleans up the temporary highlight
-   * and normalizes the DOM to prevent text node fragmentation.
-   */
   removeTemporaryHighlight(): void {
     if (this.temporaryHighlight) {
       // Collect parent nodes before removal
@@ -217,7 +197,7 @@ export class AnnotationManager {
 
     try {
       const range = await anchor(
-        document.body,
+        this.rootElement,
         annotation._source.annotation_target.selector
       );
       const highlight = highlightRange(range, annotation._id);
@@ -248,18 +228,11 @@ export class AnnotationManager {
     await scrollElementIntoView(firstElement, { maxDuration: 500 });
   }
 
-  /**
-   * Get annotation data by ID.
-   * Useful for when highlights are clicked and we need to show details.
-   */
   getAnnotation(annotationId: string): AnnotationHit | null {
     const anchored = this.annotations.get(annotationId);
     return anchored ? anchored.annotation : null;
   }
 
-  /**
-   * Get multiple annotations by their IDs.
-   */
   getAnnotations(annotationIds: string[]): AnnotationHit[] {
     const results: AnnotationHit[] = [];
     for (const id of annotationIds) {
@@ -286,20 +259,10 @@ export class AnnotationManager {
     }
   }
 
-  /**
-   * Clear all annotations and normalize the DOM.
-   *
-   * This method removes all highlight elements and then normalizes all affected
-   * parent nodes in a single batch operation. This is critical for preventing
-   * DOM fragmentation issues that occur when normalizing after each individual
-   * highlight removal.
-   */
   private clearAnnotations(): void {
-    // Collect all unique parent nodes that will be affected by highlight removal
     const parents = new Set<Node>();
 
     for (const { highlight } of this.annotations.values()) {
-      // Track parents before removing highlights
       for (const element of highlight.elements) {
         if (element.parentNode) {
           parents.add(element.parentNode);
@@ -308,9 +271,6 @@ export class AnnotationManager {
       removeHighlight(highlight);
     }
 
-    // Normalize all affected parents ONCE after all highlights are removed.
-    // This prevents issues with text node fragmentation when multiple highlights
-    // are removed from the same parent.
     for (const parent of parents) {
       if (parent.nodeType === Node.ELEMENT_NODE) {
         (parent as Element).normalize();

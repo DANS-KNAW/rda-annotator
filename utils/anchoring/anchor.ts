@@ -2,6 +2,7 @@ import { Selector, TextQuoteSelector } from "@/types/selector.interface";
 import { anchorByRange } from "./range";
 import { anchorByTextPosition } from "./text-position";
 import { anchorByTextQuote } from "./text-quote";
+import { isPDFDocument, anchorPDF } from "./pdf";
 
 /**
  * Anchor selectors to a range in the document.
@@ -14,6 +15,10 @@ export async function anchor(
   root: Element,
   selectors: Selector[]
 ): Promise<Range> {
+  if (isPDFDocument()) {
+    return await anchorPDF(selectors);
+  }
+
   const rangeSelector = selectors.find(
     (s) => s.type === "RangeSelector"
   ) as any;

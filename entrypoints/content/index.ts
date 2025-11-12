@@ -2,6 +2,9 @@ import { onMessage, sendMessage } from "@/utils/messaging";
 import { createHost } from "./host";
 import { FrameObserver } from "./frame-observer";
 import { AnnotationManager } from "./annotation-manager";
+import { FrameInjector } from "./frame-injector";
+import { detectContentType } from "@/utils/detect-content-type";
+import { waitForPDFReady } from "@/utils/anchoring/pdf";
 
 export default defineContentScript({
   matches: ["*://*/*"],
@@ -17,32 +20,60 @@ export default defineContentScript({
       origin: window.location.origin,
     };
 
+    console.log("[RDA Boot] Initializing in frame:", frameInfo);
+
+    // Check if already injected
     if (document.querySelector("[data-rda-injected]")) {
+      console.log("[RDA Boot] Already injected, skipping");
       return;
     }
 
+    // Mark as injected
     const marker = document.createElement("meta");
     marker.setAttribute("data-rda-injected", "true");
+    marker.setAttribute("data-rda-frame-type", isTopFrame ? "host" : "guest");
     document.head.appendChild(marker);
+
+    // Detect content type
+    const contentType = detectContentType();
+    console.log("[RDA Boot] Content type:", contentType);
+    marker.setAttribute("data-rda-content-type", contentType?.type || "HTML");
+
+    if (contentType?.type === "PDF") {
+      try {
+        const isReady = await waitForPDFReady();
+        if (!isReady) {
+          console.warn(
+            "[RDA Boot] PDF.js not available, skipping annotation loading"
+          );
+          return;
+        }
+      } catch (error) {
+        console.error("[RDA Boot] Failed to wait for PDF ready:", error);
+        return;
+      }
+    }
 
     let host: Awaited<ReturnType<typeof createHost>> | null = null;
     let annotationManager: AnnotationManager | null = null;
+    let frameInjector: FrameInjector | null = null;
 
     if (isTopFrame) {
+      console.log("[RDA Boot] Initializing Host (main frame)");
+
+      // Create frame injector to handle child frames
+      frameInjector = new FrameInjector(ctx);
       annotationManager = new AnnotationManager({
         // Handle clicks on highlights - open sidebar and show annotation(s)
         onHighlightClick: async (annotationIds) => {
           if (!host) return;
 
-          // Ensure sidebar is open
           if (!host.isMounted.sidebar) {
             await host.mount();
           }
 
-          // Open sidebar if needed
           await host.openSidebar();
 
-          // Send message to sidebar to show these annotations
           try {
             await sendMessage("showAnnotationsFromHighlight", {
               annotationIds,
@@ -54,11 +85,14 @@ export default defineContentScript({
             );
           }
         },
-        // Handle hover on highlights - show preview styling in sidebar
+
         onHighlightHover: async (annotationIds) => {
-          // Send hover state to sidebar for visual feedback
           try {
-            await sendMessage("hoverAnnotations", { annotationIds });
+            await sendMessage("hoverAnnotations", { annotationIds }).catch(
+              () => {
+                // Sidebar might not be ready yet, ignore
+              }
+            );
           } catch (error) {
             console.error("[RDA] Failed to send hover state:", error);
           }
@@ -91,12 +125,21 @@ export default defineContentScript({
         console.error("Failed to get extension state:", error);
       }
 
-      const frameObserver = new FrameObserver(ctx, (frame) => {
+      const frameObserver = new FrameObserver(ctx, async (frame) => {
         console.log("[RDA Boot] Frame detected:", {
           src: frame.src,
           id: frame.id,
           name: frame.name,
         });
+
+        // Inject annotator into the frame
+        if (frameInjector) {
+          try {
+            await frameInjector.injectFrame(frame);
+          } catch (error) {
+            console.error("[RDA Boot] Failed to inject into frame:", error);
+          }
+        }
       });
       frameObserver.start();
 
@@ -129,7 +172,44 @@ export default defineContentScript({
       });
     } else {
       console.log("[RDA Boot] Initializing Guest (child frame)");
-      console.log("[RDA Boot] Child frame support not yet implemented");
+
+      annotationManager = new AnnotationManager({
+        onHighlightClick: async (annotationIds) => {
+          // Notify parent frame to show annotations
+          window.parent.postMessage(
+            {
+              type: "rda:showAnnotations",
+              annotationIds,
+              source: "guest-frame",
+            },
+            "*"
+          );
+        },
+        onHighlightHover: async (annotationIds) => {
+          // Notify parent frame of hover state
+          window.parent.postMessage(
+            {
+              type: "rda:hoverAnnotations",
+              annotationIds,
+              source: "guest-frame",
+            },
+            "*"
+          );
+        },
+      });
+
+      await annotationManager.loadAnnotations();
+
+      annotationManager.setHighlightsVisible(true);
+
+      // Listen for messages from parent frame
+      window.addEventListener("message", async (event) => {
+        if (event.data.type === "rda:scrollToAnnotation" && annotationManager) {
+          await annotationManager.scrollToAnnotation(event.data.annotationId);
+        }
+      });
+
+      console.log("[RDA Boot] Guest initialized successfully");
     }
 
     ctx.onInvalidated(() => {
@@ -138,6 +218,9 @@ export default defineContentScript({
       }
       if (annotationManager) {
         annotationManager.destroy();
+      }
+      if (frameInjector) {
+        frameInjector.destroy();
       }
     });
   },

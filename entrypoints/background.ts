@@ -1,5 +1,28 @@
 import { storage } from "#imports";
 import { onMessage, sendMessage } from "@/utils/messaging";
+import { isPDFURL } from "@/utils/detect-content-type";
+
+/**
+ * Get the URL for viewing a PDF in our custom PDF.js viewer
+ */
+function getPDFViewerURL(pdfUrl: string): string {
+  const viewerUrl = browser.runtime.getURL("/pdfjs/web/viewer.html");
+  const url = new URL(viewerUrl);
+  url.searchParams.set("file", pdfUrl);
+  return url.toString();
+}
+
+/**
+ * Check if a URL is already our PDF viewer
+ */
+function isOurPDFViewer(url: string): boolean {
+  try {
+    const viewerPath = "pdfjs/web/viewer.html";
+    return url.includes(viewerPath);
+  } catch {
+    return false;
+  }
+}
 
 async function sendInstallationMetrics() {
   try {
@@ -49,18 +72,19 @@ async function sendInstallationMetrics() {
   }
 }
 
-export default defineBackground(async () => {
+export default defineBackground(() => {
   storage.defineItem("local:extension-enabled", {
     version: 1,
     fallback: false,
   });
 
-  const isEnabled = await storage.getItem("local:extension-enabled");
-  await browser.action.setBadgeText({
-    text: isEnabled ? "ON" : "",
-  });
-  await browser.action.setBadgeBackgroundColor({
-    color: isEnabled ? "#467d2c" : "#666666",
+  storage.getItem("local:extension-enabled").then((isEnabled) => {
+    browser.action.setBadgeText({
+      text: isEnabled ? "ON" : "",
+    });
+    browser.action.setBadgeBackgroundColor({
+      color: isEnabled ? "#467d2c" : "#666666",
+    });
   });
 
   browser.runtime.onInstalled.addListener(async (details) => {
@@ -114,17 +138,61 @@ export default defineBackground(async () => {
       color: newState ? "#467d2c" : "#666666",
     });
 
+    if (!tab?.url) return;
+
+    // If turning OFF and currently in our PDF viewer, redirect back to original PDF
+    if (!newState && isOurPDFViewer(tab.url)) {
+      try {
+        const urlObj = new URL(tab.url);
+        const originalURL = urlObj.searchParams.get("file");
+        if (originalURL) {
+          console.log(
+            "[RDA Background] Redirecting back to original PDF:",
+            originalURL
+          );
+          await browser.tabs.update(tab.id!, { url: originalURL });
+          return;
+        }
+      } catch (error) {
+        console.error(
+          "[RDA Background] Failed to extract original PDF URL:",
+          error
+        );
+      }
+    }
+
+    // If turning ON and current page is a native PDF, redirect to our viewer
+    if (newState && !isOurPDFViewer(tab.url)) {
+      // Check if this is a direct PDF URL (not already in our viewer)
+      if (isPDFURL(tab.url)) {
+        console.log("[RDA Background] Redirecting PDF after enable:", tab.url);
+        const viewerUrl = getPDFViewerURL(tab.url);
+        await browser.tabs.update(tab.id!, { url: viewerUrl });
+        return;
+      }
+    }
+
     if (tab?.id != null) {
-      await sendMessage("toggleSidebar", { action: "toggle" }, tab.id);
+      try {
+        await sendMessage("toggleSidebar", { action: "toggle" }, tab.id);
+      } catch (error) {
+        console.warn(
+          "[RDA Background] Failed to send toggleSidebar message:",
+          error
+        );
+      }
     }
   });
 
   browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    if (changeInfo.status === "complete") {
+    // Only intercept PDFs if extension is enabled
+    if (changeInfo.url && !isOurPDFViewer(changeInfo.url)) {
       const isEnabled = await storage.getItem("local:extension-enabled");
 
-      if (isEnabled) {
-        await sendMessage("toggleSidebar", { action: "mount" }, tabId);
+      if (isEnabled && isPDFURL(changeInfo.url)) {
+        const viewerUrl = getPDFViewerURL(changeInfo.url);
+        await browser.tabs.update(tabId, { url: viewerUrl });
+        return;
       }
     }
   });

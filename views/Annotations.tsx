@@ -9,6 +9,7 @@ import { AuthStorage } from "@/utils/auth-storage";
 import AnnotationDrawer from "@/components/AnnotationDrawer";
 import { AuthenticationContext } from "@/context/authentication.context";
 import { sendMessage, onMessage } from "@/utils/messaging";
+import { extractDocumentURL } from "@/utils/extract-document-url";
 
 export default function Annotations() {
   const { isAuthenticated, oauth } = useContext(AuthenticationContext);
@@ -59,7 +60,6 @@ export default function Annotations() {
       ? annotations.filter((ann) => filteredAnnotationIds.includes(ann._id))
       : annotations;
 
-  // Clear filter handler
   const clearFilter = () => {
     setFilteredAnnotationIds([]);
   };
@@ -71,7 +71,8 @@ export default function Annotations() {
         currentWindow: true,
       });
       if (tabs[0]?.url) {
-        setCurrentUrl(tabs[0].url);
+        const documentUrl = extractDocumentURL(tabs[0].url);
+        setCurrentUrl(documentUrl);
       }
     })();
   }, []);
@@ -183,7 +184,10 @@ export default function Annotations() {
 
         <div className="relative flex-1 overflow-hidden">
           {selected && (
-            <AnnotationDrawer annotation={selected} setAnnotation={setSelected} />
+            <AnnotationDrawer
+              annotation={selected}
+              setAnnotation={setSelected}
+            />
           )}
 
           <div className="h-full overflow-y-auto">

@@ -1,9 +1,9 @@
-export function injectHighlightStyles(): void {
-  if (document.getElementById('rda-highlight-styles')) {
+export function injectHighlightStyles(targetDocument: Document = document): void {
+  if (targetDocument.getElementById('rda-highlight-styles')) {
     return;
   }
 
-  const style = document.createElement('style');
+  const style = targetDocument.createElement('style');
   style.id = 'rda-highlight-styles';
   style.textContent = `
     rda-highlight {
@@ -30,5 +30,5 @@ export function injectHighlightStyles(): void {
     }
   `;
 
-  document.head.appendChild(style);
+  targetDocument.head.appendChild(style);
 }
