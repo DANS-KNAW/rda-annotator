@@ -358,8 +358,42 @@ function getPositionInTextLayer(
 function createPlaceholder(container: HTMLElement): HTMLElement {
   const placeholder = document.createElement("rda-placeholder");
   placeholder.style.display = "none";
+  placeholder.setAttribute("data-placeholder", "true");
   container.appendChild(placeholder);
   return placeholder;
+}
+
+export function isPlaceholderRange(range: Range): boolean {
+  // Check if range is wrapping a placeholder element
+  // When we create placeholder: setStartBefore(placeholder), setEndAfter(placeholder)
+  // This means startContainer and endContainer are the parent (page.div)
+  // and we need to check the child element at the offset positions
+
+  const { startContainer, startOffset, endContainer, endOffset } = range;
+
+  // If containers are not the same, it's not a simple placeholder range
+  if (startContainer !== endContainer) {
+    return false;
+  }
+
+  // If container is not an element node, can't have placeholder child
+  if (startContainer.nodeType !== Node.ELEMENT_NODE) {
+    return false;
+  }
+
+  const container = startContainer as Element;
+  const children = Array.from(container.childNodes);
+
+  // Check if there's exactly one node between start and end offsets
+  if (endOffset - startOffset !== 1) {
+    return false;
+  }
+
+  const child = children[startOffset];
+
+  // Check if that child is a placeholder element
+  return child?.nodeType === Node.ELEMENT_NODE &&
+         (child as Element).hasAttribute("data-placeholder");
 }
 
 export function createPageSelector(
@@ -458,6 +492,14 @@ async function anchorByPosition(
     }
 
     const textLayerStr = textLayerDiv.textContent!;
+
+    if (textLayerStr.length === 0 || textLayerStr.length < pageText.length * 0.5) {
+      const placeholder = createPlaceholder(page.div);
+      const range = document.createRange();
+      range.setStartBefore(placeholder);
+      range.setEndAfter(placeholder);
+      return range;
+    }
 
     const [textLayerStart, textLayerEnd] = translateOffsets(
       pageText,

@@ -11,10 +11,12 @@ import type { AnnotationHit } from "@/types/elastic-search-document.interface";
 import { injectHighlightStyles } from "@/utils/inject-highlight-styles";
 import { getAnnotationIdsAtPoint } from "@/utils/highlights-at-point";
 import { getDocumentURL } from "@/utils/document-url";
+import { isPDFDocument, isPlaceholderRange } from "@/utils/anchoring/pdf";
 
 interface AnchoredAnnotation {
   annotation: AnnotationHit;
-  highlight: Highlight;
+  highlight: Highlight | null;
+  range: Range;
 }
 
 export class AnnotationManager {
@@ -25,6 +27,7 @@ export class AnnotationManager {
   private onHighlightHover?: (annotationIds: string[]) => void;
   private rootElement: HTMLElement;
   private targetDocument: Document;
+  private pdfObserver?: MutationObserver;
 
   constructor(options?: {
     onHighlightClick?: (annotationIds: string[]) => void;
@@ -37,6 +40,7 @@ export class AnnotationManager {
     this.onHighlightClick = options?.onHighlightClick;
     this.onHighlightHover = options?.onHighlightHover;
     this.setupEventListeners();
+    this.setupPDFObserver();
   }
 
   /**
@@ -100,6 +104,73 @@ export class AnnotationManager {
         this.onHighlightHover([]);
       }
     });
+  }
+
+  private setupPDFObserver(): void {
+    if (!isPDFDocument()) {
+      return;
+    }
+
+    const pdfViewerApp = (window as any).PDFViewerApplication;
+    if (!pdfViewerApp?.pdfViewer?.viewer) {
+      return;
+    }
+
+    const debounce = (fn: () => void, delay: number) => {
+      let timeoutId: number;
+      return () => {
+        clearTimeout(timeoutId);
+        timeoutId = window.setTimeout(fn, delay);
+      };
+    };
+
+    this.pdfObserver = new MutationObserver(
+      debounce(() => this.reanchorPlaceholders(), 100)
+    );
+
+    this.pdfObserver.observe(pdfViewerApp.pdfViewer.viewer, {
+      attributes: true,
+      attributeFilter: ["data-loaded"],
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  private async reanchorPlaceholders(): Promise<void> {
+    const toReanchor: string[] = [];
+
+    for (const [id, anchored] of this.annotations) {
+      if (anchored.highlight === null) {
+        toReanchor.push(id);
+      } else {
+        for (const el of anchored.highlight.elements) {
+          if (!document.body.contains(el)) {
+            toReanchor.push(id);
+            break;
+          }
+        }
+      }
+    }
+
+    if (toReanchor.length === 0) {
+      return;
+    }
+
+    for (const id of toReanchor) {
+      const anchored = this.annotations.get(id);
+      if (anchored) {
+        if (anchored.highlight) {
+          removeHighlight(anchored.highlight);
+        }
+        this.annotations.delete(id);
+
+        try {
+          await this.anchorAnnotation(anchored.annotation);
+        } catch (error) {
+          console.warn(`Failed to re-anchor ${id}:`, error);
+        }
+      }
+    }
   }
 
   setHighlightsVisible(visible: boolean): void {
@@ -200,17 +271,21 @@ export class AnnotationManager {
         this.rootElement,
         annotation._source.annotation_target.selector
       );
-      const highlight = highlightRange(range, annotation._id);
 
-      this.annotations.set(annotation._id, { annotation, highlight });
+      const isPlaceholder = isPlaceholderRange(range);
+      const highlight = isPlaceholder ? null : highlightRange(range, annotation._id);
 
-      highlight.elements.forEach((element) => {
-        element.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.focusAnnotation(annotation._id);
+      this.annotations.set(annotation._id, { annotation, highlight, range });
+
+      if (highlight) {
+        highlight.elements.forEach((element) => {
+          element.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.focusAnnotation(annotation._id);
+          });
         });
-      });
+      }
     } catch (error) {
       throw error;
     }
@@ -218,7 +293,32 @@ export class AnnotationManager {
 
   async scrollToAnnotation(annotationId: string): Promise<void> {
     const anchored = this.annotations.get(annotationId);
-    if (!anchored || !anchored.highlight.elements.length) {
+    if (!anchored) {
+      return;
+    }
+
+    if (!anchored.highlight) {
+      const startContainer = anchored.range.startContainer;
+      const element = startContainer.nodeType === Node.ELEMENT_NODE
+        ? (startContainer as HTMLElement)
+        : startContainer.parentElement;
+
+      if (element) {
+        await scrollElementIntoView(element, { maxDuration: 500 });
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const reanchored = this.annotations.get(annotationId);
+        if (reanchored?.highlight) {
+          this.focusAnnotation(annotationId);
+          const firstElement = reanchored.highlight.elements[0];
+          await scrollElementIntoView(firstElement, { maxDuration: 500 });
+        }
+      }
+      return;
+    }
+
+    if (!anchored.highlight.elements.length) {
       return;
     }
 
@@ -247,13 +347,13 @@ export class AnnotationManager {
   private focusAnnotation(annotationId: string): void {
     if (this.currentFocused) {
       const previousFocused = this.annotations.get(this.currentFocused);
-      if (previousFocused) {
+      if (previousFocused?.highlight) {
         setHighlightFocused(previousFocused.highlight, false);
       }
     }
 
     const anchored = this.annotations.get(annotationId);
-    if (anchored) {
+    if (anchored?.highlight) {
       setHighlightFocused(anchored.highlight, true);
       this.currentFocused = annotationId;
     }
@@ -263,12 +363,14 @@ export class AnnotationManager {
     const parents = new Set<Node>();
 
     for (const { highlight } of this.annotations.values()) {
-      for (const element of highlight.elements) {
-        if (element.parentNode) {
-          parents.add(element.parentNode);
+      if (highlight) {
+        for (const element of highlight.elements) {
+          if (element.parentNode) {
+            parents.add(element.parentNode);
+          }
         }
+        removeHighlight(highlight);
       }
-      removeHighlight(highlight);
     }
 
     for (const parent of parents) {
@@ -282,6 +384,11 @@ export class AnnotationManager {
   }
 
   destroy(): void {
+    if (this.pdfObserver) {
+      this.pdfObserver.disconnect();
+      this.pdfObserver = undefined;
+    }
+
     this.removeTemporaryHighlight();
     this.clearAnnotations();
   }

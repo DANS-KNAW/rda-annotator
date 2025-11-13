@@ -147,12 +147,22 @@ export default defineContentScript({
         if (!host || !annotationManager) return;
 
         if (message?.data?.action === "toggle") {
+          const wasUnmounted = !host.isMounted.sidebar && !host.isMounted.annotator;
           await host.toggle();
           const isMounted = host.isMounted.sidebar && host.isMounted.annotator;
           annotationManager.setHighlightsVisible(isMounted);
+
+          if (isMounted && wasUnmounted) {
+            await annotationManager.loadAnnotations();
+          }
         } else if (message?.data?.action === "mount") {
+          const wasUnmounted = !host.isMounted.sidebar && !host.isMounted.annotator;
           await host.mount();
           annotationManager.setHighlightsVisible(true);
+
+          if (wasUnmounted) {
+            await annotationManager.loadAnnotations();
+          }
         }
       });
 

@@ -22,6 +22,10 @@ async function waitForPDFJS(): Promise<boolean> {
     return false;
   }
 
+  if (app.initialized) {
+    return true;
+  }
+
   if (app.initializedPromise) {
     try {
       await Promise.race([
@@ -32,10 +36,6 @@ async function waitForPDFJS(): Promise<boolean> {
     } catch {
       return !!app.initialized;
     }
-  }
-
-  if (app.initialized) {
-    return true;
   }
 
   return new Promise<boolean>((resolve) => {
