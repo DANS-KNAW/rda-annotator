@@ -4,7 +4,8 @@ import {
   TextQuoteSelector,
   Selector,
 } from "@/types/selector.interface";
-import { anchorByTextQuote } from "./text-quote";
+import { matchQuote } from "./match-quote";
+import { translateOffsets } from "@/utils/normalize";
 
 // PDF.js rendering states
 const RenderingStates = {
@@ -58,12 +59,7 @@ function getPDFViewer(): PDFViewer {
 }
 
 export function isPDFDocument(): boolean {
-  try {
-    const pdfApp = (window as any).PDFViewerApplication;
-    return !!(pdfApp && pdfApp.pdfViewer);
-  } catch {
-    return false;
-  }
+  return typeof (window as any).PDFViewerApplication !== "undefined";
 }
 
 async function waitForPDFViewerInitialized(): Promise<any> {
@@ -211,6 +207,35 @@ function isTextLayerRenderingDone(textLayer: TextLayer): boolean {
   return div.querySelector(".endOfContent") !== null;
 }
 
+function isSpace(char: string): boolean {
+  switch (char.charCodeAt(0)) {
+    case 0x0009:
+    case 0x000a:
+    case 0x000b:
+    case 0x000c:
+    case 0x000d:
+    case 0x0020:
+    case 0x00a0:
+      return true;
+    default:
+      return false;
+  }
+}
+
+const isNotSpace = (char: string) => !isSpace(char);
+
+function stripSpaces(str: string): string {
+  let stripped = "";
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    if (isSpace(char)) {
+      continue;
+    }
+    stripped += char;
+  }
+  return stripped;
+}
+
 async function getPageTextContent(pageIndex: number): Promise<string> {
   if (pageTextCache.has(pageIndex)) {
     return pageTextCache.get(pageIndex)!;
@@ -222,14 +247,11 @@ async function getPageTextContent(pageIndex: number): Promise<string> {
   }
 
   const textContent = await pageView.pdfPage.getTextContent({
-    includeMarkedContent: false,
-    disableNormalization: false,
+    normalizeWhitespace: true,
   });
 
-  // Concatenate all text items
   const pageText = textContent.items.map((item: any) => item.str).join("");
 
-  // Cache the result
   pageTextCache.set(pageIndex, pageText);
 
   return pageText;
@@ -425,7 +447,6 @@ async function anchorByPosition(
     getPageTextContent(pageIndex),
   ]);
 
-  // Check if text layer is rendered
   if (
     page.renderingState === RenderingStates.FINISHED &&
     page.textLayer &&
@@ -436,7 +457,26 @@ async function anchorByPosition(
       throw new Error("Text layer div not found");
     }
 
-    // Convert page-relative positions to DOM nodes
+    const textLayerStr = textLayerDiv.textContent!;
+
+    const [textLayerStart, textLayerEnd] = translateOffsets(
+      pageText,
+      textLayerStr,
+      start,
+      end,
+      isNotSpace,
+      { normalize: true }
+    );
+
+    const textLayerQuote = stripSpaces(
+      textLayerStr.slice(textLayerStart, textLayerEnd)
+    );
+    const pageTextQuote = stripSpaces(pageText.slice(start, end));
+
+    if (textLayerQuote.normalize("NFKD") !== pageTextQuote.normalize("NFKD")) {
+      console.warn("[PDF Anchor] Text layer mismatch detected");
+    }
+
     const range = document.createRange();
 
     let currentOffset = 0;
@@ -455,16 +495,14 @@ async function anchorByPosition(
     while ((node = nodeIterator.nextNode())) {
       const nodeLength = node.textContent?.length || 0;
 
-      // Find start position
-      if (!startNode && currentOffset + nodeLength >= start) {
+      if (!startNode && currentOffset + nodeLength >= textLayerStart) {
         startNode = node;
-        startOffset = start - currentOffset;
+        startOffset = textLayerStart - currentOffset;
       }
 
-      // Find end position
-      if (currentOffset + nodeLength >= end) {
+      if (currentOffset + nodeLength >= textLayerEnd) {
         endNode = node;
-        endOffset = end - currentOffset;
+        endOffset = textLayerEnd - currentOffset;
         break;
       }
 
@@ -481,7 +519,6 @@ async function anchorByPosition(
     return range;
   }
 
-  // Page not rendered - create placeholder
   const placeholder = createPlaceholder(page.div);
   const range = document.createRange();
   range.setStartBefore(placeholder);
@@ -495,62 +532,90 @@ async function anchorQuote(
 ): Promise<Range> {
   const viewer = getPDFViewer();
 
-  // Determine page search order
-  let pageOrder: number[];
+  let expectedPageIndex: number | undefined;
+  let expectedOffsetInPage: number | undefined;
+
   if (positionHint !== undefined) {
     try {
-      const { index: hintPage } = await findPageByOffset(positionHint);
-
-      // Create search order: hint page first, then expanding outward
-      pageOrder = [hintPage];
-      for (let offset = 1; offset < viewer.pagesCount; offset++) {
-        if (hintPage + offset < viewer.pagesCount) {
-          pageOrder.push(hintPage + offset);
-        }
-        if (hintPage - offset >= 0) {
-          pageOrder.push(hintPage - offset);
-        }
-      }
-    } catch {
-      // If hint fails, search sequentially
-      pageOrder = Array.from({ length: viewer.pagesCount }, (_, i) => i);
-    }
-  } else {
-    // No hint, search sequentially
-    pageOrder = Array.from({ length: viewer.pagesCount }, (_, i) => i);
+      const { index, offset } = await findPageByOffset(positionHint);
+      expectedPageIndex = index;
+      expectedOffsetInPage = positionHint - offset;
+    } catch {}
   }
 
-  // Search each page
-  for (const pageIndex of pageOrder) {
-    try {
-      const pageView = await getPageView(pageIndex);
+  const strippedPrefix = quote.prefix ? stripSpaces(quote.prefix) : undefined;
+  const strippedSuffix = quote.suffix ? stripSpaces(quote.suffix) : undefined;
+  const strippedQuote = stripSpaces(quote.exact);
 
-      // Check if text layer is rendered
-      if (
-        pageView.renderingState !== RenderingStates.FINISHED ||
-        !pageView.textLayer ||
-        !isTextLayerRenderingDone(pageView.textLayer)
-      ) {
-        continue;
+  let bestMatch:
+    | { page: number; match: { start: number; end: number; score: number } }
+    | undefined;
+
+  const pageIndexes = Array.from({ length: viewer.pagesCount }, (_, i) => i);
+
+  for (const pageIndex of pageIndexes) {
+    const pageText = await getPageTextContent(pageIndex);
+    const strippedText = stripSpaces(pageText);
+
+    let strippedHint: number | undefined;
+    if (expectedPageIndex !== undefined && expectedOffsetInPage !== undefined) {
+      if (pageIndex < expectedPageIndex) {
+        strippedHint = strippedText.length;
+      } else if (pageIndex === expectedPageIndex) {
+        [strippedHint] = translateOffsets(
+          pageText,
+          strippedText,
+          expectedOffsetInPage,
+          expectedOffsetInPage,
+          isNotSpace,
+          { normalize: false }
+        );
+      } else {
+        strippedHint = 0;
       }
+    }
 
-      const textLayerDiv =
-        pageView.textLayer.div || pageView.textLayer.textLayerDiv;
-      if (!textLayerDiv) {
-        continue;
-      }
+    const match = matchQuote(
+      strippedText,
+      strippedQuote,
+      strippedPrefix,
+      strippedSuffix,
+      strippedHint
+    );
 
-      // Try to anchor using the text quote within this page
-      const range = anchorByTextQuote(textLayerDiv, quote);
-      return range;
-    } catch (error) {
-      // Quote not found on this page, continue searching
+    if (!match) {
       continue;
     }
+
+    if (!bestMatch || match.score > bestMatch.match.score) {
+      const [start, end] = translateOffsets(
+        strippedText,
+        pageText,
+        match.start,
+        match.end,
+        isNotSpace
+      );
+      bestMatch = {
+        page: pageIndex,
+        match: { start, end, score: match.score },
+      };
+
+      if (match.score === 1.0) {
+        break;
+      }
+    }
   }
 
-  throw new Error(
-    `Quote not found in PDF: "${quote.exact.substring(0, 50)}..."`
+  if (!bestMatch) {
+    throw new Error(
+      `Quote not found in PDF: "${quote.exact.substring(0, 50)}..."`
+    );
+  }
+
+  return anchorByPosition(
+    bestMatch.page,
+    bestMatch.match.start,
+    bestMatch.match.end
   );
 }
 
@@ -563,7 +628,6 @@ export async function anchorPDF(selectors: Selector[]): Promise<Range> {
     | TextQuoteSelector
     | undefined;
 
-  // Quote selector is required
   if (!quote) {
     throw new Error("No quote selector found");
   }
@@ -573,7 +637,6 @@ export async function anchorPDF(selectors: Selector[]): Promise<Range> {
     | undefined;
 
   if (position) {
-    // Try position-based anchoring first (fastest)
     try {
       const { index, offset, text } = await findPageByOffset(position.start);
       const start = position.start - offset;
@@ -587,7 +650,6 @@ export async function anchorPDF(selectors: Selector[]): Promise<Range> {
       const range = await anchorByPosition(index, start, end);
       return range;
     } catch (error) {
-      console.warn("[PDF Anchor] Position-based anchoring failed:", error);
       // Fall back to quote selector
     }
 

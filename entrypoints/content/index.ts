@@ -3,7 +3,7 @@ import { createHost } from "./host";
 import { FrameObserver } from "./frame-observer";
 import { AnnotationManager } from "./annotation-manager";
 import { FrameInjector } from "./frame-injector";
-import { detectContentType } from "@/utils/detect-content-type";
+import { detectContentTypeAsync } from "@/utils/detect-content-type";
 import { waitForPDFReady } from "@/utils/anchoring/pdf";
 
 export default defineContentScript({
@@ -34,8 +34,8 @@ export default defineContentScript({
     marker.setAttribute("data-rda-frame-type", isTopFrame ? "host" : "guest");
     document.head.appendChild(marker);
 
-    // Detect content type
-    const contentType = detectContentType();
+    // Detect content type (async to wait for PDF.js if needed)
+    const contentType = await detectContentTypeAsync();
     console.log("[RDA Boot] Content type:", contentType);
     marker.setAttribute("data-rda-content-type", contentType?.type || "HTML");
 

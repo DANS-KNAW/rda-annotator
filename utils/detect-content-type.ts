@@ -6,6 +6,58 @@ export type HTMLContentType = { type: "HTML" };
 /** Details of the detected content type. */
 export type ContentTypeInfo = PDFContentType | HTMLContentType;
 
+async function waitForPDFJS(): Promise<boolean> {
+  const startTime = Date.now();
+  const globalTimeout = 1000;
+
+  while (Date.now() - startTime < globalTimeout) {
+    if ((window as any).PDFViewerApplication !== undefined) {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  const app = (window as any).PDFViewerApplication;
+  if (!app) {
+    return false;
+  }
+
+  if (app.initializedPromise) {
+    try {
+      await Promise.race([
+        app.initializedPromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 1000))
+      ]);
+      return true;
+    } catch {
+      return !!app.initialized;
+    }
+  }
+
+  if (app.initialized) {
+    return true;
+  }
+
+  return new Promise<boolean>((resolve) => {
+    const onViewerLoaded = () => {
+      if (app.initializedPromise) {
+        app.initializedPromise
+          .then(() => resolve(true))
+          .catch(() => resolve(!!app.initialized));
+      } else {
+        resolve(!!app.initialized);
+      }
+    };
+
+    document.addEventListener("webviewerloaded", onViewerLoaded, { once: true });
+
+    setTimeout(() => {
+      document.removeEventListener("webviewerloaded", onViewerLoaded);
+      resolve(!!app.initialized);
+    }, 1000);
+  });
+}
+
 /**
  * Detect the type of content in the current document.
  *
@@ -76,6 +128,29 @@ export function detectContentType(
   }
 
   return { type: "HTML" };
+}
+
+export async function detectContentTypeAsync(
+  document_ = document
+): Promise<ContentTypeInfo | null> {
+  const immediate = detectContentType(document_);
+  if (immediate?.type === "PDF") {
+    return immediate;
+  }
+
+  const url = window.location.href.toLowerCase();
+  if (
+    url.includes("/preview/") ||
+    url.includes("viewer.html") ||
+    url.includes(".pdf")
+  ) {
+    const found = await waitForPDFJS();
+    if (found) {
+      return { type: "PDF" };
+    }
+  }
+
+  return immediate;
 }
 
 /**
