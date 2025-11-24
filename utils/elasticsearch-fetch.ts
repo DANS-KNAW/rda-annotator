@@ -36,21 +36,25 @@ export async function elasticsearchFetch(
 }
 
 /**
- * Search for annotations by URL
+ * Search for annotations by URL(s)
  *
- * @param url - The URL to search for
+ * @param urls - The URL or array of URLs to search for annotations
  * @returns Elasticsearch response with annotation data
  */
 export async function searchAnnotationsByUrl(
-  url: string
+  urls: string | string[]
 ): Promise<ElasticsearchResponse> {
+  const urlArray = Array.isArray(urls) ? urls : [urls];
+
+  const urlQuery =
+    urlArray.length === 1
+      ? { term: { "uri.keyword": urlArray[0] } }
+      : { terms: { "uri.keyword": urlArray } };
+
   return elasticsearchFetch({
     query: {
       bool: {
-        must: [
-          { term: { "resource_source.keyword": "Annotation" } },
-          { term: { "uri.keyword": url } },
-        ],
+        must: [{ term: { "resource_source.keyword": "Annotation" } }, urlQuery],
       },
     },
     sort: [{ dc_date: { order: "desc" } }],

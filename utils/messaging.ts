@@ -13,6 +13,8 @@ interface ProtocolMap {
   getExtensionState(): Promise<{ enabled: boolean }>;
   showAnnotationsFromHighlight(data: { annotationIds: string[] }): Promise<void>;
   hoverAnnotations(data: { annotationIds: string[] }): Promise<void>;
+  getFrameUrls(): Promise<{ urls: string[] }>;
+  frameUrlsChanged(data: { urls: string[] }): Promise<void>;
 }
 
 export const { sendMessage, onMessage } =

@@ -27,6 +27,23 @@ export default function Annotations() {
     []
   );
 
+  const mergeAnnotations = (
+    existing: AnnotationHit[],
+    newAnnotations: AnnotationHit[]
+  ): AnnotationHit[] => {
+    const map = new Map<string, AnnotationHit>();
+
+    existing.forEach((ann) => map.set(ann._id, ann));
+
+    newAnnotations.forEach((ann) => map.set(ann._id, ann));
+
+    return Array.from(map.values()).sort((a, b) => {
+      const dateA = new Date(a._source.dc_date).getTime();
+      const dateB = new Date(b._source.dc_date).getTime();
+      return dateB - dateA;
+    });
+  };
+
   const handleAnnotationClick = async (
     annotation: AnnotationHit,
     shouldScroll: boolean
@@ -100,7 +117,33 @@ export default function Annotations() {
 
     (async () => {
       try {
-        const data = await searchAnnotationsByUrl(currentUrl);
+        const tabs = await browser.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
+
+        let frameUrls = [currentUrl]; // Fallback to just current URL
+
+        if (tabs[0]?.id) {
+          try {
+            const response = await sendMessage(
+              "getFrameUrls",
+              undefined,
+              tabs[0].id
+            );
+            if (response?.urls && response.urls.length > 0) {
+              frameUrls = response.urls;
+            }
+          } catch (error) {
+            console.warn(
+              "[Annotations] Failed to get frame URLs, using current URL only:",
+              error
+            );
+          }
+        }
+
+        // Query for annotations matching any frame URL
+        const data = await searchAnnotationsByUrl(frameUrls);
         setAnnotations(data.hits.hits);
       } catch (error) {
         console.error("Error fetching annotations:", error);
@@ -152,6 +195,28 @@ export default function Annotations() {
 
       const { annotationIds } = message.data;
       setHoveredAnnotationIds(annotationIds);
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onMessage("frameUrlsChanged", async (message) => {
+      if (!message.data?.urls || message.data.urls.length === 0) return;
+
+      try {
+        const data = await searchAnnotationsByUrl(message.data.urls);
+        setAnnotations((prev) => mergeAnnotations(prev, data.hits.hits));
+      } catch (error) {
+        console.error(
+          "[Annotations] Error refetching annotations after frame change:",
+          error
+        );
+      }
     });
 
     return () => {

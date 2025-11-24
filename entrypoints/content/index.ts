@@ -5,6 +5,8 @@ import { AnnotationManager } from "./annotation-manager";
 import { FrameInjector } from "./frame-injector";
 import { detectContentTypeAsync } from "@/utils/detect-content-type";
 import { waitForPDFReady } from "@/utils/anchoring/pdf";
+import { getDocumentURL } from "@/utils/document-url";
+import { createAnnotatorPopup } from "./annotator-popup";
 
 export default defineContentScript({
   matches: ["*://*/*"],
@@ -57,11 +59,21 @@ export default defineContentScript({
     let host: Awaited<ReturnType<typeof createHost>> | null = null;
     let annotationManager: AnnotationManager | null = null;
     let frameInjector: FrameInjector | null = null;
+    let guestAnnotatorPopup: Awaited<
+      ReturnType<typeof import("./annotator-popup").createAnnotatorPopup>
+    > | null = null;
+
+    // Track URLs from all frames (host + guests)
+    const frameUrls: Set<string> = new Set();
 
     if (isTopFrame) {
-      console.log("[RDA Boot] Initializing Host (main frame)");
+      frameUrls.add(getDocumentURL());
+      try {
+        await sendMessage("frameUrlsChanged", { urls: Array.from(frameUrls) });
+      } catch (error) {
+        // Sidebar might not be ready yet, that's ok
+      }
 
-      // Create frame injector to handle child frames
       frameInjector = new FrameInjector(ctx);
       annotationManager = new AnnotationManager({
         // Handle clicks on highlights - open sidebar and show annotation(s)
@@ -143,25 +155,99 @@ export default defineContentScript({
       });
       frameObserver.start();
 
+      // Listen for messages from guest frames (iframes)
+      window.addEventListener("message", async (event) => {
+        if (event.data.type === "rda:showAnnotations") {
+          if (!host) return;
+
+          if (!host.isMounted.sidebar) {
+            await host.mount();
+          }
+          await host.openSidebar();
+
+          try {
+            await sendMessage("showAnnotationsFromHighlight", {
+              annotationIds: event.data.annotationIds,
+            });
+          } catch (error) {
+            console.error(
+              "[RDA Host] Failed to show annotations from frame:",
+              error
+            );
+          }
+        } else if (event.data.type === "rda:hoverAnnotations") {
+          try {
+            await sendMessage("hoverAnnotations", {
+              annotationIds: event.data.annotationIds,
+            }).catch(() => {
+              // Sidebar might not be ready yet, ignore
+            });
+          } catch (error) {
+            console.error(
+              "[RDA Host] Failed to forward hover from frame:",
+              error
+            );
+          }
+        } else if (event.data.type === "rda:openSidebar") {
+          if (!host) return;
+
+          if (!host.isMounted.sidebar) {
+            await host.mount();
+          }
+          await host.openSidebar();
+        } else if (event.data.type === "rda:scrollToAnnotation") {
+          if (annotationManager && event.data.annotationId) {
+            await annotationManager.scrollToAnnotation(event.data.annotationId);
+          }
+        } else if (event.data.type === "rda:registerFrameUrl") {
+          if (event.data.url) {
+            frameUrls.add(event.data.url);
+            try {
+              await sendMessage("frameUrlsChanged", {
+                urls: Array.from(frameUrls),
+              });
+            } catch (error) {
+              // Sidebar might not be ready yet, that's ok
+            }
+          }
+        }
+      });
+
       onMessage("toggleSidebar", async (message) => {
         if (!host || !annotationManager) return;
 
         if (message?.data?.action === "toggle") {
-          const wasUnmounted = !host.isMounted.sidebar && !host.isMounted.annotator;
+          const wasUnmounted =
+            !host.isMounted.sidebar && !host.isMounted.annotator;
           await host.toggle();
           const isMounted = host.isMounted.sidebar && host.isMounted.annotator;
           annotationManager.setHighlightsVisible(isMounted);
 
           if (isMounted && wasUnmounted) {
             await annotationManager.loadAnnotations();
+            try {
+              await sendMessage("frameUrlsChanged", {
+                urls: Array.from(frameUrls),
+              });
+            } catch (error) {
+              // Ignore if sidebar not ready
+            }
           }
         } else if (message?.data?.action === "mount") {
-          const wasUnmounted = !host.isMounted.sidebar && !host.isMounted.annotator;
+          const wasUnmounted =
+            !host.isMounted.sidebar && !host.isMounted.annotator;
           await host.mount();
           annotationManager.setHighlightsVisible(true);
 
           if (wasUnmounted) {
             await annotationManager.loadAnnotations();
+            try {
+              await sendMessage("frameUrlsChanged", {
+                urls: Array.from(frameUrls),
+              });
+            } catch (error) {
+              // Ignore if sidebar not ready
+            }
           }
         }
       });
@@ -180,8 +266,20 @@ export default defineContentScript({
         if (!annotationManager) return;
         await annotationManager.loadAnnotations();
       });
+
+      onMessage("getFrameUrls", async () => {
+        return { urls: Array.from(frameUrls) };
+      });
     } else {
-      console.log("[RDA Boot] Initializing Guest (child frame)");
+      const frameUrl = getDocumentURL();
+      window.parent.postMessage(
+        {
+          type: "rda:registerFrameUrl",
+          url: frameUrl,
+          source: "guest-frame",
+        },
+        "*"
+      );
 
       annotationManager = new AnnotationManager({
         onHighlightClick: async (annotationIds) => {
@@ -208,9 +306,35 @@ export default defineContentScript({
         },
       });
 
-      await annotationManager.loadAnnotations();
+      guestAnnotatorPopup = await createAnnotatorPopup({
+        ctx,
+        onAnnotate: async () => {
+          window.parent.postMessage(
+            {
+              type: "rda:openSidebar",
+              source: "guest-frame",
+            },
+            "*"
+          );
+        },
+        onCreateTemporaryHighlight: async (range) => {
+          if (annotationManager) {
+            await annotationManager.createTemporaryHighlight(range);
+          }
+        },
+      });
 
-      annotationManager.setHighlightsVisible(true);
+      try {
+        const state = await sendMessage("getExtensionState", undefined);
+        if (state.enabled) {
+          guestAnnotatorPopup.mount();
+          annotationManager.setHighlightsVisible(true);
+        }
+      } catch (error) {
+        console.error("[RDA Guest] Failed to get extension state:", error);
+      }
+
+      await annotationManager.loadAnnotations();
 
       // Listen for messages from parent frame
       window.addEventListener("message", async (event) => {
@@ -231,6 +355,9 @@ export default defineContentScript({
       }
       if (frameInjector) {
         frameInjector.destroy();
+      }
+      if (guestAnnotatorPopup) {
+        guestAnnotatorPopup.remove();
       }
     });
   },

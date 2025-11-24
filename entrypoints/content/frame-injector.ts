@@ -1,7 +1,8 @@
 import { ContentScriptContext } from "#imports";
-import { detectContentType } from "@/utils/detect-content-type";
+import { detectContentTypeAsync } from "@/utils/detect-content-type";
 import { AnnotationManager } from "./annotation-manager";
 import { createAnnotatorPopup } from "./annotator-popup";
+import { waitForPDFReady } from "@/utils/anchoring/pdf";
 
 /**
  * Frame Injector
@@ -13,7 +14,7 @@ import { createAnnotatorPopup } from "./annotator-popup";
 
 interface FrameGuestInstance {
   annotationManager: AnnotationManager;
-  annotatorPopup: Awaited<ReturnType<typeof createAnnotatorPopup>>;
+  annotatorPopup: Awaited<ReturnType<typeof createAnnotatorPopup>> | null;
   cleanup: () => void;
 }
 
@@ -70,7 +71,6 @@ export async function injectIntoFrame(
 ): Promise<FrameGuestInstance | null> {
   // Check if already injected
   if (hasRDAInjected(frame)) {
-    console.log("[RDA Frame Injector] Already injected, skipping");
     return null;
   }
 
@@ -82,67 +82,62 @@ export async function injectIntoFrame(
   }
 
   const frameDoc = frame.contentDocument;
-  if (!frameDoc) {
-    console.warn("[RDA Frame Injector] Cannot access frame document");
+  const frameWindow = frame.contentWindow;
+
+  if (!frameDoc || !frameWindow) {
+    console.warn("[RDA Frame Injector] Cannot access frame document or window");
     return null;
   }
 
-  // Detect content type
-  const contentType = detectContentType(frameDoc);
-  console.log("[RDA Frame Injector] Frame content type:", contentType);
+  const contentType = await detectContentTypeAsync(frameDoc);
 
-  // Mark as injected
+  if (contentType?.type === "PDF") {
+    try {
+      const isReady = await waitForPDFReady();
+      if (!isReady) {
+        console.warn(
+          "[RDA Frame Injector] PDF.js not available, skipping annotation loading"
+        );
+        return null;
+      }
+    } catch (error) {
+      console.error(
+        "[RDA Frame Injector] Failed to wait for PDF ready:",
+        error
+      );
+      return null;
+    }
+  }
+
   const marker = frameDoc.createElement("meta");
   marker.setAttribute("data-rda-injected", "true");
-  marker.setAttribute("data-rda-frame", "guest");
+  marker.setAttribute("data-rda-frame-type", "guest");
+  marker.setAttribute("data-rda-content-type", contentType?.type || "HTML");
   frameDoc.head.appendChild(marker);
 
-  // Create annotation manager for this frame
   const annotationManager = new AnnotationManager({
     rootElement: frameDoc.body,
     onHighlightClick: async (annotationIds) => {
-      // Send message to parent frame to show annotations
-      window.postMessage(
+      frameWindow.parent.postMessage(
         {
           type: "rda:showAnnotations",
           annotationIds,
-          source: "frame",
+          source: "frame-injector",
         },
         "*"
       );
     },
     onHighlightHover: async (annotationIds) => {
-      // Send hover state to parent
-      window.postMessage(
+      frameWindow.parent.postMessage(
         {
           type: "rda:hoverAnnotations",
           annotationIds,
-          source: "frame",
+          source: "frame-injector",
         },
         "*"
       );
     },
   });
-
-  // Create annotator popup for this frame
-  const annotatorPopup = await createAnnotatorPopup({
-    ctx,
-    onAnnotate: async () => {
-      window.postMessage(
-        {
-          type: "rda:openSidebar",
-          source: "frame",
-        },
-        "*"
-      );
-    },
-    onCreateTemporaryHighlight: async (range) => {
-      await annotationManager.createTemporaryHighlight(range);
-    },
-  });
-
-  // Mount the annotator popup
-  annotatorPopup.mount();
 
   // Load annotations for this frame
   await annotationManager.loadAnnotations();
@@ -150,14 +145,11 @@ export async function injectIntoFrame(
   // Set highlights visible
   annotationManager.setHighlightsVisible(true);
 
-  console.log("[RDA Frame Injector] Successfully injected into frame");
-
   return {
     annotationManager,
-    annotatorPopup,
+    annotatorPopup: null,
     cleanup: () => {
       annotationManager.destroy();
-      annotatorPopup.remove();
     },
   };
 }
