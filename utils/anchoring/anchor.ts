@@ -56,10 +56,12 @@ export async function anchor(
     } catch (error) {
       // Failed - try next selector
       if (error instanceof Error && error.message.includes("Quote mismatch")) {
-        console.warn(
-          "[Anchor] RangeSelector succeeded but quote mismatch:",
-          error.message
-        );
+        if (import.meta.env.DEV) {
+          console.warn(
+            "[Anchor] RangeSelector succeeded but quote mismatch:",
+            error.message
+          );
+        }
       }
     }
   }
@@ -72,10 +74,12 @@ export async function anchor(
     } catch (error) {
       // Failed - try next selector
       if (error instanceof Error && error.message.includes("Quote mismatch")) {
-        console.warn(
-          "[Anchor] TextPositionSelector succeeded but quote mismatch:",
-          error.message
-        );
+        if (import.meta.env.DEV) {
+          console.warn(
+            "[Anchor] TextPositionSelector succeeded but quote mismatch:",
+            error.message
+          );
+        }
       }
     }
   }

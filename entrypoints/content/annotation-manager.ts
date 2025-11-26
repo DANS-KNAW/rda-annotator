@@ -189,7 +189,9 @@ export class AnnotationManager {
         try {
           await this.anchorAnnotation(anchored.annotation);
         } catch (error) {
-          console.warn(`Failed to re-anchor ${id}:`, error);
+          if (import.meta.env.DEV) {
+            console.warn(`Failed to re-anchor ${id}:`, error);
+          }
         }
       }
     }
@@ -210,7 +212,9 @@ export class AnnotationManager {
     try {
       this.rootElement.normalize();
     } catch (error) {
-      console.warn("Failed to normalize root element:", error);
+      if (import.meta.env.DEV) {
+        console.warn("Failed to normalize root element:", error);
+      }
     }
 
     try {
@@ -237,7 +241,9 @@ export class AnnotationManager {
                 anchored: false,
               });
             } catch (msgError) {
-              console.warn("Failed to send anchor status update:", msgError);
+              if (import.meta.env.DEV) {
+                console.warn("Failed to send anchor status update:", msgError);
+              }
             }
           }
         }
@@ -277,10 +283,12 @@ export class AnnotationManager {
           try {
             (parent as Element).normalize();
           } catch (error) {
-            console.warn(
-              "Failed to normalize parent after removing temporary highlight:",
-              error
-            );
+            if (import.meta.env.DEV) {
+              console.warn(
+                "Failed to normalize parent after removing temporary highlight:",
+                error
+              );
+            }
           }
         }
       }
@@ -317,7 +325,9 @@ export class AnnotationManager {
           anchored: true,
         });
       } catch (msgError) {
-        console.warn("Failed to send anchor status update:", msgError);
+        if (import.meta.env.DEV) {
+          console.warn("Failed to send anchor status update:", msgError);
+        }
       }
 
       if (highlight) {
@@ -339,7 +349,9 @@ export class AnnotationManager {
           anchored: false,
         });
       } catch (msgError) {
-        console.warn("Failed to send anchor status update:", msgError);
+        if (import.meta.env.DEV) {
+          console.warn("Failed to send anchor status update:", msgError);
+        }
       }
 
       throw error;

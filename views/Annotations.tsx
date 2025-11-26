@@ -158,10 +158,12 @@ export default function Annotations() {
               frameUrls = response.urls;
             }
           } catch (error) {
-            console.warn(
-              "[Annotations] Failed to get frame URLs, using current URL only:",
-              error
-            );
+            if (import.meta.env.DEV) {
+              console.warn(
+                "[Annotations] Failed to get frame URLs, using current URL only:",
+                error
+              );
+            }
           }
         }
 
@@ -294,7 +296,9 @@ export default function Annotations() {
           }
         }
       } catch (error) {
-        console.warn("Failed to request anchor status:", error);
+        if (import.meta.env.DEV) {
+          console.warn("Failed to request anchor status:", error);
+        }
       }
     })();
   }, [annotations.length, myAnnotations.length]);

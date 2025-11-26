@@ -516,7 +516,9 @@ async function anchorByPosition(
     const pageTextQuote = stripSpaces(pageText.slice(start, end));
 
     if (textLayerQuote.normalize("NFKD") !== pageTextQuote.normalize("NFKD")) {
-      console.warn("[PDF Anchor] Text layer mismatch detected");
+      if (import.meta.env.DEV) {
+        console.warn("[PDF Anchor] Text layer mismatch detected");
+      }
     }
 
     const range = document.createRange();

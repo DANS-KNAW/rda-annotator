@@ -364,11 +364,15 @@ export async function createAnnotatorPopup({
       try {
         range = trimRange(range);
       } catch (error) {
-        console.warn("Failed to trim range, using original:", error);
+        if (import.meta.env.DEV) {
+          console.warn("Failed to trim range, using original:", error);
+        }
       }
 
       if (range.collapsed || range.toString().trim().length === 0) {
-        console.warn("Range is empty after trimming whitespace");
+        if (import.meta.env.DEV) {
+          console.warn("Range is empty after trimming whitespace");
+        }
         hideAnnotatorPopup();
         window.getSelection()?.removeAllRanges();
         return;

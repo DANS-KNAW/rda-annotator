@@ -73,7 +73,9 @@ export async function createHost({ ctx, onCreateTemporaryHighlight, onMountState
 
   async function openSidebar() {
     if (!sidebarMounted) {
-      console.warn("Cannot open sidebar - not mounted");
+      if (import.meta.env.DEV) {
+        console.warn("Cannot open sidebar - not mounted");
+      }
       return;
     }
 

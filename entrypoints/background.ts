@@ -176,10 +176,12 @@ export default defineBackground(() => {
       try {
         await sendMessage("toggleSidebar", { action: "toggle" }, tab.id);
       } catch (error) {
-        console.warn(
-          "[RDA Background] Failed to send toggleSidebar message:",
-          error
-        );
+        if (import.meta.env.DEV) {
+          console.warn(
+            "[RDA Background] Failed to send toggleSidebar message:",
+            error
+          );
+        }
       }
     }
   });

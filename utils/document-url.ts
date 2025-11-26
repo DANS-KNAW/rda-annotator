@@ -19,7 +19,9 @@ export function getDocumentURL(): string {
       return fileParam;
     }
   } catch (error) {
-    console.warn("[RDA] Failed to parse URL:", error);
+    if (import.meta.env.DEV) {
+      console.warn("[RDA] Failed to parse URL:", error);
+    }
   }
 
   // Not in our PDF viewer, return the current URL as-is
@@ -47,7 +49,9 @@ export function isInPDFViewer(): boolean {
 
     return isOurExtension && isPDFViewerPath && hasFileParam;
   } catch (error) {
-    console.warn("[RDA] Failed to check PDF viewer status:", error);
+    if (import.meta.env.DEV) {
+      console.warn("[RDA] Failed to check PDF viewer status:", error);
+    }
     return false;
   }
 }

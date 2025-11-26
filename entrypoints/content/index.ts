@@ -22,11 +22,11 @@ export default defineContentScript({
       origin: window.location.origin,
     };
 
-    console.log("[RDA Boot] Initializing in frame:", frameInfo);
-
     // Check if already injected
     if (document.querySelector("[data-rda-injected]")) {
-      console.log("[RDA Boot] Already injected, skipping");
+      if (import.meta.env.DEV) {
+        console.warn("[RDA Boot] Already injected, skipping");
+      }
       return;
     }
 
@@ -38,16 +38,17 @@ export default defineContentScript({
 
     // Detect content type (async to wait for PDF.js if needed)
     const contentType = await detectContentTypeAsync();
-    console.log("[RDA Boot] Content type:", contentType);
     marker.setAttribute("data-rda-content-type", contentType?.type || "HTML");
 
     if (contentType?.type === "PDF") {
       try {
         const isReady = await waitForPDFReady();
         if (!isReady) {
-          console.warn(
-            "[RDA Boot] PDF.js not available, skipping annotation loading"
-          );
+          if (import.meta.env.DEV) {
+            console.warn(
+              "[RDA Boot] PDF.js not available, skipping annotation loading"
+            );
+          }
           return;
         }
       } catch (error) {
@@ -138,12 +139,6 @@ export default defineContentScript({
       }
 
       const frameObserver = new FrameObserver(ctx, async (frame) => {
-        console.log("[RDA Boot] Frame detected:", {
-          src: frame.src,
-          id: frame.id,
-          name: frame.name,
-        });
-
         // Inject annotator into the frame
         if (frameInjector) {
           try {
@@ -342,8 +337,6 @@ export default defineContentScript({
           await annotationManager.scrollToAnnotation(event.data.annotationId);
         }
       });
-
-      console.log("[RDA Boot] Guest initialized successfully");
     }
 
     ctx.onInvalidated(() => {

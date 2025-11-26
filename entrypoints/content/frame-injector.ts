@@ -77,7 +77,9 @@ export async function injectIntoFrame(
   // Wait for frame to be ready
   const ready = await waitForFrameReady(frame);
   if (!ready) {
-    console.warn("[RDA Frame Injector] Frame not ready, skipping");
+    if (import.meta.env.DEV) {
+      console.warn("[RDA Frame Injector] Frame not ready, skipping");
+    }
     return null;
   }
 
@@ -85,7 +87,9 @@ export async function injectIntoFrame(
   const frameWindow = frame.contentWindow;
 
   if (!frameDoc || !frameWindow) {
-    console.warn("[RDA Frame Injector] Cannot access frame document or window");
+    if (import.meta.env.DEV) {
+      console.warn("[RDA Frame Injector] Cannot access frame document or window");
+    }
     return null;
   }
 
