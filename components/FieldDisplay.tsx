@@ -1,6 +1,8 @@
+import { ReactNode } from "react";
+
 interface FieldDisplayProps {
   label: string;
-  value: string | null | undefined;
+  value: string | ReactNode | null | undefined;
   variant?: "text" | "quote";
 }
 
@@ -31,6 +33,16 @@ export default function FieldDisplay({
       <div>
         <span className="font-medium text-xs text-gray-700">{label}</span>
         <p className="mt-2 text-sm text-gray-400 italic">None</p>
+      </div>
+    );
+  }
+
+  // If value is a React node (not a string), render it directly
+  if (typeof value !== "string") {
+    return (
+      <div>
+        <span className="font-medium text-xs text-gray-700">{label}</span>
+        <div className="mt-2">{value}</div>
       </div>
     );
   }

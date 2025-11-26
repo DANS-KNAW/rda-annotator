@@ -207,3 +207,41 @@ export function isValidUrl(url: string | null | undefined): boolean {
     return false;
   }
 }
+
+/**
+ * Vocabulary count for display in annotation cards.
+ */
+export interface VocabularyCount {
+  fieldName: string;
+  label: string;
+  count: number;
+}
+
+/**
+ * Get vocabulary counts for an annotation.
+ * Returns array of {fieldName, label, count} for non-empty vocabulary fields.
+ */
+export function getVocabularyCounts(
+  annotation: Annotation,
+  schema: AnnotationSchema
+): VocabularyCount[] {
+  const counts: VocabularyCount[] = [];
+
+  // Iterate through all combobox fields with multiple=true
+  schema.fields.forEach((field) => {
+    if (field.type === "combobox" && field.multiple) {
+      const dataFieldName = getElasticsearchFieldName(field.name);
+      const rawValue = (annotation as any)[dataFieldName];
+
+      if (rawValue && Array.isArray(rawValue) && rawValue.length > 0) {
+        counts.push({
+          fieldName: field.name,
+          label: field.label,
+          count: rawValue.length,
+        });
+      }
+    }
+  });
+
+  return counts;
+}

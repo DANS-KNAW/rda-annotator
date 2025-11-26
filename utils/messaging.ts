@@ -15,6 +15,14 @@ interface ProtocolMap {
   hoverAnnotations(data: { annotationIds: string[] }): Promise<void>;
   getFrameUrls(): Promise<{ urls: string[] }>;
   frameUrlsChanged(data: { urls: string[] }): Promise<void>;
+  anchorStatusUpdate(data: {
+    annotationId: string;
+    anchored: boolean;
+  }): Promise<void>;
+  requestAnchorStatus(): Promise<{
+    anchored: string[];
+    orphaned: string[];
+  }>;
 }
 
 export const { sendMessage, onMessage } =

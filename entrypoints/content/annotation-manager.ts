@@ -12,6 +12,7 @@ import { injectHighlightStyles } from "@/utils/inject-highlight-styles";
 import { getAnnotationIdsAtPoint } from "@/utils/highlights-at-point";
 import { getDocumentURL } from "@/utils/document-url";
 import { isPDFDocument, isPlaceholderRange } from "@/utils/anchoring/pdf";
+import { sendMessage, onMessage } from "@/utils/messaging";
 
 interface AnchoredAnnotation {
   annotation: AnnotationHit;
@@ -21,6 +22,7 @@ interface AnchoredAnnotation {
 
 export class AnnotationManager {
   private annotations: Map<string, AnchoredAnnotation> = new Map();
+  private orphanedAnnotationIds: Set<string> = new Set();
   private currentFocused: string | null = null;
   private temporaryHighlight: Highlight | null = null;
   private onHighlightClick?: (annotationIds: string[]) => void;
@@ -41,6 +43,7 @@ export class AnnotationManager {
     this.onHighlightHover = options?.onHighlightHover;
     this.setupEventListeners();
     this.setupPDFObserver();
+    this.setupMessageHandlers();
   }
 
   /**
@@ -136,6 +139,25 @@ export class AnnotationManager {
     });
   }
 
+  private setupMessageHandlers(): void {
+    onMessage("requestAnchorStatus", async () => {
+      return this.getAnchorStatus();
+    });
+  }
+
+  private getAnchorStatus(): { anchored: string[]; orphaned: string[] } {
+    const anchored: string[] = [];
+    const orphaned: string[] = Array.from(this.orphanedAnnotationIds);
+
+    for (const [id, _] of this.annotations) {
+      if (!this.orphanedAnnotationIds.has(id)) {
+        anchored.push(id);
+      }
+    }
+
+    return { anchored, orphaned };
+  }
+
   private async reanchorPlaceholders(): Promise<void> {
     const toReanchor: string[] = [];
 
@@ -205,12 +227,19 @@ export class AnnotationManager {
             ),
           ]);
         } catch (error) {
-          const fragment = annotation._source.fragment?.substring(0, 50);
-          console.warn(
-            `[Anchor] Failed to anchor annotation ${annotation._id}`,
-            `Fragment: "${fragment}..."`,
-            error
-          );
+          // Mark as orphaned if not already tracked (handles all error cases)
+          if (!this.annotations.has(annotation._id)) {
+            this.orphanedAnnotationIds.add(annotation._id);
+
+            try {
+              await sendMessage("anchorStatusUpdate", {
+                annotationId: annotation._id,
+                anchored: false,
+              });
+            } catch (msgError) {
+              console.warn("Failed to send anchor status update:", msgError);
+            }
+          }
         }
       }
     } catch (error) {
@@ -263,7 +292,7 @@ export class AnnotationManager {
       !annotation._source.annotation_target?.selector ||
       annotation._source.annotation_target.selector.length === 0
     ) {
-      return;
+      throw new Error("No selector found for annotation");
     }
 
     try {
@@ -273,9 +302,23 @@ export class AnnotationManager {
       );
 
       const isPlaceholder = isPlaceholderRange(range);
-      const highlight = isPlaceholder ? null : highlightRange(range, annotation._id);
+      const highlight = isPlaceholder
+        ? null
+        : highlightRange(range, annotation._id);
 
       this.annotations.set(annotation._id, { annotation, highlight, range });
+
+      // Mark as successfully anchored
+      this.orphanedAnnotationIds.delete(annotation._id);
+
+      try {
+        await sendMessage("anchorStatusUpdate", {
+          annotationId: annotation._id,
+          anchored: true,
+        });
+      } catch (msgError) {
+        console.warn("Failed to send anchor status update:", msgError);
+      }
 
       if (highlight) {
         highlight.elements.forEach((element) => {
@@ -287,6 +330,18 @@ export class AnnotationManager {
         });
       }
     } catch (error) {
+      // Mark as orphaned
+      this.orphanedAnnotationIds.add(annotation._id);
+
+      try {
+        await sendMessage("anchorStatusUpdate", {
+          annotationId: annotation._id,
+          anchored: false,
+        });
+      } catch (msgError) {
+        console.warn("Failed to send anchor status update:", msgError);
+      }
+
       throw error;
     }
   }
@@ -299,14 +354,15 @@ export class AnnotationManager {
 
     if (!anchored.highlight) {
       const startContainer = anchored.range.startContainer;
-      const element = startContainer.nodeType === Node.ELEMENT_NODE
-        ? (startContainer as HTMLElement)
-        : startContainer.parentElement;
+      const element =
+        startContainer.nodeType === Node.ELEMENT_NODE
+          ? (startContainer as HTMLElement)
+          : startContainer.parentElement;
 
       if (element) {
         await scrollElementIntoView(element, { maxDuration: 500 });
 
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         const reanchored = this.annotations.get(annotationId);
         if (reanchored?.highlight) {

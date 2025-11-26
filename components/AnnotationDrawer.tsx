@@ -4,6 +4,7 @@ import Button from "@/components/Button";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import FieldDisplay from "@/components/FieldDisplay";
 import VocabularyList from "@/components/VocabularyList";
+import OrcidLink from "@/components/OrcidLink";
 import { AnnotationHit } from "@/types/elastic-search-document.interface";
 import {
   isSectionEmpty,
@@ -42,11 +43,7 @@ export default function AnnotationDrawer({
       if (!field.multiple) {
         const value = items.length > 0 ? items[0].label : null;
         return (
-          <FieldDisplay
-            key={field.name}
-            label={field.label}
-            value={value}
-          />
+          <FieldDisplay key={field.name} label={field.label} value={value} />
         );
       }
 
@@ -153,13 +150,20 @@ export default function AnnotationDrawer({
 
           {source.fragment && (
             <FieldDisplay
-              label="Selected Text"
+              label="Annotation Fragment"
               value={source.fragment}
               variant="quote"
             />
           )}
 
           <FieldDisplay label="Created on" value={source.dc_date} />
+
+          {source.submitter && (
+            <FieldDisplay
+              label="Author"
+              value={<OrcidLink orcidId={source.submitter} />}
+            />
+          )}
 
           {basicFields.map(renderField)}
         </div>

@@ -1,0 +1,57 @@
+interface OrcidLinkProps {
+  orcidId: string;
+  textSize?: "xs" | "sm";
+}
+
+/**
+ * ORCID Link component - displays ORCID ID with clickable link and icon
+ */
+export default function OrcidLink({ orcidId, textSize }: OrcidLinkProps) {
+  // Validate ORCID format (XXXX-XXXX-XXXX-XXXX)
+  const isValidOrcid = /^\d{4}-\d{4}-\d{4}-\d{3}[0-9X]$/.test(orcidId);
+
+  if (!isValidOrcid) {
+    // Display as plain text if invalid format
+    return <span className="text-gray-600">{orcidId}</span>;
+  }
+
+  return (
+    <a
+      href={`https://orcid.org/${orcidId}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`inline-flex items-center gap-1 text-rda-500 hover:text-rda-600 hover:underline ${
+        textSize === "xs" ? "text-xs" : "text-sm"
+      }`}
+      aria-label={`ORCID profile for ${orcidId}`}
+    >
+      <span>{orcidId}</span>
+      <svg
+        version="1.1"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 256 256"
+        className="size-4 flex-shrink-0"
+        aria-hidden="true"
+      >
+        <path
+          fill="#A6CE39"
+          d="M256,128.008C256,198.697,198.69,256,127.997,256C57.306,256,0,198.697,0,128.008  S57.306,0,127.997,0C198.69,0,256,57.318,256,128.008z"
+        />
+        <g>
+          <path
+            fill="#FFFFFF"
+            d="M86.337,186.215H70.943V79.102h15.394v48.387V186.215z"
+          />
+          <path
+            fill="#FFFFFF"
+            d="M108.879,79.102h41.624c39.578,0,57,28.271,57,53.559c0,27.486-21.506,53.555-56.844,53.555h-41.78V79.102z    M124.283,172.379h24.495c34.859,0,42.867-26.531,42.867-39.719c0-21.527-13.66-39.746-43.652-39.746h-23.71V172.379z"
+          />
+          <path
+            fill="#FFFFFF"
+            d="M88.728,56.811c0,5.541-4.538,10.096-10.086,10.096c-5.555,0-10.094-4.555-10.094-10.096   c0-5.555,4.539-10.102,10.094-10.102C84.189,46.709,88.728,51.256,88.728,56.811z"
+          />
+        </g>
+      </svg>
+    </a>
+  );
+}

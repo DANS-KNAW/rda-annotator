@@ -14,7 +14,6 @@ export class FrameObserver {
   }
 
   start() {
-    console.log("[RDA FrameObserver] Starting frame observation");
     this.scanExistingFrames();
 
     this.observer = new MutationObserver((mutations) => {
@@ -49,7 +48,6 @@ export class FrameObserver {
   }
 
   stop() {
-    console.log("[RDA FrameObserver] Stopping frame observation");
     if (this.observer) {
       this.observer.disconnect();
       this.observer = null;
@@ -58,9 +56,6 @@ export class FrameObserver {
 
   private scanExistingFrames() {
     const existingFrames = document.querySelectorAll("iframe");
-    console.log(
-      `[RDA FrameObserver] Found ${existingFrames.length} existing frames`
-    );
 
     existingFrames.forEach((frame) => {
       this.handleFrame(frame as HTMLIFrameElement);
@@ -81,15 +76,6 @@ export class FrameObserver {
     } catch (e) {
       accessible = false;
     }
-
-    console.log("[RDA FrameObserver] Frame discovered:", {
-      src: frame.src,
-      id: frame.id,
-      name: frame.name,
-      accessible,
-      origin: accessible ? "same-origin" : "cross-origin",
-    });
-
     this.onFrameDiscovered(frame);
   }
 }
