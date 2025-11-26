@@ -67,6 +67,7 @@ export interface Annotation {
   gorc_attributes: GorcAttribute[];
   uri_type: UriType[];
   keywords: Keyword[];
+  custom_vocabularies?: CustomVocabulary[];
 }
 
 interface InterestGroup {
@@ -137,4 +138,12 @@ interface UriType {
 interface Keyword {
   uuid_keyword: string;
   keyword: string;
+}
+
+export interface CustomVocabulary {
+  uuid: string;
+  namespace: string;
+  value: string;
+  value_uri: string | null;
+  description?: string;
 }

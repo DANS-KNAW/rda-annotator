@@ -30,7 +30,8 @@
       "required": true,
       "info": "The default language is English, only change of this is not the case.",
       "vocabulary": "languages",
-      "defaultValue": "eng"
+      "defaultValue": "eng",
+      "displaySection": "basic"
     },
     {
       "type": "text",
@@ -46,8 +47,9 @@
       "label": "Resource Type",
       "name": "resource_type",
       "required": true,
-      "info": "The type of resource you are annotating. If you are unsure, use ‘Other’. The tag is used to filter annotations by resource group.",
-      "vocabulary": "resource_types"
+      "info": "The type of resource you are annotating. If you are unsure, use 'Other'. The tag is used to filter annotations by resource group.",
+      "vocabulary": "resource_types",
+      "displaySection": "basic"
     },
     {
       "type": "combobox",
@@ -57,7 +59,8 @@
       "info": "Add keywords and tags to characterise or classify the annotation. The type-ahead list is filtered by the current group selections, but this can be turned off.",
       "vocabulary": "keywords",
       "multiple": true,
-      "allowCustomValue": true
+      "allowCustomValue": true,
+      "displaySection": "rda_vocabularies"
     },
     {
       "type": "combobox",
@@ -66,7 +69,8 @@
       "required": false,
       "info": "Select an RDA Pathway from the list. You can start typing to filter the list.",
       "vocabulary": "rda_pathways",
-      "multiple": true
+      "multiple": true,
+      "displaySection": "rda_vocabularies"
     },
     {
       "type": "combobox",
@@ -75,7 +79,8 @@
       "required": false,
       "info": "Select a GORC Element from the list. You can start typing to filter the list. <a href=\"https://www.rd-alliance.org/group_output/gorc-ig-typology-and-definitions/\" target=\"_blank\" >Read more about GORC</a>.",
       "vocabulary": "gorc_elements",
-      "multiple": true
+      "multiple": true,
+      "displaySection": "rda_vocabularies"
     },
     {
       "type": "combobox",
@@ -84,7 +89,8 @@
       "required": false,
       "info": "Select a GORC Attribute from the list. You can start typing to filter the list. <a href=\"https://www.rd-alliance.org/group_output/gorc-ig-typology-and-definitions/\" target=\"_blank\" >Read more about GORC</a>.",
       "vocabulary": "gorc_attributes",
-      "multiple": true
+      "multiple": true,
+      "displaySection": "rda_vocabularies"
     },
     {
       "type": "combobox",
@@ -93,7 +99,8 @@
       "required": false,
       "info": "Select an RDA Interest Group from the list. You can start typing to filter the list.",
       "vocabulary": "interest_groups",
-      "multiple": true
+      "multiple": true,
+      "displaySection": "rda_vocabularies"
     },
     {
       "type": "combobox",
@@ -102,7 +109,8 @@
       "required": false,
       "info": "Select an RDA Working Group from the list. You can start typing to filter the list.",
       "vocabulary": "working_groups",
-      "multiple": true
+      "multiple": true,
+      "displaySection": "rda_vocabularies"
     },
     {
       "type": "combobox",
@@ -111,7 +119,8 @@
       "required": false,
       "info": "Select an RDA Scientific Discipline (Domain) from the list. You can start typing to filter the list.",
       "vocabulary": "disciplines",
-      "multiple": true
+      "multiple": true,
+      "displaySection": "rda_vocabularies"
     },
     {
       "type": "combobox",
@@ -123,7 +132,8 @@
       "multiple": true,
       "vocabularyOptions": {
         "namespace": "momsi"
-      }
+      },
+      "displaySection": "additional_vocabularies"
     }
   ]
 }

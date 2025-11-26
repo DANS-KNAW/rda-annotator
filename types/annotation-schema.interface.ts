@@ -27,11 +27,12 @@ interface TextareaField extends BaseField {
   rows?: number;
 }
 
-interface ComboboxField extends BaseField {
+export interface ComboboxField extends BaseField {
   type: "combobox";
   vocabulary: PredefinedDataSource;
   multiple?: boolean;
   vocabularyOptions?: VocabularyOptions;
+  displaySection?: "basic" | "rda_vocabularies" | "additional_vocabularies";
 }
 
 export interface VocabularyOptions {
