@@ -10,7 +10,7 @@ export default defineConfig({
   }),
   manifest: (env) => ({
     name: (env.mode === "development" ? "[DEV] " : "") + "RDA TIGER Annotation",
-    version: "0.110.0",
+    version: "1.0.0",
     permissions: ["storage", "identity", "tabs"],
     host_permissions: [import.meta.env.HOST_PERMISSION],
     web_accessible_resources: [
