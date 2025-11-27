@@ -6,18 +6,18 @@ export type HTMLContentType = { type: "HTML" };
 /** Details of the detected content type. */
 export type ContentTypeInfo = PDFContentType | HTMLContentType;
 
-async function waitForPDFJS(): Promise<boolean> {
+async function waitForPDFJS(win: Window = window): Promise<boolean> {
   const startTime = Date.now();
-  const globalTimeout = 1000;
+  const globalTimeout = 15000;
 
   while (Date.now() - startTime < globalTimeout) {
-    if ((window as any).PDFViewerApplication !== undefined) {
+    if ((win as any).PDFViewerApplication !== undefined) {
       break;
     }
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
-  const app = (window as any).PDFViewerApplication;
+  const app = (win as any).PDFViewerApplication;
   if (!app) {
     return false;
   }
@@ -30,7 +30,9 @@ async function waitForPDFJS(): Promise<boolean> {
     try {
       await Promise.race([
         app.initializedPromise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 1000))
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("timeout")), 15000)
+        ),
       ]);
       return true;
     } catch {
@@ -38,6 +40,7 @@ async function waitForPDFJS(): Promise<boolean> {
     }
   }
 
+  const doc = win.document;
   return new Promise<boolean>((resolve) => {
     const onViewerLoaded = () => {
       if (app.initializedPromise) {
@@ -49,12 +52,12 @@ async function waitForPDFJS(): Promise<boolean> {
       }
     };
 
-    document.addEventListener("webviewerloaded", onViewerLoaded, { once: true });
+    doc.addEventListener("webviewerloaded", onViewerLoaded, { once: true });
 
     setTimeout(() => {
-      document.removeEventListener("webviewerloaded", onViewerLoaded);
+      doc.removeEventListener("webviewerloaded", onViewerLoaded);
       resolve(!!app.initialized);
-    }, 1000);
+    }, 15000);
   });
 }
 
@@ -62,9 +65,11 @@ async function waitForPDFJS(): Promise<boolean> {
  * Detect the type of content in the current document.
  *
  * @param document_ - Document to query
+ * @param win - Window context to check (for iframe support)
  */
 export function detectContentType(
-  document_ = document
+  document_ = document,
+  win: Window = window
 ): ContentTypeInfo | null {
   function detectChromePDFViewer(): PDFContentType | null {
     // Check for embed element with PDF MIME type
@@ -98,7 +103,7 @@ export function detectContentType(
   }
 
   function detectCustomPDFJSViewer(): PDFContentType | null {
-    if (isInPDFViewer()) {
+    if (isInPDFViewer(win)) {
       return { type: "PDF" };
     }
     return null;
@@ -107,7 +112,7 @@ export function detectContentType(
   function detectExistingPDFJSViewer(): PDFContentType | null {
     // Check if page already has PDF.js loaded (like embedded viewers)
     // This is important for pages like Zenodo that use their own PDF.js
-    if ((window as any).PDFViewerApplication !== undefined) {
+    if ((win as any).PDFViewerApplication !== undefined) {
       return { type: "PDF" };
     }
     return null;
@@ -131,20 +136,21 @@ export function detectContentType(
 }
 
 export async function detectContentTypeAsync(
-  document_ = document
+  document_ = document,
+  win: Window = window
 ): Promise<ContentTypeInfo | null> {
-  const immediate = detectContentType(document_);
+  const immediate = detectContentType(document_, win);
   if (immediate?.type === "PDF") {
     return immediate;
   }
 
-  const url = window.location.href.toLowerCase();
+  const url = win.location.href.toLowerCase();
   if (
     url.includes("/preview/") ||
     url.includes("viewer.html") ||
     url.includes(".pdf")
   ) {
-    const found = await waitForPDFJS();
+    const found = await waitForPDFJS(win);
     if (found) {
       return { type: "PDF" };
     }

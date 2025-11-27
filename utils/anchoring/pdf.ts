@@ -58,12 +58,12 @@ function getPDFViewer(): PDFViewer {
   return PDFViewerApplication.pdfViewer;
 }
 
-export function isPDFDocument(): boolean {
-  return typeof (window as any).PDFViewerApplication !== "undefined";
+export function isPDFDocument(win: Window = window): boolean {
+  return typeof (win as any).PDFViewerApplication !== "undefined";
 }
 
-async function waitForPDFViewerInitialized(): Promise<any> {
-  const app = (window as any).PDFViewerApplication;
+async function waitForPDFViewerInitialized(win: Window = window): Promise<any> {
+  const app = (win as any).PDFViewerApplication;
 
   if (!app) {
     throw new Error("PDFViewerApplication not found");
@@ -116,27 +116,38 @@ async function isPDFDownloaded(app: any): Promise<boolean> {
   return false;
 }
 
-async function waitForPDFDocumentLoaded(): Promise<any> {
-  const app = await waitForPDFViewerInitialized();
+async function waitForPDFDocumentLoaded(win: Window = window): Promise<any> {
+  const app = await waitForPDFViewerInitialized(win);
 
   const isDownloaded = await isPDFDownloaded(app);
   if (isDownloaded) {
     return app;
   }
 
-  // Wait for document to load
+  const doc = win.document;
+
+  // Wait for document to load with timeout and periodic check
   await new Promise<void>((resolve) => {
     const eventBus = app.eventBus;
+    let resolved = false;
+    let checkInterval: ReturnType<typeof setInterval>;
 
-    const onDocumentLoaded = () => {
+    const cleanup = () => {
+      if (resolved) return;
+      resolved = true;
+      if (checkInterval) clearInterval(checkInterval);
       if (eventBus) {
         eventBus.off("documentload", onDocumentLoaded);
         eventBus.off("documentloaded", onDocumentLoaded);
       } else {
-        document.removeEventListener("documentload", onDocumentLoaded as any);
-        document.removeEventListener("documentloaded", onDocumentLoaded as any);
+        doc.removeEventListener("documentload", onDocumentLoaded as any);
+        doc.removeEventListener("documentloaded", onDocumentLoaded as any);
       }
       resolve();
+    };
+
+    const onDocumentLoaded = () => {
+      cleanup();
     };
 
     if (eventBus) {
@@ -145,21 +156,53 @@ async function waitForPDFDocumentLoaded(): Promise<any> {
       eventBus.on("documentloaded", onDocumentLoaded);
     } else {
       // Fallback to DOM events
-      document.addEventListener("documentload", onDocumentLoaded as any);
-      document.addEventListener("documentloaded", onDocumentLoaded as any);
+      doc.addEventListener("documentload", onDocumentLoaded as any);
+      doc.addEventListener("documentloaded", onDocumentLoaded as any);
     }
+
+    // Also poll periodically in case we missed the event
+    checkInterval = setInterval(async () => {
+      const downloaded = await isPDFDownloaded(app);
+      if (downloaded) {
+        cleanup();
+      }
+    }, 500);
+
+    // Timeout after 30 seconds
+    setTimeout(() => {
+      if (!resolved) {
+        if (import.meta.env.DEV) {
+          console.warn("[PDF] Timeout waiting for PDF document to load");
+        }
+        cleanup();
+      }
+    }, 30000);
   });
 
   return app;
 }
 
-export async function waitForPDFReady(): Promise<boolean> {
+export async function waitForPDFReady(win: Window = window): Promise<boolean> {
   try {
-    if (!isPDFDocument()) {
+    const isPDF = isPDFDocument(win);
+    if (import.meta.env.DEV) {
+      console.log(`[PDF waitForPDFReady] isPDFDocument: ${isPDF}, window:`, win === window ? 'main' : 'frame');
+    }
+
+    if (!isPDF) {
       return false;
     }
 
-    await waitForPDFDocumentLoaded();
+    if (import.meta.env.DEV) {
+      console.log(`[PDF waitForPDFReady] Waiting for PDF document to load...`);
+    }
+
+    await waitForPDFDocumentLoaded(win);
+
+    if (import.meta.env.DEV) {
+      console.log(`[PDF waitForPDFReady] PDF document loaded successfully`);
+    }
+
     return true;
   } catch (error) {
     console.error("[PDF] Failed to wait for PDF ready:", error);
@@ -481,6 +524,17 @@ async function anchorByPosition(
     getPageTextContent(pageIndex),
   ]);
 
+  if (import.meta.env.DEV) {
+    console.log(`[PDF anchorByPosition] Page ${pageIndex}:`, {
+      renderingState: page.renderingState,
+      hasTextLayer: !!page.textLayer,
+      textLayerRenderingDone: page.textLayer ? isTextLayerRenderingDone(page.textLayer) : false,
+      pageTextLength: pageText.length,
+      start,
+      end,
+    });
+  }
+
   if (
     page.renderingState === RenderingStates.FINISHED &&
     page.textLayer &&
@@ -488,12 +542,26 @@ async function anchorByPosition(
   ) {
     const textLayerDiv = page.textLayer.div || page.textLayer.textLayerDiv;
     if (!textLayerDiv) {
+      if (import.meta.env.DEV) {
+        console.warn(`[PDF anchorByPosition] Text layer div not found for page ${pageIndex}`);
+      }
       throw new Error("Text layer div not found");
     }
 
     const textLayerStr = textLayerDiv.textContent!;
 
+    if (import.meta.env.DEV) {
+      console.log(`[PDF anchorByPosition] Text layer for page ${pageIndex}:`, {
+        textLayerLength: textLayerStr.length,
+        pageTextLength: pageText.length,
+        ratio: textLayerStr.length / pageText.length,
+      });
+    }
+
     if (textLayerStr.length === 0 || textLayerStr.length < pageText.length * 0.5) {
+      if (import.meta.env.DEV) {
+        console.log(`[PDF anchorByPosition] Text layer too short, creating placeholder for page ${pageIndex}`);
+      }
       const placeholder = createPlaceholder(page.div);
       const range = document.createRange();
       range.setStartBefore(placeholder);
@@ -560,7 +628,21 @@ async function anchorByPosition(
     range.setStart(startNode, startOffset);
     range.setEnd(endNode, endOffset);
 
+    if (import.meta.env.DEV) {
+      console.log(`[PDF anchorByPosition] Successfully anchored on page ${pageIndex}:`, {
+        rangeText: range.toString().substring(0, 50),
+      });
+    }
+
     return range;
+  }
+
+  if (import.meta.env.DEV) {
+    console.log(`[PDF anchorByPosition] Text layer not ready, creating placeholder for page ${pageIndex}:`, {
+      renderingState: page.renderingState,
+      hasTextLayer: !!page.textLayer,
+      textLayerRenderingDone: page.textLayer ? isTextLayerRenderingDone(page.textLayer) : false,
+    });
   }
 
   const placeholder = createPlaceholder(page.div);

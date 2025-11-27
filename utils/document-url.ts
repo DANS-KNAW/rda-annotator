@@ -30,9 +30,10 @@ export function getDocumentURL(): string {
 
 /**
  * Check if we're currently in our custom PDF.js viewer
+ * @param win - Window context to check (for iframe support)
  */
-export function isInPDFViewer(): boolean {
-  const currentURL = window.location.href;
+export function isInPDFViewer(win: Window = window): boolean {
+  const currentURL = win.location.href;
 
   try {
     const urlObj = new URL(currentURL);

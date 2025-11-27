@@ -53,10 +53,16 @@ export async function createAnnotatorPopup({
   let currentSelection: Selection | null = null;
   let container: HTMLElement;
 
+  const anchorElement = document.body || document.documentElement;
+  if (!anchorElement) {
+    console.error("[RDA Popup] Cannot mount: no anchor element available");
+    throw new Error("No suitable anchor element for popup");
+  }
+
   const annotatorPopup = await createShadowRootUi(ctx, {
     name: `${EXTENSION_NAME}-popup`,
     position: "inline",
-    anchor: "body",
+    anchor: anchorElement,
     mode: "closed",
 
     onMount(_, shadowRoot, shadowHost) {

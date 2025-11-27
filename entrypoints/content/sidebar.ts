@@ -6,10 +6,17 @@ interface SidebarProps {
 }
 
 export async function createSidebar({ ctx }: SidebarProps) {
+  const anchorElement = document.body || document.documentElement;
+
+  if (!anchorElement) {
+    console.error("[RDA Sidebar] Cannot mount: no anchor element available");
+    throw new Error("No suitable anchor element for sidebar");
+  }
+
   const sidebarShadow = await createShadowRootUi(ctx, {
     name: `${EXTENSION_NAME}-sidebar`,
     position: "inline",
-    anchor: "body",
+    anchor: anchorElement,
     mode: "closed",
 
     onMount(_, shadowRoot, shadowHost) {

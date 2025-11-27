@@ -30,6 +30,8 @@ export class AnnotationManager {
   private rootElement: HTMLElement;
   private targetDocument: Document;
   private pdfObserver?: MutationObserver;
+  private pdfObserverRetryCount = 0;
+  private readonly MAX_PDF_OBSERVER_RETRIES = 50; // 5 seconds max (50 * 100ms)
 
   constructor(options?: {
     onHighlightClick?: (annotationIds: string[]) => void;
@@ -115,7 +117,12 @@ export class AnnotationManager {
     }
 
     const pdfViewerApp = (window as any).PDFViewerApplication;
+
     if (!pdfViewerApp?.pdfViewer?.viewer) {
+      if (this.pdfObserverRetryCount < this.MAX_PDF_OBSERVER_RETRIES) {
+        this.pdfObserverRetryCount++;
+        setTimeout(() => this.setupPDFObserver(), 100);
+      }
       return;
     }
 

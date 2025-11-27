@@ -1,16 +1,24 @@
 import { ContentScriptContext } from "#imports";
 
 export type FrameCallback = (frame: HTMLIFrameElement) => void;
+export type FrameLoadCallback = (frame: HTMLIFrameElement, url: string) => void;
 
 export class FrameObserver {
   private observer: MutationObserver | null = null;
   private ctx: ContentScriptContext;
   private onFrameDiscovered: FrameCallback;
+  private onFrameLoad?: FrameLoadCallback;
   private discoveredFrames = new WeakSet<HTMLIFrameElement>();
+  private frameLoadHandlers = new WeakMap<HTMLIFrameElement, () => void>();
 
-  constructor(ctx: ContentScriptContext, onFrameDiscovered: FrameCallback) {
+  constructor(
+    ctx: ContentScriptContext,
+    onFrameDiscovered: FrameCallback,
+    onFrameLoad?: FrameLoadCallback
+  ) {
     this.ctx = ctx;
     this.onFrameDiscovered = onFrameDiscovered;
+    this.onFrameLoad = onFrameLoad;
   }
 
   start() {
@@ -76,6 +84,24 @@ export class FrameObserver {
     } catch (e) {
       accessible = false;
     }
+
+    // Add load event listener to detect iframe navigation
+    if (this.onFrameLoad) {
+      const loadHandler = () => {
+        try {
+          const url = frame.contentWindow?.location.href || "";
+          if (import.meta.env.DEV) {
+            console.log(`[FrameObserver] Frame loaded:`, url);
+          }
+          this.onFrameLoad?.(frame, url);
+        } catch (e) {
+          // Cross-origin frame, can't access
+        }
+      };
+      frame.addEventListener("load", loadHandler);
+      this.frameLoadHandlers.set(frame, loadHandler);
+    }
+
     this.onFrameDiscovered(frame);
   }
 }
