@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { useLocation } from "react-router";
 import {
   searchAnnotationsByUrl,
@@ -30,6 +30,9 @@ export default function Annotations() {
   const [orphanedAnnotationIds, setOrphanedAnnotationIds] = useState<string[]>(
     []
   );
+  // Track which annotations have ever been successfully anchored (first-success-wins across frames)
+  // Using ref instead of state since we only need to track this for logic, not re-rendering
+  const everAnchoredIdsRef = useRef<Set<string>>(new Set());
 
   const mergeAnnotations = (
     existing: AnnotationHit[],
@@ -257,15 +260,20 @@ export default function Annotations() {
 
       const { annotationId, anchored } = message.data;
 
-      setOrphanedAnnotationIds((prev) => {
-        if (anchored) {
-          // Remove from orphaned list
-          return prev.filter((id) => id !== annotationId);
-        } else {
-          // Add to orphaned list if not already there
-          return prev.includes(annotationId) ? prev : [...prev, annotationId];
+      if (anchored) {
+        // First-success-wins: Mark as ever-anchored and remove from orphaned
+        everAnchoredIdsRef.current.add(annotationId);
+        setOrphanedAnnotationIds((prev) =>
+          prev.filter((id) => id !== annotationId)
+        );
+      } else {
+        // Only mark as orphaned if it was never successfully anchored by any frame
+        if (!everAnchoredIdsRef.current.has(annotationId)) {
+          setOrphanedAnnotationIds((prev) =>
+            prev.includes(annotationId) ? prev : [...prev, annotationId]
+          );
         }
-      });
+      }
     });
 
     return () => {
@@ -292,6 +300,8 @@ export default function Annotations() {
             tabs[0].id
           );
           if (status) {
+            // Initialize everAnchoredIds with successfully anchored annotations
+            everAnchoredIdsRef.current = new Set(status.anchored);
             setOrphanedAnnotationIds(status.orphaned);
           }
         }

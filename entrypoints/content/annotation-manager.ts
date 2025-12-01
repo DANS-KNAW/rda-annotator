@@ -31,7 +31,15 @@ export class AnnotationManager {
   private targetDocument: Document;
   private pdfObserver?: MutationObserver;
   private pdfObserverRetryCount = 0;
-  private readonly MAX_PDF_OBSERVER_RETRIES = 50; // 5 seconds max (50 * 100ms)
+  // PDF re-anchoring settings (3s max wait, 20ms polling)
+  private readonly PDF_OBSERVER_RETRY_INTERVAL_MS = 20;
+  private readonly MAX_PDF_OBSERVER_RETRIES = 150; // 3 seconds max (150 * 20ms)
+  private readonly PDF_REANCHOR_DEBOUNCE_MS = 20;
+
+  // Debounced status updates
+  private pendingStatusUpdates: Map<string, boolean> = new Map();
+  private statusUpdateTimer: number | null = null;
+  private readonly STATUS_UPDATE_DEBOUNCE_MS = 10;
 
   constructor(options?: {
     onHighlightClick?: (annotationIds: string[]) => void;
@@ -121,7 +129,10 @@ export class AnnotationManager {
     if (!pdfViewerApp?.pdfViewer?.viewer) {
       if (this.pdfObserverRetryCount < this.MAX_PDF_OBSERVER_RETRIES) {
         this.pdfObserverRetryCount++;
-        setTimeout(() => this.setupPDFObserver(), 100);
+        setTimeout(
+          () => this.setupPDFObserver(),
+          this.PDF_OBSERVER_RETRY_INTERVAL_MS
+        );
       }
       return;
     }
@@ -135,7 +146,7 @@ export class AnnotationManager {
     };
 
     this.pdfObserver = new MutationObserver(
-      debounce(() => this.reanchorPlaceholders(), 100)
+      debounce(() => this.reanchorPlaceholders(), this.PDF_REANCHOR_DEBOUNCE_MS)
     );
 
     this.pdfObserver.observe(pdfViewerApp.pdfViewer.viewer, {
@@ -163,6 +174,40 @@ export class AnnotationManager {
     }
 
     return { anchored, orphaned };
+  }
+
+  /**
+   * Schedule a status update with debouncing.
+   * Multiple updates within the debounce window are batched together,
+   * with the latest status for each annotation ID taking precedence.
+   */
+  private scheduleStatusUpdate(annotationId: string, anchored: boolean): void {
+    this.pendingStatusUpdates.set(annotationId, anchored);
+
+    if (this.statusUpdateTimer === null) {
+      this.statusUpdateTimer = window.setTimeout(() => {
+        this.flushStatusUpdates();
+      }, this.STATUS_UPDATE_DEBOUNCE_MS);
+    }
+  }
+
+  /**
+   * Flush all pending status updates to the sidebar.
+   */
+  private async flushStatusUpdates(): Promise<void> {
+    this.statusUpdateTimer = null;
+    const updates = new Map(this.pendingStatusUpdates);
+    this.pendingStatusUpdates.clear();
+
+    for (const [annotationId, anchored] of updates) {
+      try {
+        await sendMessage("anchorStatusUpdate", { annotationId, anchored });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn("Failed to send anchor status update:", error);
+        }
+      }
+    }
   }
 
   private async reanchorPlaceholders(): Promise<void> {
@@ -195,10 +240,13 @@ export class AnnotationManager {
 
         try {
           await this.anchorAnnotation(anchored.annotation);
+          this.scheduleStatusUpdate(id, true);
         } catch (error) {
           if (import.meta.env.DEV) {
             console.warn(`Failed to re-anchor ${id}:`, error);
           }
+          this.orphanedAnnotationIds.add(id);
+          this.scheduleStatusUpdate(id, false);
         }
       }
     }
@@ -231,27 +279,16 @@ export class AnnotationManager {
 
       for (const annotation of annotations) {
         try {
-          await Promise.race([
-            this.anchorAnnotation(annotation),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error("Anchoring timeout")), 5000)
-            ),
-          ]);
+          // For PDFs, placeholders are used when text layer isn't ready
+          // and reanchorPlaceholders() handles re-anchoring when content loads
+          await this.anchorAnnotation(annotation);
+
+          this.scheduleStatusUpdate(annotation._id, true);
         } catch (error) {
           // Mark as orphaned if not already tracked (handles all error cases)
           if (!this.annotations.has(annotation._id)) {
             this.orphanedAnnotationIds.add(annotation._id);
-
-            try {
-              await sendMessage("anchorStatusUpdate", {
-                annotationId: annotation._id,
-                anchored: false,
-              });
-            } catch (msgError) {
-              if (import.meta.env.DEV) {
-                console.warn("Failed to send anchor status update:", msgError);
-              }
-            }
+            this.scheduleStatusUpdate(annotation._id, false);
           }
         }
       }
@@ -323,19 +360,8 @@ export class AnnotationManager {
 
       this.annotations.set(annotation._id, { annotation, highlight, range });
 
-      // Mark as successfully anchored
+      // Mark as successfully anchored (status update handled by caller)
       this.orphanedAnnotationIds.delete(annotation._id);
-
-      try {
-        await sendMessage("anchorStatusUpdate", {
-          annotationId: annotation._id,
-          anchored: true,
-        });
-      } catch (msgError) {
-        if (import.meta.env.DEV) {
-          console.warn("Failed to send anchor status update:", msgError);
-        }
-      }
 
       if (highlight) {
         highlight.elements.forEach((element) => {
@@ -347,20 +373,7 @@ export class AnnotationManager {
         });
       }
     } catch (error) {
-      // Mark as orphaned
-      this.orphanedAnnotationIds.add(annotation._id);
-
-      try {
-        await sendMessage("anchorStatusUpdate", {
-          annotationId: annotation._id,
-          anchored: false,
-        });
-      } catch (msgError) {
-        if (import.meta.env.DEV) {
-          console.warn("Failed to send anchor status update:", msgError);
-        }
-      }
-
+      // Re-throw error - orphan status is handled by the caller (loadAnnotations)
       throw error;
     }
   }
@@ -463,6 +476,12 @@ export class AnnotationManager {
       this.pdfObserver.disconnect();
       this.pdfObserver = undefined;
     }
+
+    if (this.statusUpdateTimer !== null) {
+      clearTimeout(this.statusUpdateTimer);
+      this.statusUpdateTimer = null;
+    }
+    this.pendingStatusUpdates.clear();
 
     this.removeTemporaryHighlight();
     this.clearAnnotations();
