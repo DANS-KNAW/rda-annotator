@@ -11,8 +11,17 @@ import type { AnnotationHit } from "@/types/elastic-search-document.interface";
 import { injectHighlightStyles } from "@/utils/inject-highlight-styles";
 import { getAnnotationIdsAtPoint } from "@/utils/highlights-at-point";
 import { getDocumentURL } from "@/utils/document-url";
-import { isPDFDocument, isPlaceholderRange } from "@/utils/anchoring/pdf";
+import {
+  isPDFDocument,
+  isPlaceholderRange,
+  getPageIndexFromSelectors,
+  createPDFPageStateManager,
+  destroyPDFPageStateManager,
+  type PDFPageStateManager,
+} from "@/utils/anchoring/pdf";
 import { sendMessage, onMessage } from "@/utils/messaging";
+
+export type AnchorStatus = "anchored" | "pending" | "orphaned" | "recovered";
 
 interface AnchoredAnnotation {
   annotation: AnnotationHit;
@@ -23,36 +32,46 @@ interface AnchoredAnnotation {
 export class AnnotationManager {
   private annotations: Map<string, AnchoredAnnotation> = new Map();
   private orphanedAnnotationIds: Set<string> = new Set();
+  private pendingAnnotationIds: Set<string> = new Set();
+  private recoveredAnnotationIds: Set<string> = new Set();
+  private orphanedAnnotations: Map<string, AnnotationHit> = new Map();
+  private retryAttempts: Map<string, number> = new Map();
   private currentFocused: string | null = null;
   private temporaryHighlight: Highlight | null = null;
   private onHighlightClick?: (annotationIds: string[]) => void;
   private onHighlightHover?: (annotationIds: string[]) => void;
   private rootElement: HTMLElement;
   private targetDocument: Document;
-  private pdfObserver?: MutationObserver;
-  private pdfObserverRetryCount = 0;
-  // PDF re-anchoring settings (3s max wait, 20ms polling)
-  private readonly PDF_OBSERVER_RETRY_INTERVAL_MS = 20;
-  private readonly MAX_PDF_OBSERVER_RETRIES = 150; // 3 seconds max (150 * 20ms)
-  private readonly PDF_REANCHOR_DEBOUNCE_MS = 20;
+
+  // PDF page state management (event-driven)
+  private pdfPageStateManager?: PDFPageStateManager;
+  private pageReadyUnsubscribe?: () => void;
+  private pageDestroyedUnsubscribe?: () => void;
+
+  // Anchor retry settings
+  private readonly MAX_TIMED_RETRIES = 5;
+  private readonly INITIAL_RETRY_DELAY_MS = 500;
+  private readonly MAX_RETRY_DELAY_MS = 8000;
 
   // Debounced status updates
-  private pendingStatusUpdates: Map<string, boolean> = new Map();
+  private pendingStatusUpdates: Map<string, AnchorStatus> = new Map();
   private statusUpdateTimer: number | null = null;
   private readonly STATUS_UPDATE_DEBOUNCE_MS = 10;
+  private isPDFHint: boolean = false;
 
   constructor(options?: {
     onHighlightClick?: (annotationIds: string[]) => void;
     onHighlightHover?: (annotationIds: string[]) => void;
     rootElement?: HTMLElement;
+    isPDF?: boolean;
   }) {
     this.rootElement = options?.rootElement || document.body;
     this.targetDocument = this.rootElement.ownerDocument || document;
     injectHighlightStyles(this.targetDocument);
     this.onHighlightClick = options?.onHighlightClick;
     this.onHighlightHover = options?.onHighlightHover;
+    this.isPDFHint = options?.isPDF ?? false;
     this.setupEventListeners();
-    this.setupPDFObserver();
     this.setupMessageHandlers();
   }
 
@@ -119,42 +138,173 @@ export class AnnotationManager {
     });
   }
 
-  private setupPDFObserver(): void {
+  /**
+   * Setup event-driven PDF page tracking using PDFPageStateManager.
+   * Safe to call multiple times - will only initialize once when PDF.js is ready.
+   */
+  private setupPDFPageTracking(): void {
+    // Already initialized - skip
+    if (this.pdfPageStateManager) {
+      return;
+    }
+
+    // PDF.js not ready yet - can't initialize
     if (!isPDFDocument()) {
       return;
     }
 
-    const pdfViewerApp = (window as any).PDFViewerApplication;
+    this.pdfPageStateManager = createPDFPageStateManager();
+    this.pdfPageStateManager.initialize();
 
-    if (!pdfViewerApp?.pdfViewer?.viewer) {
-      if (this.pdfObserverRetryCount < this.MAX_PDF_OBSERVER_RETRIES) {
-        this.pdfObserverRetryCount++;
-        setTimeout(
-          () => this.setupPDFObserver(),
-          this.PDF_OBSERVER_RETRY_INTERVAL_MS
-        );
-      }
+    this.pageReadyUnsubscribe = this.pdfPageStateManager.onPageTextLayerReady(
+      (pageIndex) => this.handlePageTextLayerReady(pageIndex)
+    );
+
+    this.pageDestroyedUnsubscribe = this.pdfPageStateManager.onPageDestroyed(
+      (pageIndex) => this.handlePageDestroyed(pageIndex)
+    );
+
+    if (import.meta.env.DEV) {
+      console.log("[AnnotationManager] PDF page tracking initialized");
+    }
+  }
+
+  /**
+   * Handle text layer becoming ready for a specific page.
+   * Attempts to re-anchor any pending/orphaned annotations for this page.
+   */
+  private async handlePageTextLayerReady(pageIndex: number): Promise<void> {
+    const annotationsForPage = this.getAnnotationsForPage(pageIndex);
+
+    if (annotationsForPage.length === 0) {
       return;
     }
 
-    const debounce = (fn: () => void, delay: number) => {
-      let timeoutId: number;
-      return () => {
-        clearTimeout(timeoutId);
-        timeoutId = window.setTimeout(fn, delay);
-      };
-    };
+    if (import.meta.env.DEV) {
+      console.log(
+        `[AnnotationManager] Page ${pageIndex} ready, ${annotationsForPage.length} annotations to process`
+      );
+    }
 
-    this.pdfObserver = new MutationObserver(
-      debounce(() => this.reanchorPlaceholders(), this.PDF_REANCHOR_DEBOUNCE_MS)
-    );
+    for (const { id, annotation } of annotationsForPage) {
+      const anchored = this.annotations.get(id);
 
-    this.pdfObserver.observe(pdfViewerApp.pdfViewer.viewer, {
-      attributes: true,
-      attributeFilter: ["data-loaded"],
-      childList: true,
-      subtree: true,
-    });
+      // Skip if already successfully anchored with valid highlight
+      if (anchored?.highlight && anchored.highlight.elements.length > 0) {
+        const stillInDOM = anchored.highlight.elements.every((el) =>
+          document.body.contains(el)
+        );
+        if (stillInDOM) continue;
+      }
+
+      await this.attemptReanchor(id, annotation);
+    }
+  }
+
+  /**
+   * Handle page being destroyed (e.g., scrolled away in virtualized rendering).
+   * Invalidates highlights that are no longer in the DOM.
+   */
+  private handlePageDestroyed(pageIndex: number): void {
+    const annotationsForPage = this.getAnnotationsForPage(pageIndex);
+
+    for (const { id } of annotationsForPage) {
+      const anchored = this.annotations.get(id);
+      if (!anchored?.highlight) continue;
+
+      const stillValid = anchored.highlight.elements.every((el) =>
+        document.body.contains(el)
+      );
+
+      if (!stillValid) {
+        removeHighlight(anchored.highlight);
+        anchored.highlight = null;
+        // Will be re-anchored when page renders again
+      }
+    }
+  }
+
+  /**
+   * Get all annotations (including orphaned) that belong to a specific page.
+   */
+  private getAnnotationsForPage(
+    pageIndex: number
+  ): Array<{ id: string; annotation: AnnotationHit }> {
+    const result: Array<{ id: string; annotation: AnnotationHit }> = [];
+
+    // Check anchored annotations
+    for (const [id, anchored] of this.annotations) {
+      const selectors =
+        anchored.annotation._source.annotation_target?.selector || [];
+      const annotationPageIndex = getPageIndexFromSelectors(selectors);
+      if (annotationPageIndex === pageIndex) {
+        result.push({ id, annotation: anchored.annotation });
+      }
+    }
+
+    // Check orphaned annotations
+    for (const [id, annotation] of this.orphanedAnnotations) {
+      if (this.annotations.has(id)) continue; // Already in anchored list
+      const selectors = annotation._source.annotation_target?.selector || [];
+      const annotationPageIndex = getPageIndexFromSelectors(selectors);
+      if (annotationPageIndex === pageIndex) {
+        result.push({ id, annotation });
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Attempt to re-anchor an annotation. Updates status based on result.
+   */
+  private async attemptReanchor(
+    id: string,
+    annotation: AnnotationHit
+  ): Promise<boolean> {
+    const existingAnchored = this.annotations.get(id);
+    const wasOrphaned = this.orphanedAnnotationIds.has(id);
+
+    // Clean up existing placeholder/highlight
+    if (existingAnchored?.highlight) {
+      removeHighlight(existingAnchored.highlight);
+    }
+    this.annotations.delete(id);
+
+    try {
+      await this.anchorAnnotation(annotation);
+
+      // Successfully anchored
+      this.pendingAnnotationIds.delete(id);
+      this.orphanedAnnotationIds.delete(id);
+      this.orphanedAnnotations.delete(id);
+      this.retryAttempts.delete(id);
+
+      if (wasOrphaned) {
+        this.recoveredAnnotationIds.add(id);
+        this.scheduleStatusUpdate(id, "recovered");
+        if (import.meta.env.DEV) {
+          console.log(
+            `[AnnotationManager] Annotation ${id} recovered from orphaned state`
+          );
+        }
+      } else {
+        this.scheduleStatusUpdate(id, "anchored");
+      }
+
+      return true;
+    } catch (error) {
+      // Re-anchoring failed, keep in orphaned state
+      this.orphanedAnnotationIds.add(id);
+      this.orphanedAnnotations.set(id, annotation);
+      this.scheduleStatusUpdate(id, "orphaned");
+
+      if (import.meta.env.DEV) {
+        console.warn(`[AnnotationManager] Re-anchor failed for ${id}:`, error);
+      }
+
+      return false;
+    }
   }
 
   private setupMessageHandlers(): void {
@@ -163,17 +313,28 @@ export class AnnotationManager {
     });
   }
 
-  private getAnchorStatus(): { anchored: string[]; orphaned: string[] } {
+  private getAnchorStatus(): {
+    anchored: string[];
+    pending: string[];
+    orphaned: string[];
+    recovered: string[];
+  } {
     const anchored: string[] = [];
+    const pending: string[] = Array.from(this.pendingAnnotationIds);
     const orphaned: string[] = Array.from(this.orphanedAnnotationIds);
+    const recovered: string[] = Array.from(this.recoveredAnnotationIds);
 
-    for (const [id, _] of this.annotations) {
-      if (!this.orphanedAnnotationIds.has(id)) {
+    for (const [id] of this.annotations) {
+      if (
+        !this.orphanedAnnotationIds.has(id) &&
+        !this.pendingAnnotationIds.has(id) &&
+        !this.recoveredAnnotationIds.has(id)
+      ) {
         anchored.push(id);
       }
     }
 
-    return { anchored, orphaned };
+    return { anchored, pending, orphaned, recovered };
   }
 
   /**
@@ -181,8 +342,11 @@ export class AnnotationManager {
    * Multiple updates within the debounce window are batched together,
    * with the latest status for each annotation ID taking precedence.
    */
-  private scheduleStatusUpdate(annotationId: string, anchored: boolean): void {
-    this.pendingStatusUpdates.set(annotationId, anchored);
+  private scheduleStatusUpdate(
+    annotationId: string,
+    status: AnchorStatus
+  ): void {
+    this.pendingStatusUpdates.set(annotationId, status);
 
     if (this.statusUpdateTimer === null) {
       this.statusUpdateTimer = window.setTimeout(() => {
@@ -199,54 +363,12 @@ export class AnnotationManager {
     const updates = new Map(this.pendingStatusUpdates);
     this.pendingStatusUpdates.clear();
 
-    for (const [annotationId, anchored] of updates) {
+    for (const [annotationId, status] of updates) {
       try {
-        await sendMessage("anchorStatusUpdate", { annotationId, anchored });
+        await sendMessage("anchorStatusUpdate", { annotationId, status });
       } catch (error) {
         if (import.meta.env.DEV) {
           console.warn("Failed to send anchor status update:", error);
-        }
-      }
-    }
-  }
-
-  private async reanchorPlaceholders(): Promise<void> {
-    const toReanchor: string[] = [];
-
-    for (const [id, anchored] of this.annotations) {
-      if (anchored.highlight === null) {
-        toReanchor.push(id);
-      } else {
-        for (const el of anchored.highlight.elements) {
-          if (!document.body.contains(el)) {
-            toReanchor.push(id);
-            break;
-          }
-        }
-      }
-    }
-
-    if (toReanchor.length === 0) {
-      return;
-    }
-
-    for (const id of toReanchor) {
-      const anchored = this.annotations.get(id);
-      if (anchored) {
-        if (anchored.highlight) {
-          removeHighlight(anchored.highlight);
-        }
-        this.annotations.delete(id);
-
-        try {
-          await this.anchorAnnotation(anchored.annotation);
-          this.scheduleStatusUpdate(id, true);
-        } catch (error) {
-          if (import.meta.env.DEV) {
-            console.warn(`Failed to re-anchor ${id}:`, error);
-          }
-          this.orphanedAnnotationIds.add(id);
-          this.scheduleStatusUpdate(id, false);
         }
       }
     }
@@ -277,24 +399,153 @@ export class AnnotationManager {
       const response = await searchAnnotationsByUrl(url);
       const annotations = response.hits.hits;
 
-      for (const annotation of annotations) {
-        try {
-          // For PDFs, placeholders are used when text layer isn't ready
-          // and reanchorPlaceholders() handles re-anchoring when content loads
-          await this.anchorAnnotation(annotation);
+      // Use URL hint OR runtime check - handles race condition where
+      // isPDFDocument() returns false because PDF.js hasn't loaded yet
+      const shouldUseHybridRetry = this.isPDFHint || isPDFDocument();
 
-          this.scheduleStatusUpdate(annotation._id, true);
-        } catch (error) {
-          // Mark as orphaned if not already tracked (handles all error cases)
-          if (!this.annotations.has(annotation._id)) {
-            this.orphanedAnnotationIds.add(annotation._id);
-            this.scheduleStatusUpdate(annotation._id, false);
-          }
+      // Try to initialize PDF tracking now (PDF.js might be ready)
+      if (shouldUseHybridRetry) {
+        this.setupPDFPageTracking();
+      }
+
+      for (const annotation of annotations) {
+        if (shouldUseHybridRetry) {
+          // Fire-and-forget: parallel anchoring, status updates stream to sidebar
+          this.anchorWithHybridRetry(annotation);
+        } else {
+          // Fire-and-forget for non-PDF too
+          this.anchorNonPDF(annotation);
         }
       }
     } catch (error) {
       console.error("Failed to load annotations:", error);
     }
+  }
+
+  /**
+   * Non-blocking anchoring for non-PDF documents.
+   */
+  private async anchorNonPDF(annotation: AnnotationHit): Promise<void> {
+    try {
+      await this.anchorAnnotation(annotation);
+      this.scheduleStatusUpdate(annotation._id, "anchored");
+    } catch {
+      if (!this.annotations.has(annotation._id)) {
+        this.orphanedAnnotationIds.add(annotation._id);
+        this.orphanedAnnotations.set(annotation._id, annotation);
+        this.scheduleStatusUpdate(annotation._id, "orphaned");
+      }
+    }
+  }
+
+  /**
+   * Hybrid retry strategy for PDF annotations.
+   * Fully fire-and-forget - does not block caller.
+   * Status updates stream to sidebar as anchoring progresses.
+   */
+  private anchorWithHybridRetry(annotation: AnnotationHit): void {
+    const id = annotation._id;
+
+    // Mark as pending immediately so sidebar shows loading state
+    this.pendingAnnotationIds.add(id);
+    this.orphanedAnnotations.set(id, annotation);
+    this.scheduleStatusUpdate(id, "pending");
+
+    // Fire initial attempt asynchronously
+    this.tryInitialAnchor(annotation);
+  }
+
+  /**
+   * Try initial anchor attempt, then start timed retries if needed.
+   */
+  private async tryInitialAnchor(annotation: AnnotationHit): Promise<void> {
+    const id = annotation._id;
+
+    try {
+      await this.anchorAnnotation(annotation);
+      const anchored = this.annotations.get(id);
+
+      if (anchored?.highlight) {
+        // Successfully anchored with real highlight
+        this.pendingAnnotationIds.delete(id);
+        this.orphanedAnnotations.delete(id);
+        this.scheduleStatusUpdate(id, "anchored");
+        return;
+      }
+      // Placeholder was created - continue with timed retries
+    } catch {
+      // Initial attempt failed - continue with timed retries
+    }
+
+    // Start timed retries in background
+    this.runTimedRetries(annotation, 0, this.INITIAL_RETRY_DELAY_MS);
+  }
+
+  /**
+   * Run timed retries in the background with exponential backoff.
+   * Event-driven retries via handlePageTextLayerReady continue independently.
+   */
+  private async runTimedRetries(
+    annotation: AnnotationHit,
+    attempts: number,
+    delay: number
+  ): Promise<void> {
+    const id = annotation._id;
+
+    while (attempts < this.MAX_TIMED_RETRIES) {
+      // Check if already successfully anchored (by event-driven retry)
+      const anchored = this.annotations.get(id);
+      if (anchored?.highlight && anchored.highlight.elements.length > 0) {
+        return; // Already done
+      }
+
+      attempts++;
+      this.retryAttempts.set(id, attempts);
+      await this.sleep(delay);
+      delay = Math.min(delay * 2, this.MAX_RETRY_DELAY_MS);
+
+      try {
+        // Clean up any existing placeholder
+        const existing = this.annotations.get(id);
+        if (existing) {
+          if (existing.highlight) {
+            removeHighlight(existing.highlight);
+          }
+          this.annotations.delete(id);
+        }
+
+        await this.anchorAnnotation(annotation);
+
+        const newAnchored = this.annotations.get(id);
+        if (newAnchored?.highlight) {
+          // Successfully anchored
+          this.pendingAnnotationIds.delete(id);
+          this.orphanedAnnotations.delete(id);
+          this.retryAttempts.delete(id);
+          this.scheduleStatusUpdate(id, "anchored");
+          return;
+        }
+      } catch {
+        // Continue retrying
+      }
+    }
+
+    // Timed retries exhausted - mark as orphaned
+    // Event-driven retries via handlePageTextLayerReady will continue
+    this.pendingAnnotationIds.delete(id);
+    this.orphanedAnnotationIds.add(id);
+    this.retryAttempts.delete(id);
+    this.scheduleStatusUpdate(id, "orphaned");
+
+    if (import.meta.env.DEV) {
+      console.log(
+        `[AnnotationManager] Annotation ${id} marked orphaned after ${this.MAX_TIMED_RETRIES} retries`
+      );
+    }
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async createTemporaryHighlight(range: Range): Promise<void> {
@@ -472,9 +723,18 @@ export class AnnotationManager {
   }
 
   destroy(): void {
-    if (this.pdfObserver) {
-      this.pdfObserver.disconnect();
-      this.pdfObserver = undefined;
+    // Clean up PDF page state management
+    if (this.pageReadyUnsubscribe) {
+      this.pageReadyUnsubscribe();
+      this.pageReadyUnsubscribe = undefined;
+    }
+    if (this.pageDestroyedUnsubscribe) {
+      this.pageDestroyedUnsubscribe();
+      this.pageDestroyedUnsubscribe = undefined;
+    }
+    if (this.pdfPageStateManager) {
+      destroyPDFPageStateManager();
+      this.pdfPageStateManager = undefined;
     }
 
     if (this.statusUpdateTimer !== null) {
@@ -482,6 +742,12 @@ export class AnnotationManager {
       this.statusUpdateTimer = null;
     }
     this.pendingStatusUpdates.clear();
+
+    // Clear all state
+    this.pendingAnnotationIds.clear();
+    this.recoveredAnnotationIds.clear();
+    this.orphanedAnnotations.clear();
+    this.retryAttempts.clear();
 
     this.removeTemporaryHighlight();
     this.clearAnnotations();

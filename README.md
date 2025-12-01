@@ -46,7 +46,7 @@ WXT_API_ENDPOINT=http://localhost:3000
 
 # Other configuration
 WXT_KNOWLEDGE_BASE_URL=https://kb-rda.org
-WXT_ANNOTATOR_VERSION=1.0.2
+WXT_ANNOTATOR_VERSION=1.1.0
 ```
 
 ## Services & Libraries

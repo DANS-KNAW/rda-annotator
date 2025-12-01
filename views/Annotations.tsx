@@ -30,8 +30,12 @@ export default function Annotations() {
   const [orphanedAnnotationIds, setOrphanedAnnotationIds] = useState<string[]>(
     []
   );
-  // Track which annotations have ever been successfully anchored (first-success-wins across frames)
-  // Using ref instead of state since we only need to track this for logic, not re-rendering
+  const [pendingAnnotationIds, setPendingAnnotationIds] = useState<string[]>(
+    []
+  );
+  const [recoveredAnnotationIds, setRecoveredAnnotationIds] = useState<
+    string[]
+  >([]);
   const everAnchoredIdsRef = useRef<Set<string>>(new Set());
 
   const mergeAnnotations = (
@@ -76,7 +80,11 @@ export default function Annotations() {
     }
   };
 
-  const allAnnotations = [...annotations, ...myAnnotations];
+  const allAnnotations = Array.from(
+    new Map(
+      [...annotations, ...myAnnotations].map((ann) => [ann._id, ann])
+    ).values()
+  );
   const orphanedAnnotations = allAnnotations.filter((ann) =>
     orphanedAnnotationIds.includes(ann._id)
   );
@@ -258,21 +266,48 @@ export default function Annotations() {
     const unsubscribe = onMessage("anchorStatusUpdate", async (message) => {
       if (!message.data) return;
 
-      const { annotationId, anchored } = message.data;
+      const { annotationId, status } = message.data;
 
-      if (anchored) {
-        // First-success-wins: Mark as ever-anchored and remove from orphaned
-        everAnchoredIdsRef.current.add(annotationId);
-        setOrphanedAnnotationIds((prev) =>
-          prev.filter((id) => id !== annotationId)
-        );
-      } else {
-        // Only mark as orphaned if it was never successfully anchored by any frame
-        if (!everAnchoredIdsRef.current.has(annotationId)) {
+      switch (status) {
+        case "anchored":
+          everAnchoredIdsRef.current.add(annotationId);
           setOrphanedAnnotationIds((prev) =>
+            prev.filter((id) => id !== annotationId)
+          );
+          setPendingAnnotationIds((prev) =>
+            prev.filter((id) => id !== annotationId)
+          );
+          break;
+
+        case "pending":
+          setPendingAnnotationIds((prev) =>
             prev.includes(annotationId) ? prev : [...prev, annotationId]
           );
-        }
+          break;
+
+        case "orphaned":
+          if (!everAnchoredIdsRef.current.has(annotationId)) {
+            setPendingAnnotationIds((prev) =>
+              prev.filter((id) => id !== annotationId)
+            );
+            setOrphanedAnnotationIds((prev) =>
+              prev.includes(annotationId) ? prev : [...prev, annotationId]
+            );
+          }
+          break;
+
+        case "recovered":
+          everAnchoredIdsRef.current.add(annotationId);
+          setRecoveredAnnotationIds((prev) =>
+            prev.includes(annotationId) ? prev : [...prev, annotationId]
+          );
+          setOrphanedAnnotationIds((prev) =>
+            prev.filter((id) => id !== annotationId)
+          );
+          setPendingAnnotationIds((prev) =>
+            prev.filter((id) => id !== annotationId)
+          );
+          break;
       }
     });
 
@@ -300,9 +335,14 @@ export default function Annotations() {
             tabs[0].id
           );
           if (status) {
-            // Initialize everAnchoredIds with successfully anchored annotations
-            everAnchoredIdsRef.current = new Set(status.anchored);
+            // Initialize everAnchoredIds with successfully anchored + recovered annotations
+            everAnchoredIdsRef.current = new Set([
+              ...status.anchored,
+              ...status.recovered,
+            ]);
             setOrphanedAnnotationIds(status.orphaned);
+            setPendingAnnotationIds(status.pending);
+            setRecoveredAnnotationIds(status.recovered);
           }
         }
       } catch (error) {
@@ -385,6 +425,10 @@ export default function Annotations() {
                     key={annotation._id}
                     annotation={annotation}
                     isOrphaned={false}
+                    isPending={pendingAnnotationIds.includes(annotation._id)}
+                    isRecovered={recoveredAnnotationIds.includes(
+                      annotation._id
+                    )}
                     isHovered={false}
                     onClick={() => handleAnnotationClick(annotation, false)}
                   />
@@ -497,6 +541,8 @@ export default function Annotations() {
                   key={annotation._id}
                   annotation={annotation}
                   isOrphaned={true}
+                  isPending={pendingAnnotationIds.includes(annotation._id)}
+                  isRecovered={false}
                   isHovered={false}
                   onClick={() => handleAnnotationClick(annotation, false)}
                 />
@@ -625,6 +671,8 @@ export default function Annotations() {
                   key={annotation._id}
                   annotation={annotation}
                   isOrphaned={false}
+                  isPending={pendingAnnotationIds.includes(annotation._id)}
+                  isRecovered={recoveredAnnotationIds.includes(annotation._id)}
                   isHovered={hoveredAnnotationIds.includes(annotation._id)}
                   onClick={() => handleAnnotationClick(annotation, true)}
                 />

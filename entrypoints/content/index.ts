@@ -3,7 +3,7 @@ import { createHost } from "./host";
 import { FrameObserver } from "./frame-observer";
 import { AnnotationManager } from "./annotation-manager";
 import { FrameInjector } from "./frame-injector";
-import { detectContentTypeAsync } from "@/utils/detect-content-type";
+import { detectContentType } from "@/utils/detect-content-type";
 import { waitForPDFReady } from "@/utils/anchoring/pdf";
 import { getDocumentURL } from "@/utils/document-url";
 import { createAnnotatorPopup } from "./annotator-popup";
@@ -36,26 +36,18 @@ export default defineContentScript({
     marker.setAttribute("data-rda-frame-type", isTopFrame ? "host" : "guest");
     document.head.appendChild(marker);
 
-    // Detect content type (async to wait for PDF.js if needed)
-    const contentType = await detectContentTypeAsync();
-    marker.setAttribute("data-rda-content-type", contentType?.type || "HTML");
+    const contentType = detectContentType();
 
-    if (contentType?.type === "PDF") {
-      try {
-        const isReady = await waitForPDFReady();
-        if (!isReady) {
-          if (import.meta.env.DEV) {
-            console.warn(
-              "[RDA Boot] PDF.js not available, skipping annotation loading"
-            );
-          }
-          return;
-        }
-      } catch (error) {
-        console.error("[RDA Boot] Failed to wait for PDF ready:", error);
-        return;
-      }
-    }
+    // Also check URL for PDF hints (in case PDF.js hasn't loaded yet)
+    const url = window.location.href.toLowerCase();
+    const urlLooksLikePDF =
+      url.includes("/preview/") ||
+      url.includes("viewer.html") ||
+      url.endsWith(".pdf") ||
+      url.includes(".pdf?");
+
+    const isPDF = contentType?.type === "PDF" || urlLooksLikePDF;
+    marker.setAttribute("data-rda-content-type", isPDF ? "PDF" : "HTML");
 
     let host: Awaited<ReturnType<typeof createHost>> | null = null;
     let annotationManager: AnnotationManager | null = null;
@@ -69,11 +61,11 @@ export default defineContentScript({
 
     if (isTopFrame) {
       frameUrls.add(getDocumentURL());
-      try {
-        await sendMessage("frameUrlsChanged", { urls: Array.from(frameUrls) });
-      } catch (error) {
-        // Sidebar might not be ready yet, that's ok
-      }
+      sendMessage("frameUrlsChanged", { urls: Array.from(frameUrls) }).catch(
+        () => {
+          // Sidebar might not be ready yet, that's ok
+        }
+      );
 
       frameInjector = new FrameInjector(ctx);
       annotationManager = new AnnotationManager({
@@ -110,6 +102,7 @@ export default defineContentScript({
             console.error("[RDA] Failed to send hover state:", error);
           }
         },
+        isPDF,
       });
 
       host = await createHost({
@@ -126,8 +119,6 @@ export default defineContentScript({
         },
       });
 
-      await annotationManager.loadAnnotations();
-
       try {
         const state = await sendMessage("getExtensionState", undefined);
         if (state.enabled) {
@@ -136,6 +127,24 @@ export default defineContentScript({
         }
       } catch (error) {
         console.error("Failed to get extension state:", error);
+      }
+
+      if (isPDF) {
+        waitForPDFReady()
+          .then(() => {
+            if (annotationManager) {
+              annotationManager.loadAnnotations();
+            }
+          })
+          .catch(() => {
+            // PDF.js failed to load, still try to load annotations
+            // They'll be orphaned but user can see them in sidebar
+            if (annotationManager) {
+              annotationManager.loadAnnotations();
+            }
+          });
+      } else {
+        annotationManager.loadAnnotations();
       }
 
       const frameObserver = new FrameObserver(ctx, async (frame) => {
@@ -299,6 +308,7 @@ export default defineContentScript({
             "*"
           );
         },
+        isPDF,
       });
 
       guestAnnotatorPopup = await createAnnotatorPopup({
@@ -329,7 +339,22 @@ export default defineContentScript({
         console.error("[RDA Guest] Failed to get extension state:", error);
       }
 
-      await annotationManager.loadAnnotations();
+      if (isPDF) {
+        waitForPDFReady()
+          .then(() => {
+            if (annotationManager) {
+              annotationManager.loadAnnotations();
+            }
+          })
+          .catch(() => {
+            // PDF.js failed to load, still try to load annotations
+            if (annotationManager) {
+              annotationManager.loadAnnotations();
+            }
+          });
+      } else {
+        annotationManager.loadAnnotations();
+      }
 
       // Listen for messages from parent frame
       window.addEventListener("message", async (event) => {

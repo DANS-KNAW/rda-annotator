@@ -6,6 +6,11 @@ import {
 } from "@/types/selector.interface";
 import { matchQuote } from "./match-quote";
 import { translateOffsets } from "@/utils/normalize";
+export {
+  createPDFPageStateManager,
+  destroyPDFPageStateManager,
+} from "./pdf-page-state";
+export type { PDFPageStateManager } from "./pdf-page-state";
 
 // PDF.js rendering states
 const RenderingStates = {
@@ -168,7 +173,7 @@ async function waitForPDFDocumentLoaded(win: Window = window): Promise<any> {
       }
     }, 500);
 
-    // Timeout after 30 seconds
+    // Timeout after 10 seconds (page-level retries handle individual pages)
     setTimeout(() => {
       if (!resolved) {
         if (import.meta.env.DEV) {
@@ -176,7 +181,7 @@ async function waitForPDFDocumentLoaded(win: Window = window): Promise<any> {
         }
         cleanup();
       }
-    }, 30000);
+    }, 10000);
   });
 
   return app;
@@ -186,7 +191,10 @@ export async function waitForPDFReady(win: Window = window): Promise<boolean> {
   try {
     const isPDF = isPDFDocument(win);
     if (import.meta.env.DEV) {
-      console.log(`[PDF waitForPDFReady] isPDFDocument: ${isPDF}, window:`, win === window ? 'main' : 'frame');
+      console.log(
+        `[PDF waitForPDFReady] isPDFDocument: ${isPDF}, window:`,
+        win === window ? "main" : "frame"
+      );
     }
 
     if (!isPDF) {
@@ -237,7 +245,7 @@ async function getPageView(pageIndex: number): Promise<PDFPageView> {
   return pageView;
 }
 
-function isTextLayerRenderingDone(textLayer: TextLayer): boolean {
+export function isTextLayerRenderingDone(textLayer: TextLayer): boolean {
   if (textLayer.renderingDone !== undefined) {
     return textLayer.renderingDone;
   }
@@ -248,6 +256,24 @@ function isTextLayerRenderingDone(textLayer: TextLayer): boolean {
   }
 
   return div.querySelector(".endOfContent") !== null;
+}
+
+/**
+ * Check if a specific page's text layer is ready for anchoring
+ */
+export function isPageTextLayerReady(pageIndex: number): boolean {
+  try {
+    const pdfViewer = getPDFViewer();
+    const pageView = pdfViewer.getPageView(pageIndex);
+
+    if (!pageView) return false;
+    if (pageView.renderingState !== RenderingStates.FINISHED) return false;
+    if (!pageView.textLayer) return false;
+
+    return isTextLayerRenderingDone(pageView.textLayer);
+  } catch {
+    return false;
+  }
 }
 
 function isSpace(char: string): boolean {
@@ -435,8 +461,10 @@ export function isPlaceholderRange(range: Range): boolean {
   const child = children[startOffset];
 
   // Check if that child is a placeholder element
-  return child?.nodeType === Node.ELEMENT_NODE &&
-         (child as Element).hasAttribute("data-placeholder");
+  return (
+    child?.nodeType === Node.ELEMENT_NODE &&
+    (child as Element).hasAttribute("data-placeholder")
+  );
 }
 
 export function createPageSelector(
@@ -448,6 +476,18 @@ export function createPageSelector(
     index: pageIndex,
     label: pageLabel,
   };
+}
+
+/**
+ * Extract page index from selectors array (if PageSelector exists)
+ */
+export function getPageIndexFromSelectors(
+  selectors: Selector[]
+): number | undefined {
+  const pageSelector = selectors.find((s) => s.type === "PageSelector") as
+    | PageSelector
+    | undefined;
+  return pageSelector?.index;
 }
 
 export async function describePDFRange(range: Range): Promise<Selector[]> {
@@ -528,7 +568,9 @@ async function anchorByPosition(
     console.log(`[PDF anchorByPosition] Page ${pageIndex}:`, {
       renderingState: page.renderingState,
       hasTextLayer: !!page.textLayer,
-      textLayerRenderingDone: page.textLayer ? isTextLayerRenderingDone(page.textLayer) : false,
+      textLayerRenderingDone: page.textLayer
+        ? isTextLayerRenderingDone(page.textLayer)
+        : false,
       pageTextLength: pageText.length,
       start,
       end,
@@ -543,7 +585,9 @@ async function anchorByPosition(
     const textLayerDiv = page.textLayer.div || page.textLayer.textLayerDiv;
     if (!textLayerDiv) {
       if (import.meta.env.DEV) {
-        console.warn(`[PDF anchorByPosition] Text layer div not found for page ${pageIndex}`);
+        console.warn(
+          `[PDF anchorByPosition] Text layer div not found for page ${pageIndex}`
+        );
       }
       throw new Error("Text layer div not found");
     }
@@ -558,9 +602,14 @@ async function anchorByPosition(
       });
     }
 
-    if (textLayerStr.length === 0 || textLayerStr.length < pageText.length * 0.5) {
+    if (
+      textLayerStr.length === 0 ||
+      textLayerStr.length < pageText.length * 0.5
+    ) {
       if (import.meta.env.DEV) {
-        console.log(`[PDF anchorByPosition] Text layer too short, creating placeholder for page ${pageIndex}`);
+        console.log(
+          `[PDF anchorByPosition] Text layer too short, creating placeholder for page ${pageIndex}`
+        );
       }
       const placeholder = createPlaceholder(page.div);
       const range = document.createRange();
@@ -629,20 +678,28 @@ async function anchorByPosition(
     range.setEnd(endNode, endOffset);
 
     if (import.meta.env.DEV) {
-      console.log(`[PDF anchorByPosition] Successfully anchored on page ${pageIndex}:`, {
-        rangeText: range.toString().substring(0, 50),
-      });
+      console.log(
+        `[PDF anchorByPosition] Successfully anchored on page ${pageIndex}:`,
+        {
+          rangeText: range.toString().substring(0, 50),
+        }
+      );
     }
 
     return range;
   }
 
   if (import.meta.env.DEV) {
-    console.log(`[PDF anchorByPosition] Text layer not ready, creating placeholder for page ${pageIndex}:`, {
-      renderingState: page.renderingState,
-      hasTextLayer: !!page.textLayer,
-      textLayerRenderingDone: page.textLayer ? isTextLayerRenderingDone(page.textLayer) : false,
-    });
+    console.log(
+      `[PDF anchorByPosition] Text layer not ready, creating placeholder for page ${pageIndex}:`,
+      {
+        renderingState: page.renderingState,
+        hasTextLayer: !!page.textLayer,
+        textLayerRenderingDone: page.textLayer
+          ? isTextLayerRenderingDone(page.textLayer)
+          : false,
+      }
+    );
   }
 
   const placeholder = createPlaceholder(page.div);
