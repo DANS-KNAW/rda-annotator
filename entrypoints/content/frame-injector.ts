@@ -88,7 +88,9 @@ export async function injectIntoFrame(
 
   if (!frameDoc || !frameWindow) {
     if (import.meta.env.DEV) {
-      console.warn("[RDA Frame Injector] Cannot access frame document or window");
+      console.warn(
+        "[RDA Frame Injector] Cannot access frame document or window"
+      );
     }
     return null;
   }
@@ -119,8 +121,22 @@ export async function injectIntoFrame(
   marker.setAttribute("data-rda-content-type", contentType?.type || "HTML");
   frameDoc.head.appendChild(marker);
 
+  // Register frame URL with host for sidebar querying
+  // Note: Use frameWindow.location.href since getDocumentURL() uses window.location
+  // which would be the host frame's URL, not the iframe's URL
+  const frameUrl = frameWindow.location.href;
+  frameWindow.parent.postMessage(
+    {
+      type: "rda:registerFrameUrl",
+      url: frameUrl,
+      source: "frame-injector",
+    },
+    "*"
+  );
+
   const annotationManager = new AnnotationManager({
     rootElement: frameDoc.body,
+    documentUrl: frameUrl,
     onHighlightClick: async (annotationIds) => {
       frameWindow.parent.postMessage(
         {
@@ -159,10 +175,20 @@ export async function injectIntoFrame(
 }
 
 /**
+ * Anchor status type matching AnnotationManager.getAnchorStatus() return type
+ */
+interface AnchorStatus {
+  anchored: string[];
+  pending: string[];
+  orphaned: string[];
+  recovered: string[];
+}
+
+/**
  * Frame Injector class that monitors frames and injects the annotator
  */
 export class FrameInjector {
-  private injectedFrames = new WeakMap<HTMLIFrameElement, FrameGuestInstance>();
+  private injectedFrames = new Map<HTMLIFrameElement, FrameGuestInstance>();
   private ctx: ContentScriptContext;
 
   constructor(ctx: ContentScriptContext) {
@@ -196,10 +222,32 @@ export class FrameInjector {
   }
 
   /**
+   * Get anchor statuses from all same-origin guest frames (direct access)
+   */
+  getAllGuestStatuses(): AnchorStatus[] {
+    const statuses: AnchorStatus[] = [];
+    for (const [, instance] of this.injectedFrames) {
+      statuses.push(instance.annotationManager.getAnchorStatus());
+    }
+    return statuses;
+  }
+
+  /**
+   * Reload annotations in all same-origin guest frames (direct access)
+   */
+  async reloadAllGuestAnnotations(): Promise<void> {
+    for (const [, instance] of this.injectedFrames) {
+      await instance.annotationManager.loadAnnotations();
+    }
+  }
+
+  /**
    * Clean up all injected frames
    */
   destroy(): void {
-    // Cannot iterate WeakMap, so nothing to do here
-    // Individual frames will clean up when garbage collected
+    for (const [, instance] of this.injectedFrames) {
+      instance.cleanup();
+    }
+    this.injectedFrames.clear();
   }
 }

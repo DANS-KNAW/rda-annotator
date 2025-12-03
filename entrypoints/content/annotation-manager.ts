@@ -19,7 +19,7 @@ import {
   destroyPDFPageStateManager,
   type PDFPageStateManager,
 } from "@/utils/anchoring/pdf";
-import { sendMessage, onMessage } from "@/utils/messaging";
+import { sendMessage } from "@/utils/messaging";
 
 export type AnchorStatus = "anchored" | "pending" | "orphaned" | "recovered";
 
@@ -59,11 +59,18 @@ export class AnnotationManager {
   private readonly STATUS_UPDATE_DEBOUNCE_MS = 10;
   private isPDFHint: boolean = false;
 
+  private customDocumentUrl?: string;
+
+  private highlightObserver: MutationObserver | null = null;
+  private reanchorDebounceTimer: number | null = null;
+  private readonly REANCHOR_DEBOUNCE_MS = 500;
+
   constructor(options?: {
     onHighlightClick?: (annotationIds: string[]) => void;
     onHighlightHover?: (annotationIds: string[]) => void;
     rootElement?: HTMLElement;
     isPDF?: boolean;
+    documentUrl?: string;
   }) {
     this.rootElement = options?.rootElement || document.body;
     this.targetDocument = this.rootElement.ownerDocument || document;
@@ -71,8 +78,9 @@ export class AnnotationManager {
     this.onHighlightClick = options?.onHighlightClick;
     this.onHighlightHover = options?.onHighlightHover;
     this.isPDFHint = options?.isPDF ?? false;
+    this.customDocumentUrl = options?.documentUrl;
     this.setupEventListeners();
-    this.setupMessageHandlers();
+    this.setupHighlightObserver();
   }
 
   /**
@@ -136,6 +144,85 @@ export class AnnotationManager {
         this.onHighlightHover([]);
       }
     });
+  }
+
+  /**
+   * Setup MutationObserver to detect when something removes highlight elements.
+   * When highlights are removed, schedules re-anchoring after a debounce period.
+   */
+  private setupHighlightObserver(): void {
+    this.highlightObserver = new MutationObserver((mutations) => {
+      let highlightsRemoved = false;
+
+      for (const mutation of mutations) {
+        for (const node of mutation.removedNodes) {
+          if (
+            node.nodeName === "RDA-HIGHLIGHT" ||
+            (node instanceof Element && node.querySelector("rda-highlight"))
+          ) {
+            highlightsRemoved = true;
+            break;
+          }
+        }
+        if (highlightsRemoved) break;
+      }
+
+      if (highlightsRemoved) {
+        this.scheduleReanchor();
+      }
+    });
+
+    this.highlightObserver.observe(this.rootElement, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  /**
+   * Schedule re-anchoring with debouncing to wait for hydration to settle.
+   */
+  private scheduleReanchor(): void {
+    if (this.reanchorDebounceTimer !== null) {
+      clearTimeout(this.reanchorDebounceTimer);
+    }
+
+    this.reanchorDebounceTimer = window.setTimeout(() => {
+      this.reanchorDebounceTimer = null;
+      this.reanchorMissingHighlights();
+    }, this.REANCHOR_DEBOUNCE_MS);
+  }
+
+  /**
+   * Re-anchor annotations whose highlights are no longer in the DOM.
+   */
+  private async reanchorMissingHighlights(): Promise<void> {
+    const toReanchor: AnnotationHit[] = [];
+
+    for (const [id, anchored] of this.annotations) {
+      if (anchored.highlight) {
+        const stillInDOM = anchored.highlight.elements.some((el) =>
+          this.targetDocument.body.contains(el)
+        );
+        if (!stillInDOM) {
+          // Highlight removed - need to re-anchor
+          removeHighlight(anchored.highlight);
+          anchored.highlight = null;
+          toReanchor.push(anchored.annotation);
+        }
+      }
+    }
+
+    if (toReanchor.length === 0) return;
+
+    if (import.meta.env.DEV) {
+      console.log(
+        `[AnnotationManager] Re-anchoring ${toReanchor.length} annotations after DOM change`
+      );
+    }
+
+    for (const annotation of toReanchor) {
+      await this.anchorNonPDF(annotation);
+    }
   }
 
   /**
@@ -307,13 +394,7 @@ export class AnnotationManager {
     }
   }
 
-  private setupMessageHandlers(): void {
-    onMessage("requestAnchorStatus", async () => {
-      return this.getAnchorStatus();
-    });
-  }
-
-  private getAnchorStatus(): {
+  getAnchorStatus(): {
     anchored: string[];
     pending: string[];
     orphaned: string[];
@@ -395,7 +476,7 @@ export class AnnotationManager {
     }
 
     try {
-      const url = getDocumentURL();
+      const url = this.customDocumentUrl || getDocumentURL();
       const response = await searchAnnotationsByUrl(url);
       const annotations = response.hits.hits;
 
@@ -735,6 +816,15 @@ export class AnnotationManager {
     if (this.pdfPageStateManager) {
       destroyPDFPageStateManager();
       this.pdfPageStateManager = undefined;
+    }
+
+    if (this.highlightObserver) {
+      this.highlightObserver.disconnect();
+      this.highlightObserver = null;
+    }
+    if (this.reanchorDebounceTimer !== null) {
+      clearTimeout(this.reanchorDebounceTimer);
+      this.reanchorDebounceTimer = null;
     }
 
     if (this.statusUpdateTimer !== null) {

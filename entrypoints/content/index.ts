@@ -8,6 +8,96 @@ import { waitForPDFReady } from "@/utils/anchoring/pdf";
 import { getDocumentURL } from "@/utils/document-url";
 import { createAnnotatorPopup } from "./annotator-popup";
 
+interface AnchorStatus {
+  anchored: string[];
+  pending: string[];
+  orphaned: string[];
+  recovered: string[];
+}
+
+/**
+ * Merge multiple anchor statuses into one, deduplicating IDs
+ */
+function mergeAnchorStatuses(statuses: AnchorStatus[]): AnchorStatus {
+  return {
+    anchored: [...new Set(statuses.flatMap((s) => s.anchored))],
+    pending: [...new Set(statuses.flatMap((s) => s.pending))],
+    orphaned: [...new Set(statuses.flatMap((s) => s.orphaned))],
+    recovered: [...new Set(statuses.flatMap((s) => s.recovered))],
+  };
+}
+
+/**
+ * Request anchor statuses from cross-origin frames via postMessage
+ * Returns statuses from frames that respond within timeout
+ */
+async function requestCrossOriginFrameStatuses(): Promise<AnchorStatus[]> {
+  return new Promise((resolve) => {
+    const statuses: AnchorStatus[] = [];
+    const pendingFrames = new Set<Window>();
+
+    // Find all iframes that might be cross-origin guests
+    const frames = document.querySelectorAll("iframe");
+    frames.forEach((frame) => {
+      try {
+        if (!frame.contentDocument && frame.contentWindow) {
+          pendingFrames.add(frame.contentWindow);
+        }
+      } catch {
+        // Security error means cross-origin
+        if (frame.contentWindow) {
+          pendingFrames.add(frame.contentWindow);
+        }
+      }
+    });
+
+    if (pendingFrames.size === 0) {
+      resolve([]);
+      return;
+    }
+
+    const handler = (event: MessageEvent) => {
+      if (event.data.type === "rda:anchorStatusResponse" && event.data.status) {
+        statuses.push(event.data.status);
+        pendingFrames.delete(event.source as Window);
+        if (pendingFrames.size === 0) {
+          window.removeEventListener("message", handler);
+          resolve(statuses);
+        }
+      }
+    };
+    window.addEventListener("message", handler);
+
+    pendingFrames.forEach((win) => {
+      win.postMessage({ type: "rda:requestAnchorStatus" }, "*");
+    });
+
+    setTimeout(() => {
+      window.removeEventListener("message", handler);
+      resolve(statuses);
+    }, 500);
+  });
+}
+
+/**
+ * Broadcast a message to all cross-origin frames
+ */
+function broadcastToCrossOriginFrames(message: { type: string }): void {
+  const frames = document.querySelectorAll("iframe");
+  frames.forEach((frame) => {
+    try {
+      if (!frame.contentDocument && frame.contentWindow) {
+        frame.contentWindow.postMessage(message, "*");
+      }
+    } catch {
+      // Security error means cross-origin
+      if (frame.contentWindow) {
+        frame.contentWindow.postMessage(message, "*");
+      }
+    }
+  });
+}
+
 export default defineContentScript({
   matches: ["*://*/*"],
   allFrames: true,
@@ -124,27 +214,28 @@ export default defineContentScript({
         if (state.enabled) {
           await host.mount();
           annotationManager.setHighlightsVisible(true);
+
+          // Only load annotations when extension is enabled and mounted
+          if (isPDF) {
+            waitForPDFReady()
+              .then(() => {
+                if (annotationManager) {
+                  annotationManager.loadAnnotations();
+                }
+              })
+              .catch(() => {
+                // PDF.js failed to load, still try to load annotations
+                // They'll be orphaned but user can see them in sidebar
+                if (annotationManager) {
+                  annotationManager.loadAnnotations();
+                }
+              });
+          } else {
+            annotationManager.loadAnnotations();
+          }
         }
       } catch (error) {
         console.error("Failed to get extension state:", error);
-      }
-
-      if (isPDF) {
-        waitForPDFReady()
-          .then(() => {
-            if (annotationManager) {
-              annotationManager.loadAnnotations();
-            }
-          })
-          .catch(() => {
-            // PDF.js failed to load, still try to load annotations
-            // They'll be orphaned but user can see them in sidebar
-            if (annotationManager) {
-              annotationManager.loadAnnotations();
-            }
-          });
-      } else {
-        annotationManager.loadAnnotations();
       }
 
       const frameObserver = new FrameObserver(ctx, async (frame) => {
@@ -267,12 +358,39 @@ export default defineContentScript({
       });
 
       onMessage("reloadAnnotations", async () => {
-        if (!annotationManager) return;
-        await annotationManager.loadAnnotations();
+        if (annotationManager) {
+          await annotationManager.loadAnnotations();
+        }
+
+        if (frameInjector) {
+          await frameInjector.reloadAllGuestAnnotations();
+        }
+
+        broadcastToCrossOriginFrames({ type: "rda:reloadAnnotations" });
       });
 
       onMessage("getFrameUrls", async () => {
         return { urls: Array.from(frameUrls) };
+      });
+
+      onMessage("requestAnchorStatus", async () => {
+        const defaultStatus: AnchorStatus = {
+          anchored: [],
+          pending: [],
+          orphaned: [],
+          recovered: [],
+        };
+
+        const hostStatus =
+          annotationManager?.getAnchorStatus() || defaultStatus;
+        const sameOriginStatuses = frameInjector?.getAllGuestStatuses() || [];
+        const crossOriginStatuses = await requestCrossOriginFrameStatuses();
+
+        return mergeAnchorStatuses([
+          hostStatus,
+          ...sameOriginStatuses,
+          ...crossOriginStatuses,
+        ]);
       });
     } else {
       const frameUrl = getDocumentURL();
@@ -360,6 +478,24 @@ export default defineContentScript({
       window.addEventListener("message", async (event) => {
         if (event.data.type === "rda:scrollToAnnotation" && annotationManager) {
           await annotationManager.scrollToAnnotation(event.data.annotationId);
+        } else if (
+          event.data.type === "rda:requestAnchorStatus" &&
+          annotationManager
+        ) {
+          const status = annotationManager.getAnchorStatus();
+          window.parent.postMessage(
+            {
+              type: "rda:anchorStatusResponse",
+              status,
+              source: "guest-frame",
+            },
+            "*"
+          );
+        } else if (
+          event.data.type === "rda:reloadAnnotations" &&
+          annotationManager
+        ) {
+          await annotationManager.loadAnnotations();
         }
       });
     }
