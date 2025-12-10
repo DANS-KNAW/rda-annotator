@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useRef } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useLocation } from "react-router";
 import {
   searchAnnotationsByUrl,
@@ -9,12 +9,20 @@ import { AuthStorage } from "@/utils/auth-storage";
 import AnnotationDrawer from "@/components/AnnotationDrawer";
 import AnnotationCard from "@/components/AnnotationCard";
 import { AuthenticationContext } from "@/context/authentication.context";
+import { useAnchorStatus } from "@/context/anchor-status.context";
 import { sendMessage, onMessage } from "@/utils/messaging";
 import { extractDocumentURL } from "@/utils/extract-document-url";
+import { storage } from "#imports";
 
 export default function Annotations() {
   const { isAuthenticated, oauth } = useContext(AuthenticationContext);
   const location = useLocation();
+  const {
+    orphanedIds: orphanedAnnotationIds,
+    pendingIds: pendingAnnotationIds,
+    recoveredIds: recoveredAnnotationIds,
+    requestStatus,
+  } = useAnchorStatus();
 
   const [annotations, setAnnotations] = useState<AnnotationHit[]>([]);
   const [myAnnotations, setMyAnnotations] = useState<AnnotationHit[]>([]);
@@ -27,16 +35,6 @@ export default function Annotations() {
   const [hoveredAnnotationIds, setHoveredAnnotationIds] = useState<string[]>(
     []
   );
-  const [orphanedAnnotationIds, setOrphanedAnnotationIds] = useState<string[]>(
-    []
-  );
-  const [pendingAnnotationIds, setPendingAnnotationIds] = useState<string[]>(
-    []
-  );
-  const [recoveredAnnotationIds, setRecoveredAnnotationIds] = useState<
-    string[]
-  >([]);
-  const everAnchoredIdsRef = useRef<Set<string>>(new Set());
 
   const mergeAnnotations = (
     existing: AnnotationHit[],
@@ -146,48 +144,6 @@ export default function Annotations() {
     })();
   }, [isAuthenticated, location]);
 
-  useEffect(() => {
-    if (!currentUrl) return;
-
-    (async () => {
-      try {
-        const tabs = await browser.tabs.query({
-          active: true,
-          currentWindow: true,
-        });
-
-        let frameUrls = [currentUrl]; // Fallback to just current URL
-
-        if (tabs[0]?.id) {
-          try {
-            const response = await sendMessage(
-              "getFrameUrls",
-              undefined,
-              tabs[0].id
-            );
-            if (response?.urls && response.urls.length > 0) {
-              frameUrls = response.urls;
-            }
-          } catch (error) {
-            if (import.meta.env.DEV) {
-              console.warn(
-                "[Annotations] Failed to get frame URLs, using current URL only:",
-                error
-              );
-            }
-          }
-        }
-
-        // Query for annotations matching any frame URL
-        const data = await searchAnnotationsByUrl(frameUrls);
-        setAnnotations(data.hits.hits);
-      } catch (error) {
-        console.error("Error fetching annotations:", error);
-        setAnnotations([]);
-      }
-    })();
-  }, [currentUrl, location]);
-
   // Listen for highlight clicks - set persistent filter
   useEffect(() => {
     const unsubscribe = onMessage(
@@ -240,118 +196,60 @@ export default function Annotations() {
     };
   }, []);
 
+  // Watch tab-specific storage for frame URL changes
   useEffect(() => {
-    const unsubscribe = onMessage("frameUrlsChanged", async (message) => {
-      if (!message.data?.urls || message.data.urls.length === 0) return;
+    let unwatch: (() => void) | undefined;
 
-      try {
-        const data = await searchAnnotationsByUrl(message.data.urls);
-        setAnnotations((prev) => mergeAnnotations(prev, data.hits.hits));
-      } catch (error) {
-        console.error(
-          "[Annotations] Error refetching annotations after frame change:",
-          error
-        );
-      }
-    });
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = onMessage("anchorStatusUpdate", async (message) => {
-      if (!message.data) return;
-
-      const { annotationId, status } = message.data;
-
-      switch (status) {
-        case "anchored":
-          everAnchoredIdsRef.current.add(annotationId);
-          setOrphanedAnnotationIds((prev) =>
-            prev.filter((id) => id !== annotationId)
-          );
-          setPendingAnnotationIds((prev) =>
-            prev.filter((id) => id !== annotationId)
-          );
-          break;
-
-        case "pending":
-          setPendingAnnotationIds((prev) =>
-            prev.includes(annotationId) ? prev : [...prev, annotationId]
-          );
-          break;
-
-        case "orphaned":
-          if (!everAnchoredIdsRef.current.has(annotationId)) {
-            setPendingAnnotationIds((prev) =>
-              prev.filter((id) => id !== annotationId)
-            );
-            setOrphanedAnnotationIds((prev) =>
-              prev.includes(annotationId) ? prev : [...prev, annotationId]
-            );
-          }
-          break;
-
-        case "recovered":
-          everAnchoredIdsRef.current.add(annotationId);
-          setRecoveredAnnotationIds((prev) =>
-            prev.includes(annotationId) ? prev : [...prev, annotationId]
-          );
-          setOrphanedAnnotationIds((prev) =>
-            prev.filter((id) => id !== annotationId)
-          );
-          setPendingAnnotationIds((prev) =>
-            prev.filter((id) => id !== annotationId)
-          );
-          break;
-      }
-    });
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, []);
-
-  // Request initial anchor status when annotations load
-  useEffect(() => {
-    if (annotations.length === 0 && myAnnotations.length === 0) return;
-
-    (async () => {
+    const setupWatcher = async () => {
       try {
         const tabs = await browser.tabs.query({
           active: true,
           currentWindow: true,
         });
-        if (tabs[0]?.id) {
-          const status = await sendMessage(
-            "requestAnchorStatus",
-            undefined,
-            tabs[0].id
-          );
-          if (status) {
-            // Initialize everAnchoredIds with successfully anchored + recovered annotations
-            everAnchoredIdsRef.current = new Set([
-              ...status.anchored,
-              ...status.recovered,
-            ]);
-            setOrphanedAnnotationIds(status.orphaned);
-            setPendingAnnotationIds(status.pending);
-            setRecoveredAnnotationIds(status.recovered);
+        const tabId = tabs[0]?.id;
+        if (!tabId) return;
+
+        const key = `session:frameUrls:${tabId}` as const;
+
+        // Check storage on mount for any URLs written before we mounted
+        const storedUrls = await storage.getItem<string[]>(key);
+        if (storedUrls && storedUrls.length > 0) {
+          const data = await searchAnnotationsByUrl(storedUrls);
+          setAnnotations((prev) => mergeAnnotations(prev, data.hits.hits));
+        }
+
+        // Watch for changes to frame URLs in storage
+        unwatch = storage.watch<string[]>(key, async (newUrls) => {
+          if (!newUrls || newUrls.length === 0) return;
+
+          try {
+            const data = await searchAnnotationsByUrl(newUrls);
+            setAnnotations((prev) => mergeAnnotations(prev, data.hits.hits));
+          } catch (error) {
+            console.error(
+              "[Annotations] Error fetching annotations for new frame URLs:",
+              error
+            );
           }
-        }
+        });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.warn("Failed to request anchor status:", error);
-        }
+        console.error("[Annotations] Error setting up storage watcher:", error);
       }
-    })();
-  }, [annotations.length, myAnnotations.length]);
+    };
+
+    setupWatcher();
+
+    return () => {
+      if (unwatch) unwatch();
+    };
+  }, []);
+
+  // Request anchor status when annotations load
+  // The anchorStatusUpdate listener is now in AnchorStatusProvider (App level)
+  useEffect(() => {
+    if (annotations.length === 0 && myAnnotations.length === 0) return;
+    requestStatus();
+  }, [annotations.length, myAnnotations.length, requestStatus]);
 
   if (activeTab === "My Annotations") {
     return (

@@ -95,23 +95,39 @@ export async function injectIntoFrame(
     return null;
   }
 
+  // Register frame URL IMMEDIATELY - sidebar can fetch annotations right away
+  // This is independent of PDF readiness - just a URL query to Elasticsearch
+  const frameUrl = frameWindow.location.href;
+  console.log("[RDA Frame Injector] Registering frame URL:", frameUrl);
+  frameWindow.parent.postMessage(
+    {
+      type: "rda:registerFrameUrl",
+      url: frameUrl,
+      source: "frame-injector",
+    },
+    "*"
+  );
+  console.log("[RDA Frame Injector] Posted registerFrameUrl message to parent");
+
   const contentType = await detectContentTypeAsync(frameDoc);
 
+  // For PDFs, check if PDF.js is ready in the FRAME window (not host window)
+  // Don't fail if not ready - AnnotationManager will handle retry logic
   if (contentType?.type === "PDF") {
     try {
-      const isReady = await waitForPDFReady();
-      if (!isReady) {
-        console.warn(
-          "[RDA Frame Injector] PDF.js not available, skipping annotation loading"
+      const isReady = await waitForPDFReady(frameWindow);
+      if (!isReady && import.meta.env.DEV) {
+        console.log(
+          "[RDA Frame Injector] PDF.js not ready yet, AnnotationManager will retry"
         );
-        return null;
       }
     } catch (error) {
-      console.error(
-        "[RDA Frame Injector] Failed to wait for PDF ready:",
-        error
-      );
-      return null;
+      if (import.meta.env.DEV) {
+        console.warn(
+          "[RDA Frame Injector] Error checking PDF ready, continuing anyway:",
+          error
+        );
+      }
     }
   }
 
@@ -121,22 +137,11 @@ export async function injectIntoFrame(
   marker.setAttribute("data-rda-content-type", contentType?.type || "HTML");
   frameDoc.head.appendChild(marker);
 
-  // Register frame URL with host for sidebar querying
-  // Note: Use frameWindow.location.href since getDocumentURL() uses window.location
-  // which would be the host frame's URL, not the iframe's URL
-  const frameUrl = frameWindow.location.href;
-  frameWindow.parent.postMessage(
-    {
-      type: "rda:registerFrameUrl",
-      url: frameUrl,
-      source: "frame-injector",
-    },
-    "*"
-  );
-
   const annotationManager = new AnnotationManager({
     rootElement: frameDoc.body,
     documentUrl: frameUrl,
+    isPDF: contentType?.type === "PDF",
+    isGuestFrame: true,
     onHighlightClick: async (annotationIds) => {
       frameWindow.parent.postMessage(
         {

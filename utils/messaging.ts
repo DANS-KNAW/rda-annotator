@@ -21,6 +21,7 @@ interface ProtocolMap {
   hoverAnnotations(data: { annotationIds: string[] }): Promise<void>;
   getFrameUrls(): Promise<{ urls: string[] }>;
   frameUrlsChanged(data: { urls: string[] }): Promise<void>;
+  registerFrameUrl(data: { url: string }): Promise<void>;
   anchorStatusUpdate(data: {
     annotationId: string;
     status: AnchorStatus;

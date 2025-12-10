@@ -11,6 +11,7 @@ import Introduction from "@/views/Introduction.tsx";
 import Annotations from "@/views/Annotations";
 import { storage } from "#imports";
 import AuthenticationProvider from "@/context/authentication.provider";
+import { AnchorStatusProvider } from "@/context/anchor-status.context";
 import Settings from "@/views/Settings";
 import Create from "@/views/Create";
 import Alert from "@/components/Alert.tsx";
@@ -133,16 +134,18 @@ export default function App() {
       {upToDate && (
         <BrowserRouter basename="/sidebar.html">
           <AuthenticationProvider>
-            <PendingAnnotationWatcher />
-            <Routes>
-              <Route element={<Layout />}>
-                <Route index element={<IndexRoute />} />
-                <Route path="/introduction" element={<Introduction />} />
-                <Route path="/annotations" element={<Annotations />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/create" element={<Create />} />
-              </Route>
-            </Routes>
+            <AnchorStatusProvider>
+              <PendingAnnotationWatcher />
+              <Routes>
+                <Route element={<Layout />}>
+                  <Route index element={<IndexRoute />} />
+                  <Route path="/introduction" element={<Introduction />} />
+                  <Route path="/annotations" element={<Annotations />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/create" element={<Create />} />
+                </Route>
+              </Routes>
+            </AnchorStatusProvider>
           </AuthenticationProvider>
         </BrowserRouter>
       )}

@@ -8,6 +8,13 @@ import { waitForPDFReady } from "@/utils/anchoring/pdf";
 import { getDocumentURL } from "@/utils/document-url";
 import { createAnnotatorPopup } from "./annotator-popup";
 
+// Declare global window property for atomic injection guard
+declare global {
+  interface Window {
+    __RDA_CONTENT_SCRIPT_INITIALIZED__?: boolean;
+  }
+}
+
 interface AnchorStatus {
   anchored: string[];
   pending: string[];
@@ -16,38 +23,42 @@ interface AnchorStatus {
 }
 
 /**
- * Merge multiple anchor statuses into one, deduplicating IDs
+ * Merge multiple anchor statuses into one, deduplicating IDs.
+ * An annotation successfully anchored in ANY frame is not considered orphaned.
+ * This prevents false orphans from frames with same URL but different content
+ * (e.g., srcdoc iframes that inherit parent URL but have ad content).
  */
 function mergeAnchorStatuses(statuses: AnchorStatus[]): AnchorStatus {
-  return {
-    anchored: [...new Set(statuses.flatMap((s) => s.anchored))],
-    pending: [...new Set(statuses.flatMap((s) => s.pending))],
-    orphaned: [...new Set(statuses.flatMap((s) => s.orphaned))],
-    recovered: [...new Set(statuses.flatMap((s) => s.recovered))],
-  };
+  const anchored = [...new Set(statuses.flatMap((s) => s.anchored))];
+  const recovered = [...new Set(statuses.flatMap((s) => s.recovered))];
+  const pending = [...new Set(statuses.flatMap((s) => s.pending))];
+  const allOrphaned = [...new Set(statuses.flatMap((s) => s.orphaned))];
+
+  // Filter out orphaned IDs that were successfully anchored in any frame
+  const successfullyAnchored = new Set([...anchored, ...recovered]);
+  const orphaned = allOrphaned.filter((id) => !successfullyAnchored.has(id));
+
+  return { anchored, pending, orphaned, recovered };
 }
 
 /**
- * Request anchor statuses from cross-origin frames via postMessage
- * Returns statuses from frames that respond within timeout
+ * Request anchor statuses from ALL iframes via postMessage
+ * This includes both same-origin and cross-origin frames that have their own
+ * content script (via allFrames:true) and manage their own AnnotationManager.
+ * Returns statuses from frames that respond within timeout.
  */
-async function requestCrossOriginFrameStatuses(): Promise<AnchorStatus[]> {
+async function requestAllFrameStatuses(): Promise<AnchorStatus[]> {
   return new Promise((resolve) => {
     const statuses: AnchorStatus[] = [];
     const pendingFrames = new Set<Window>();
 
-    // Find all iframes that might be cross-origin guests
+    // Find ALL iframes - both same-origin and cross-origin
+    // Same-origin frames with allFrames:true have their own content script
+    // and need to be queried via postMessage just like cross-origin ones
     const frames = document.querySelectorAll("iframe");
     frames.forEach((frame) => {
-      try {
-        if (!frame.contentDocument && frame.contentWindow) {
-          pendingFrames.add(frame.contentWindow);
-        }
-      } catch {
-        // Security error means cross-origin
-        if (frame.contentWindow) {
-          pendingFrames.add(frame.contentWindow);
-        }
+      if (frame.contentWindow) {
+        pendingFrames.add(frame.contentWindow);
       }
     });
 
@@ -106,21 +117,27 @@ export default defineContentScript({
 
   async main(ctx) {
     const isTopFrame = window.self === window.top;
-    const frameInfo = {
-      isTop: isTopFrame,
-      url: window.location.href,
-      origin: window.location.origin,
-    };
 
-    // Check if already injected
+    // Atomic injection guard using synchronous window property
+    // This prevents race conditions where multiple content script instances
+    // could pass the DOM marker check before any marker is created
+    if (window.__RDA_CONTENT_SCRIPT_INITIALIZED__) {
+      if (import.meta.env.DEV) {
+        console.warn("[RDA Boot] Already injected (window flag), skipping");
+      }
+      return;
+    }
+    window.__RDA_CONTENT_SCRIPT_INITIALIZED__ = true;
+
+    // Also check DOM marker as secondary guard (for edge cases like page restore)
     if (document.querySelector("[data-rda-injected]")) {
       if (import.meta.env.DEV) {
-        console.warn("[RDA Boot] Already injected, skipping");
+        console.warn("[RDA Boot] Already injected (DOM marker), skipping");
       }
       return;
     }
 
-    // Mark as injected
+    // Mark as injected in DOM for debugging/inspection
     const marker = document.createElement("meta");
     marker.setAttribute("data-rda-injected", "true");
     marker.setAttribute("data-rda-frame-type", isTopFrame ? "host" : "guest");
@@ -146,15 +163,10 @@ export default defineContentScript({
       ReturnType<typeof import("./annotator-popup").createAnnotatorPopup>
     > | null = null;
 
-    // Track URLs from all frames (host + guests)
-    const frameUrls: Set<string> = new Set();
-
     if (isTopFrame) {
-      frameUrls.add(getDocumentURL());
-      sendMessage("frameUrlsChanged", { urls: Array.from(frameUrls) }).catch(
-        () => {
-          // Sidebar might not be ready yet, that's ok
-        }
+      // Send host URL directly to background
+      sendMessage("registerFrameUrl", { url: getDocumentURL() }).catch(
+        () => {}
       );
 
       window.addEventListener("message", async (event) => {
@@ -199,17 +211,6 @@ export default defineContentScript({
         } else if (event.data.type === "rda:scrollToAnnotation") {
           if (annotationManager && event.data.annotationId) {
             await annotationManager.scrollToAnnotation(event.data.annotationId);
-          }
-        } else if (event.data.type === "rda:registerFrameUrl") {
-          if (event.data.url) {
-            frameUrls.add(event.data.url);
-            try {
-              await sendMessage("frameUrlsChanged", {
-                urls: Array.from(frameUrls),
-              });
-            } catch (error) {
-              // Sidebar might not be ready yet, that's ok
-            }
           }
         } else if (event.data.type === "rda:anchorStatusUpdate") {
           // Forward anchor status updates from guest frames to the sidebar
@@ -317,114 +318,134 @@ export default defineContentScript({
       });
       frameObserver.start();
 
-      onMessage("toggleSidebar", async (message) => {
-        if (!host || !annotationManager) return;
+      // Wrap message listeners in try-catch to prevent duplicate listener errors from breaking
+      try {
+        onMessage("toggleSidebar", async (message) => {
+          if (!host || !annotationManager) return;
 
-        if (message?.data?.action === "toggle") {
-          const wasUnmounted =
-            !host.isMounted.sidebar && !host.isMounted.annotator;
-          await host.toggle();
-          const isMounted = host.isMounted.sidebar && host.isMounted.annotator;
-          annotationManager.setHighlightsVisible(isMounted);
+          if (message?.data?.action === "toggle") {
+            const wasUnmounted =
+              !host.isMounted.sidebar && !host.isMounted.annotator;
+            await host.toggle();
+            const isMounted =
+              host.isMounted.sidebar && host.isMounted.annotator;
+            annotationManager.setHighlightsVisible(isMounted);
 
-          if (isMounted && wasUnmounted) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            await annotationManager.loadAnnotations();
+            if (isMounted && wasUnmounted) {
+              await new Promise((resolve) => setTimeout(resolve, 100));
+              await annotationManager.loadAnnotations();
 
-            if (frameInjector) {
-              await frameInjector.reloadAllGuestAnnotations();
+              if (frameInjector) {
+                await frameInjector.reloadAllGuestAnnotations();
+              }
+              broadcastToCrossOriginFrames({ type: "rda:reloadAnnotations" });
             }
-            broadcastToCrossOriginFrames({ type: "rda:reloadAnnotations" });
+          } else if (message?.data?.action === "mount") {
+            const wasUnmounted =
+              !host.isMounted.sidebar && !host.isMounted.annotator;
+            await host.mount();
+            annotationManager.setHighlightsVisible(true);
 
-            try {
-              await sendMessage("frameUrlsChanged", {
-                urls: Array.from(frameUrls),
-              });
-            } catch (error) {
-              // Ignore if sidebar not ready
-            }
-          }
-        } else if (message?.data?.action === "mount") {
-          const wasUnmounted =
-            !host.isMounted.sidebar && !host.isMounted.annotator;
-          await host.mount();
-          annotationManager.setHighlightsVisible(true);
+            if (wasUnmounted) {
+              await new Promise((resolve) => setTimeout(resolve, 100));
+              await annotationManager.loadAnnotations();
 
-          if (wasUnmounted) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            await annotationManager.loadAnnotations();
-
-            if (frameInjector) {
-              await frameInjector.reloadAllGuestAnnotations();
-            }
-            broadcastToCrossOriginFrames({ type: "rda:reloadAnnotations" });
-
-            try {
-              await sendMessage("frameUrlsChanged", {
-                urls: Array.from(frameUrls),
-              });
-            } catch (error) {
-              // Ignore if sidebar not ready
+              if (frameInjector) {
+                await frameInjector.reloadAllGuestAnnotations();
+              }
+              broadcastToCrossOriginFrames({ type: "rda:reloadAnnotations" });
             }
           }
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn('[RDA] Listener for "toggleSidebar" already registered');
         }
-      });
+      }
 
-      onMessage("scrollToAnnotation", async (message) => {
-        if (!annotationManager || !message.data) return;
-        await annotationManager.scrollToAnnotation(message.data.annotationId);
-      });
-
-      onMessage("removeTemporaryHighlight", async () => {
-        if (!annotationManager) return;
-        annotationManager.removeTemporaryHighlight();
-      });
-
-      onMessage("reloadAnnotations", async () => {
-        if (annotationManager) {
-          await annotationManager.loadAnnotations();
+      try {
+        onMessage("scrollToAnnotation", async (message) => {
+          if (!annotationManager || !message.data) return;
+          await annotationManager.scrollToAnnotation(message.data.annotationId);
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn(
+            '[RDA] Listener for "scrollToAnnotation" already registered'
+          );
         }
+      }
 
-        if (frameInjector) {
-          await frameInjector.reloadAllGuestAnnotations();
+      try {
+        onMessage("removeTemporaryHighlight", async () => {
+          if (!annotationManager) return;
+          annotationManager.removeTemporaryHighlight();
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn(
+            '[RDA] Listener for "removeTemporaryHighlight" already registered'
+          );
         }
+      }
 
-        broadcastToCrossOriginFrames({ type: "rda:reloadAnnotations" });
-      });
+      try {
+        onMessage("reloadAnnotations", async () => {
+          if (annotationManager) {
+            await annotationManager.loadAnnotations();
+          }
 
-      onMessage("getFrameUrls", async () => {
-        return { urls: Array.from(frameUrls) };
-      });
+          if (frameInjector) {
+            await frameInjector.reloadAllGuestAnnotations();
+          }
 
-      onMessage("requestAnchorStatus", async () => {
-        const defaultStatus: AnchorStatus = {
-          anchored: [],
-          pending: [],
-          orphaned: [],
-          recovered: [],
-        };
+          broadcastToCrossOriginFrames({ type: "rda:reloadAnnotations" });
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn(
+            '[RDA] Listener for "reloadAnnotations" already registered'
+          );
+        }
+      }
 
-        const hostStatus =
-          annotationManager?.getAnchorStatus() || defaultStatus;
-        const sameOriginStatuses = frameInjector?.getAllGuestStatuses() || [];
-        const crossOriginStatuses = await requestCrossOriginFrameStatuses();
+      try {
+        onMessage("requestAnchorStatus", async () => {
+          const defaultStatus: AnchorStatus = {
+            anchored: [],
+            pending: [],
+            orphaned: [],
+            recovered: [],
+          };
 
-        return mergeAnchorStatuses([
-          hostStatus,
-          ...sameOriginStatuses,
-          ...crossOriginStatuses,
-        ]);
-      });
+          const hostStatus =
+            annotationManager?.getAnchorStatus() || defaultStatus;
+          const sameOriginStatuses = frameInjector?.getAllGuestStatuses() || [];
+          const allFrameStatuses = await requestAllFrameStatuses();
+
+          return mergeAnchorStatuses([
+            hostStatus,
+            ...sameOriginStatuses,
+            ...allFrameStatuses,
+          ]);
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn(
+            '[RDA] Listener for "requestAnchorStatus" already registered'
+          );
+        }
+      }
     } else {
       const frameUrl = getDocumentURL();
-      window.parent.postMessage(
-        {
-          type: "rda:registerFrameUrl",
-          url: frameUrl,
-          source: "guest-frame",
-        },
-        "*"
-      );
+
+      // Send URL directly to background (not via host postMessage)
+      sendMessage("registerFrameUrl", { url: frameUrl }).catch(() => {
+        // Retry once if background not ready (edge case)
+        setTimeout(() => {
+          sendMessage("registerFrameUrl", { url: frameUrl }).catch(() => {});
+        }, 100);
+      });
 
       annotationManager = new AnnotationManager({
         onHighlightClick: async (annotationIds) => {

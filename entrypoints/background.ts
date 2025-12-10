@@ -122,6 +122,34 @@ export default defineBackground(() => {
     }
   });
 
+  // Register frame URL - accumulates URLs per tab for sidebar to read
+  // Each frame (host or guest) sends its URL directly to background
+  onMessage("registerFrameUrl", async (message) => {
+    const tabId = message.sender?.tab?.id;
+    if (!tabId || !message.data?.url) return;
+
+    const key = `session:frameUrls:${tabId}` as const;
+    const existing = (await storage.getItem<string[]>(key)) || [];
+
+    if (!existing.includes(message.data.url)) {
+      const updated = [...existing, message.data.url];
+      await storage.setItem(key, updated);
+    }
+  });
+
+  // Clean up frame URLs when tab is closed
+  browser.tabs.onRemoved.addListener(async (tabId) => {
+    await storage.removeItem(`session:frameUrls:${tabId}` as const);
+  });
+
+  // Also clean up when tab navigates to a new page
+  browser.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+    if (changeInfo.status === "loading" && changeInfo.url) {
+      // Clear frame URLs when navigating to a new page
+      await storage.removeItem(`session:frameUrls:${tabId}` as const);
+    }
+  });
+
   onMessage("getExtensionState", async () => {
     const enabled = await storage.getItem("local:extension-enabled");
     return { enabled: !!enabled };
