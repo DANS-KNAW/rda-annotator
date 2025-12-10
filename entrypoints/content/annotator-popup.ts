@@ -66,7 +66,9 @@ export async function createAnnotatorPopup({
     mode: "closed",
 
     onMount(_, shadowRoot, shadowHost) {
-      console.log("[RDA Annotator] Mounted");
+      if (import.meta.env.DEV) {
+        console.log("[RDA Annotator] Mounted");
+      }
 
       container = document.createElement("div");
       container.id = "annotator-popup";
@@ -195,7 +197,9 @@ export async function createAnnotatorPopup({
     },
 
     onRemove() {
-      console.log("[RDA Annotator] Removed");
+      if (import.meta.env.DEV) {
+        console.log("[RDA Annotator] Removed");
+      }
       currentSelection = null;
     },
   });

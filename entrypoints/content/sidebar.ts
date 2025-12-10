@@ -20,7 +20,9 @@ export async function createSidebar({ ctx }: SidebarProps) {
     mode: "closed",
 
     onMount(_, shadowRoot, shadowHost) {
-      console.log("[RDA Sidebar] Mounted");
+      if (import.meta.env.DEV) {
+        console.log("[RDA Sidebar] Mounted");
+      }
 
       const container = document.createElement("div");
       container.id = "sidebar-container";
@@ -122,7 +124,9 @@ export async function createSidebar({ ctx }: SidebarProps) {
         anchor: contentWrapper,
 
         onMount(wrapper, iframe) {
-          console.log("[RDA Sidebar] Iframe mounted");
+          if (import.meta.env.DEV) {
+            console.log("[RDA Sidebar] Iframe mounted");
+          }
           wrapper.style.width = "100%";
           wrapper.style.height = "100vh";
 
@@ -136,7 +140,9 @@ export async function createSidebar({ ctx }: SidebarProps) {
     },
 
     onRemove() {
-      console.log("[RDA Sidebar] Removed");
+      if (import.meta.env.DEV) {
+        console.log("[RDA Sidebar] Removed");
+      }
     },
   });
 

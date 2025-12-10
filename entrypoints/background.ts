@@ -233,7 +233,7 @@ export default defineBackground(() => {
           value: vocab.value_uri,
           secondarySearch: `${vocab.subject_scheme} ${vocab.namespace}`,
           description: vocab.scheme_uri,
-        }) satisfies DataSource
+        } satisfies DataSource)
     );
   });
 
@@ -303,7 +303,12 @@ export default defineBackground(() => {
     if (newState && !isOurPDFViewer(tab.url)) {
       // Check if this is a direct PDF URL (not already in our viewer)
       if (isPDFURL(tab.url)) {
-        console.log("[RDA Background] Redirecting PDF after enable:", tab.url);
+        if (import.meta.env.DEV) {
+          console.log(
+            "[RDA Background] Redirecting PDF after enable:",
+            tab.url
+          );
+        }
         const viewerUrl = getPDFViewerURL(tab.url);
         await browser.tabs.update(tab.id!, { url: viewerUrl });
         return;
