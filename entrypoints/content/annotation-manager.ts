@@ -65,12 +65,16 @@ export class AnnotationManager {
   private reanchorDebounceTimer: number | null = null;
   private readonly REANCHOR_DEBOUNCE_MS = 500;
 
+  // Guest frame detection - guest frames use postMessage for status updates
+  private isGuestFrame: boolean = false;
+
   constructor(options?: {
     onHighlightClick?: (annotationIds: string[]) => void;
     onHighlightHover?: (annotationIds: string[]) => void;
     rootElement?: HTMLElement;
     isPDF?: boolean;
     documentUrl?: string;
+    isGuestFrame?: boolean;
   }) {
     this.rootElement = options?.rootElement || document.body;
     this.targetDocument = this.rootElement.ownerDocument || document;
@@ -79,6 +83,7 @@ export class AnnotationManager {
     this.onHighlightHover = options?.onHighlightHover;
     this.isPDFHint = options?.isPDF ?? false;
     this.customDocumentUrl = options?.documentUrl;
+    this.isGuestFrame = options?.isGuestFrame ?? false;
     this.setupEventListeners();
     this.setupHighlightObserver();
   }
@@ -438,6 +443,8 @@ export class AnnotationManager {
 
   /**
    * Flush all pending status updates to the sidebar.
+   * Guest frames use postMessage to communicate with the host frame,
+   * which then forwards to the sidebar.
    */
   private async flushStatusUpdates(): Promise<void> {
     this.statusUpdateTimer = null;
@@ -446,7 +453,21 @@ export class AnnotationManager {
 
     for (const [annotationId, status] of updates) {
       try {
-        await sendMessage("anchorStatusUpdate", { annotationId, status });
+        if (this.isGuestFrame) {
+          // Guest frames communicate via postMessage to host frame
+          window.parent.postMessage(
+            {
+              type: "rda:anchorStatusUpdate",
+              annotationId,
+              status,
+              source: "guest-frame",
+            },
+            "*"
+          );
+        } else {
+          // Host frame sends directly to sidebar via extension messaging
+          await sendMessage("anchorStatusUpdate", { annotationId, status });
+        }
       } catch (error) {
         if (import.meta.env.DEV) {
           console.warn("Failed to send anchor status update:", error);

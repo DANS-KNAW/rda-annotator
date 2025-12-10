@@ -179,23 +179,14 @@ export default function Create() {
         target: annotationData.target,
       };
 
-      const response = await fetch(
-        import.meta.env.WXT_API_ENDPOINT + "/knowledge-base/annotation",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      // Route through background service worker to bypass CORS/Brave Shields
+      const result = await sendMessage("createAnnotation", { payload });
 
-      if (!response.ok) {
-        throw new Error(`Failed to create annotation: ${response.statusText}`);
+      if (!result.success) {
+        throw new Error(result.error || "Failed to create annotation");
       }
 
-      const result = await response.json();
-      console.log("Annotation created successfully:", result);
+      console.log("Annotation created successfully:", result.data);
 
       if (annotationData) {
         sessionStorage.removeItem("pendingAnnotation");

@@ -1,5 +1,7 @@
 import { defineExtensionMessaging } from "@webext-core/messaging";
 import { AnnotationTarget } from "@/types/selector.interface";
+import type { ElasticsearchResponse } from "@/types/elastic-search-document.interface";
+import type { DataSource } from "@/types/datasource.interface";
 
 export type AnchorStatus = "anchored" | "pending" | "orphaned" | "recovered";
 
@@ -29,6 +31,29 @@ interface ProtocolMap {
     orphaned: string[];
     recovered: string[];
   }>;
+
+  // API proxy messages - route through background to bypass CORS/Brave Shields
+  searchAnnotations(data: {
+    type: "byUrl" | "bySubmitter";
+    urls?: string | string[];
+    submitterUuid?: string;
+    oldSubmitterUuid?: string;
+  }): Promise<ElasticsearchResponse>;
+
+  fetchVocabularies(data: {
+    subject_scheme?: string;
+    scheme_uri?: string;
+    value_scheme?: string;
+    value_uri?: string;
+    namespace?: string;
+    amount?: number;
+    offset?: number;
+    deleted?: boolean;
+  }): Promise<DataSource[]>;
+
+  createAnnotation(data: {
+    payload: Record<string, unknown>;
+  }): Promise<{ success: boolean; data?: unknown; error?: string }>;
 }
 
 export const { sendMessage, onMessage } =

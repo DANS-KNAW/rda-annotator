@@ -157,6 +157,73 @@ export default defineContentScript({
         }
       );
 
+      window.addEventListener("message", async (event) => {
+        if (event.data.type === "rda:showAnnotations") {
+          if (!host) return;
+
+          if (!host.isMounted.sidebar) {
+            await host.mount();
+          }
+          await host.openSidebar();
+
+          try {
+            await sendMessage("showAnnotationsFromHighlight", {
+              annotationIds: event.data.annotationIds,
+            });
+          } catch (error) {
+            console.error(
+              "[RDA Host] Failed to show annotations from frame:",
+              error
+            );
+          }
+        } else if (event.data.type === "rda:hoverAnnotations") {
+          try {
+            await sendMessage("hoverAnnotations", {
+              annotationIds: event.data.annotationIds,
+            }).catch(() => {
+              // Sidebar might not be ready yet, ignore
+            });
+          } catch (error) {
+            console.error(
+              "[RDA Host] Failed to forward hover from frame:",
+              error
+            );
+          }
+        } else if (event.data.type === "rda:openSidebar") {
+          if (!host) return;
+
+          if (!host.isMounted.sidebar) {
+            await host.mount();
+          }
+          await host.openSidebar();
+        } else if (event.data.type === "rda:scrollToAnnotation") {
+          if (annotationManager && event.data.annotationId) {
+            await annotationManager.scrollToAnnotation(event.data.annotationId);
+          }
+        } else if (event.data.type === "rda:registerFrameUrl") {
+          if (event.data.url) {
+            frameUrls.add(event.data.url);
+            try {
+              await sendMessage("frameUrlsChanged", {
+                urls: Array.from(frameUrls),
+              });
+            } catch (error) {
+              // Sidebar might not be ready yet, that's ok
+            }
+          }
+        } else if (event.data.type === "rda:anchorStatusUpdate") {
+          // Forward anchor status updates from guest frames to the sidebar
+          try {
+            await sendMessage("anchorStatusUpdate", {
+              annotationId: event.data.annotationId,
+              status: event.data.status,
+            });
+          } catch (error) {
+            // Sidebar might not be ready yet, ignore
+          }
+        }
+      });
+
       frameInjector = new FrameInjector(ctx);
       annotationManager = new AnnotationManager({
         // Handle clicks on highlights - open sidebar and show annotation(s)
@@ -250,64 +317,6 @@ export default defineContentScript({
       });
       frameObserver.start();
 
-      // Listen for messages from guest frames (iframes)
-      window.addEventListener("message", async (event) => {
-        if (event.data.type === "rda:showAnnotations") {
-          if (!host) return;
-
-          if (!host.isMounted.sidebar) {
-            await host.mount();
-          }
-          await host.openSidebar();
-
-          try {
-            await sendMessage("showAnnotationsFromHighlight", {
-              annotationIds: event.data.annotationIds,
-            });
-          } catch (error) {
-            console.error(
-              "[RDA Host] Failed to show annotations from frame:",
-              error
-            );
-          }
-        } else if (event.data.type === "rda:hoverAnnotations") {
-          try {
-            await sendMessage("hoverAnnotations", {
-              annotationIds: event.data.annotationIds,
-            }).catch(() => {
-              // Sidebar might not be ready yet, ignore
-            });
-          } catch (error) {
-            console.error(
-              "[RDA Host] Failed to forward hover from frame:",
-              error
-            );
-          }
-        } else if (event.data.type === "rda:openSidebar") {
-          if (!host) return;
-
-          if (!host.isMounted.sidebar) {
-            await host.mount();
-          }
-          await host.openSidebar();
-        } else if (event.data.type === "rda:scrollToAnnotation") {
-          if (annotationManager && event.data.annotationId) {
-            await annotationManager.scrollToAnnotation(event.data.annotationId);
-          }
-        } else if (event.data.type === "rda:registerFrameUrl") {
-          if (event.data.url) {
-            frameUrls.add(event.data.url);
-            try {
-              await sendMessage("frameUrlsChanged", {
-                urls: Array.from(frameUrls),
-              });
-            } catch (error) {
-              // Sidebar might not be ready yet, that's ok
-            }
-          }
-        }
-      });
-
       onMessage("toggleSidebar", async (message) => {
         if (!host || !annotationManager) return;
 
@@ -319,7 +328,14 @@ export default defineContentScript({
           annotationManager.setHighlightsVisible(isMounted);
 
           if (isMounted && wasUnmounted) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
             await annotationManager.loadAnnotations();
+
+            if (frameInjector) {
+              await frameInjector.reloadAllGuestAnnotations();
+            }
+            broadcastToCrossOriginFrames({ type: "rda:reloadAnnotations" });
+
             try {
               await sendMessage("frameUrlsChanged", {
                 urls: Array.from(frameUrls),
@@ -335,7 +351,14 @@ export default defineContentScript({
           annotationManager.setHighlightsVisible(true);
 
           if (wasUnmounted) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
             await annotationManager.loadAnnotations();
+
+            if (frameInjector) {
+              await frameInjector.reloadAllGuestAnnotations();
+            }
+            broadcastToCrossOriginFrames({ type: "rda:reloadAnnotations" });
+
             try {
               await sendMessage("frameUrlsChanged", {
                 urls: Array.from(frameUrls),
@@ -427,6 +450,7 @@ export default defineContentScript({
           );
         },
         isPDF,
+        isGuestFrame: true,
       });
 
       guestAnnotatorPopup = await createAnnotatorPopup({

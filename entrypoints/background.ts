@@ -1,6 +1,7 @@
 import { storage } from "#imports";
 import { onMessage, sendMessage } from "@/utils/messaging";
 import { isPDFURL } from "@/utils/detect-content-type";
+import type { DataSource } from "@/types/datasource.interface";
 
 /**
  * Get the URL for viewing a PDF in our custom PDF.js viewer
@@ -124,6 +125,143 @@ export default defineBackground(() => {
   onMessage("getExtensionState", async () => {
     const enabled = await storage.getItem("local:extension-enabled");
     return { enabled: !!enabled };
+  });
+
+  // API proxy handlers - route requests through background to bypass CORS/Brave Shields
+  onMessage("searchAnnotations", async (message) => {
+    const { type, urls, submitterUuid, oldSubmitterUuid } = message.data;
+    const baseUrl = import.meta.env.WXT_API_ENDPOINT;
+
+    let query;
+    if (type === "byUrl") {
+      const urlArray = Array.isArray(urls) ? urls : [urls!];
+      const urlQuery =
+        urlArray.length === 1
+          ? { term: { "uri.keyword": urlArray[0] } }
+          : { terms: { "uri.keyword": urlArray } };
+
+      query = {
+        bool: {
+          must: [
+            { term: { "resource_source.keyword": "Annotation" } },
+            urlQuery,
+          ],
+        },
+      };
+    } else {
+      // bySubmitter
+      const submitterQuery = oldSubmitterUuid
+        ? {
+            bool: {
+              should: [
+                { term: { "submitter.keyword": submitterUuid } },
+                { term: { "submitter.keyword": oldSubmitterUuid } },
+              ],
+              minimum_should_match: 1,
+            },
+          }
+        : { term: { "submitter.keyword": submitterUuid } };
+
+      query = {
+        bool: {
+          must: [
+            { term: { "resource_source.keyword": "Annotation" } },
+            submitterQuery,
+          ],
+        },
+      };
+    }
+
+    const searchRequest = {
+      index: "rda",
+      size: 1000,
+      track_total_hits: true,
+      query,
+      sort: [{ dc_date: { order: "desc" } }],
+    };
+
+    const response = await fetch(`${baseUrl}/knowledge-base/rda/_search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(searchRequest),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Elasticsearch request failed: ${response.statusText}`);
+    }
+
+    return response.json();
+  });
+
+  onMessage("fetchVocabularies", async (message) => {
+    const baseUrl = import.meta.env.WXT_API_ENDPOINT;
+    const queryParams = new URLSearchParams();
+
+    Object.entries(message.data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, String(value));
+      }
+    });
+
+    const url = `${baseUrl}/vocabularies${
+      queryParams.toString() ? `?${queryParams.toString()}` : ""
+    }`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch vocabularies: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const vocabularies = await response.json();
+
+    return vocabularies.map(
+      (vocab: {
+        value_scheme: string;
+        value_uri: string;
+        subject_scheme: string;
+        namespace: string;
+        scheme_uri: string;
+      }) =>
+        ({
+          label: vocab.value_scheme,
+          value: vocab.value_uri,
+          secondarySearch: `${vocab.subject_scheme} ${vocab.namespace}`,
+          description: vocab.scheme_uri,
+        }) satisfies DataSource
+    );
+  });
+
+  onMessage("createAnnotation", async (message) => {
+    const baseUrl = import.meta.env.WXT_API_ENDPOINT;
+
+    try {
+      const response = await fetch(`${baseUrl}/knowledge-base/annotation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(message.data.payload),
+      });
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `Failed to create annotation: ${response.statusText}`,
+        };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
   });
 
   browser.action.onClicked.addListener(async (tab) => {
