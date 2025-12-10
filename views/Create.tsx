@@ -6,6 +6,7 @@ import { Textarea } from "@/components/form/Textarea";
 import TypeaheadInput from "@/components/form/Typeahead.input";
 import { AnnotationSchema } from "@/types/annotation-schema.interface";
 import { AuthenticationContext } from "@/context/authentication.context";
+import { usePendingAnnotation } from "@/context/pending-annotation.context";
 import Toggle from "@/components/form/Toggle";
 import { storage } from "#imports";
 import { ISettings } from "@/types/settings.interface";
@@ -13,11 +14,6 @@ import Alert from "@/components/Alert";
 import { useNavigate } from "react-router";
 import { AnnotationTarget } from "@/types/selector.interface";
 import { sendMessage } from "@/utils/messaging";
-
-interface AnnotationData {
-  target: AnnotationTarget;
-  timestamp: number;
-}
 
 /**
  * Extracts the selected text from an AnnotationTarget
@@ -37,10 +33,13 @@ function getSelectedTextFromTarget(target: AnnotationTarget): string {
 
 export default function Create() {
   const { isAuthenticated, login, oauth } = useContext(AuthenticationContext);
+  const {
+    pendingAnnotation,
+    isLoading: isLoadingAnnotation,
+    isReady: isAnnotationReady,
+    clearPendingAnnotation,
+  } = usePendingAnnotation();
   const formRef = useRef<FormHandle>(null);
-  const [annotationData, setAnnotationData] = useState<AnnotationData | null>(
-    null
-  );
   const [settings, setSettings] = useState<ISettings>({ vocabularies: {} });
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
@@ -64,34 +63,24 @@ export default function Create() {
   }, []);
 
   useEffect(() => {
-    const loadPendingData = () => {
-      const pendingData = sessionStorage.getItem("pendingAnnotation");
-
-      if (pendingData) {
-        const data = JSON.parse(pendingData) as AnnotationData;
-        setAnnotationData(data);
-        if (isAuthenticated) {
-          sessionStorage.removeItem("pendingAnnotation");
-        }
-      }
-    };
-
-    loadPendingData();
-
-    window.addEventListener("pendingAnnotationUpdated", loadPendingData);
-
-    return () => {
-      window.removeEventListener("pendingAnnotationUpdated", loadPendingData);
-    };
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    if (annotationData && formRef.current) {
-      const selectedText = getSelectedTextFromTarget(annotationData.target);
+    if (pendingAnnotation && formRef.current) {
+      const selectedText = getSelectedTextFromTarget(pendingAnnotation.target);
       formRef.current.setValue("selectedText", selectedText);
-      formRef.current.setValue("resource", annotationData.target.source);
+      formRef.current.setValue("resource", pendingAnnotation.target.source);
+
+      if (import.meta.env.DEV) {
+        console.log("[Create] Set form values:", {
+          selectedText: selectedText.substring(0, 50) + "...",
+          resource: pendingAnnotation.target.source,
+        });
+      }
     }
-  }, [annotationData]);
+  }, [
+    pendingAnnotation,
+    isLoadingAnnotation,
+    isAnnotationReady,
+    isLoadingSettings,
+  ]);
 
   useEffect(() => {
     if (!isLoadingSettings && settings.rememberChoices && formRef.current) {
@@ -102,21 +91,37 @@ export default function Create() {
   }, [isLoadingSettings, settings.rememberChoices]);
 
   useEffect(() => {
-    return () => {
-      (async () => {
-        const pendingData = sessionStorage.getItem("pendingAnnotation");
-        if (!pendingData) {
-          const tabs = await browser.tabs.query({
-            active: true,
-            currentWindow: true,
-          });
-          if (tabs[0]?.id) {
-            await sendMessage("removeTemporaryHighlight", undefined, tabs[0].id);
-          }
-        }
-      })();
-    };
-  }, []);
+    if (
+      !isLoadingAnnotation &&
+      isAnnotationReady &&
+      !isLoadingSettings &&
+      !pendingAnnotation
+    ) {
+      navigate("/annotations", { replace: true });
+    }
+  }, [
+    isLoadingAnnotation,
+    isAnnotationReady,
+    isLoadingSettings,
+    pendingAnnotation,
+    navigate,
+  ]);
+
+  const handleCancel = async () => {
+    try {
+      await clearPendingAnnotation();
+      const tabs = await browser.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (tabs[0]?.id) {
+        await sendMessage("removeTemporaryHighlight", undefined, tabs[0].id);
+      }
+    } catch (error) {
+      console.error("Failed to cleanup on cancel:", error);
+    }
+    navigate("/annotations");
+  };
 
   const handleSubmit = async (data: Record<string, any>) => {
     setErrorMessages([]);
@@ -168,15 +173,18 @@ export default function Create() {
       }
     }
 
-    try {
-      if (annotationData === null) {
-        throw new Error("No annotation target data available.");
-      }
+    if (!pendingAnnotation) {
+      setErrorMessages([
+        "No annotation data available. Please select text and try again.",
+      ]);
+      return;
+    }
 
+    try {
       const payload: Record<string, any> = {
         ...data,
         submitter: oauth.identity_provider_identity,
-        target: annotationData.target,
+        target: pendingAnnotation.target,
       };
 
       // Route through background service worker to bypass CORS/Brave Shields
@@ -188,10 +196,7 @@ export default function Create() {
 
       console.log("Annotation created successfully:", result.data);
 
-      if (annotationData) {
-        sessionStorage.removeItem("pendingAnnotation");
-        setAnnotationData(null);
-      }
+      await clearPendingAnnotation();
 
       const tabs = await browser.tabs.query({
         active: true,
@@ -223,6 +228,15 @@ export default function Create() {
     }
   };
 
+  if (isLoadingAnnotation || !isAnnotationReady || isLoadingSettings) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[200px] mx-2 my-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-rda-500"></div>
+        <p className="mt-4 text-gray-600">Loading...</p>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div
@@ -237,6 +251,10 @@ export default function Create() {
         </p>
       </div>
     );
+  }
+
+  if (!pendingAnnotation) {
+    return null;
   }
 
   const FormFields = (AnnotationFormSchema as AnnotationSchema).fields.map(
@@ -300,9 +318,11 @@ export default function Create() {
     />
   );
 
-  if (isLoadingSettings) {
-    return <p className="mx-2 my-12">Loading...</p>;
-  }
+  const formDefaultValues = {
+    selectedText: getSelectedTextFromTarget(pendingAnnotation.target),
+    resource: pendingAnnotation.target.source,
+    ...(settings.rememberChoices || {}),
+  };
 
   return (
     <>
@@ -310,7 +330,11 @@ export default function Create() {
         <Alert title="Error Creating Annotation" messages={errorMessages} />
       )}
       <h2 className="text-xl mx-2 mt-6">Create Annotation</h2>
-      <Form ref={formRef} onSubmit={handleSubmit}>
+      <Form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        defaultValues={formDefaultValues}
+      >
         <div className="mx-2 mt-4 space-y-4">{FormFields}</div>
 
         <div className="mx-2 my-4">
@@ -330,12 +354,19 @@ export default function Create() {
           />
         </div>
 
-        <div className="flex w-full mb-8">
+        <div className="flex flex-col gap-2 mx-2 mb-8">
           <button
             type="submit"
-            className="mt-4 rounded-md w-full bg-rda-500 px-2.5 mx-2 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-rda-400 focus-visible:outline-2 cursor-pointer focus-visible:outline-offset-2 focus-visible:outline-rda-500"
+            className="mt-4 rounded-md w-full bg-rda-500 px-2.5 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-rda-400 focus-visible:outline-2 cursor-pointer focus-visible:outline-offset-2 focus-visible:outline-rda-500"
           >
             Create Annotation
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="rounded-md w-full bg-white border border-gray-300 px-2.5 py-1.5 text-sm font-semibold text-gray-700 shadow-xs hover:bg-gray-50 focus-visible:outline-2 cursor-pointer focus-visible:outline-offset-2 focus-visible:outline-gray-500"
+          >
+            Cancel
           </button>
         </div>
       </Form>

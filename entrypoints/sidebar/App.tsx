@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   BrowserRouter,
   Route,
@@ -12,6 +12,10 @@ import Annotations from "@/views/Annotations";
 import { storage } from "#imports";
 import AuthenticationProvider from "@/context/authentication.provider";
 import { AnchorStatusProvider } from "@/context/anchor-status.context";
+import {
+  PendingAnnotationProvider,
+  usePendingAnnotation,
+} from "@/context/pending-annotation.context";
 import Settings from "@/views/Settings";
 import Create from "@/views/Create";
 import Alert from "@/components/Alert.tsx";
@@ -32,51 +36,27 @@ function IndexRoute() {
   return <Navigate to={initialPath} replace />;
 }
 
-// Simple storage watcher - no messages needed
-function PendingAnnotationWatcher() {
+function NavigateOnPendingAnnotation() {
   const navigate = useNavigate();
+  const { pendingAnnotation, isReady } = usePendingAnnotation();
+  const lastNavigatedTimestampRef = useRef<number | null>(null);
 
   useEffect(() => {
-    let isActive = true;
-
-    const checkForPendingAnnotation = async () => {
-      const pendingData = await storage.getItem("session:pendingAnnotation");
-
-      if (pendingData && isActive) {
+    if (
+      isReady &&
+      pendingAnnotation &&
+      pendingAnnotation.timestamp !== lastNavigatedTimestampRef.current
+    ) {
+      if (import.meta.env.DEV) {
         console.log(
-          "[PendingAnnotationWatcher] Found pending annotation",
-          pendingData
+          "[NavigateOnPendingAnnotation] Navigating to /create for timestamp:",
+          pendingAnnotation.timestamp
         );
-
-        sessionStorage.setItem(
-          "pendingAnnotation",
-          JSON.stringify(pendingData)
-        );
-        window.dispatchEvent(new Event("pendingAnnotationUpdated"));
-
-        await storage.removeItem("session:pendingAnnotation");
-
-        // Navigate to create page
-        navigate("/create");
       }
-    };
-
-    checkForPendingAnnotation();
-
-    const unwatch = storage.watch("session:pendingAnnotation", (newValue) => {
-      if (newValue && isActive) {
-        console.log(
-          "[PendingAnnotationWatcher] Storage changed, new pending annotation"
-        );
-        checkForPendingAnnotation();
-      }
-    });
-
-    return () => {
-      isActive = false;
-      unwatch();
-    };
-  }, [navigate]);
+      lastNavigatedTimestampRef.current = pendingAnnotation.timestamp;
+      navigate("/create");
+    }
+  }, [isReady, pendingAnnotation, navigate]);
 
   return null;
 }
@@ -132,22 +112,24 @@ export default function App() {
         </div>
       )}
       {upToDate && (
-        <BrowserRouter basename="/sidebar.html">
-          <AuthenticationProvider>
-            <AnchorStatusProvider>
-              <PendingAnnotationWatcher />
-              <Routes>
-                <Route element={<Layout />}>
-                  <Route index element={<IndexRoute />} />
-                  <Route path="/introduction" element={<Introduction />} />
-                  <Route path="/annotations" element={<Annotations />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/create" element={<Create />} />
-                </Route>
-              </Routes>
-            </AnchorStatusProvider>
-          </AuthenticationProvider>
-        </BrowserRouter>
+        <PendingAnnotationProvider>
+          <BrowserRouter basename="/sidebar.html">
+            <AuthenticationProvider>
+              <AnchorStatusProvider>
+                <NavigateOnPendingAnnotation />
+                <Routes>
+                  <Route element={<Layout />}>
+                    <Route index element={<IndexRoute />} />
+                    <Route path="/introduction" element={<Introduction />} />
+                    <Route path="/annotations" element={<Annotations />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/create" element={<Create />} />
+                  </Route>
+                </Routes>
+              </AnchorStatusProvider>
+            </AuthenticationProvider>
+          </BrowserRouter>
+        </PendingAnnotationProvider>
       )}
     </div>
   );

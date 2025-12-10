@@ -365,63 +365,91 @@ export async function createAnnotatorPopup({
   };
 
   const handleAnnotateClick = async () => {
-    if (currentSelection && currentSelection.rangeCount > 0) {
-      let range = currentSelection.getRangeAt(0);
+    if (!currentSelection || currentSelection.rangeCount === 0) {
+      console.warn("[RDA Annotator] No selection available");
+      hideAnnotatorPopup();
+      return;
+    }
 
-      // Trim leading and trailing whitespace from the range.
-      // This ensures annotations don't include accidental whitespace at boundaries,
-      // which would create awkward visual highlights.
-      try {
-        range = trimRange(range);
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.warn("Failed to trim range, using original:", error);
-        }
+    let range = currentSelection.getRangeAt(0);
+
+    try {
+      range = trimRange(range);
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn("Failed to trim range, using original:", error);
       }
+    }
 
-      if (range.collapsed || range.toString().trim().length === 0) {
-        if (import.meta.env.DEV) {
-          console.warn("Range is empty after trimming whitespace");
-        }
+    if (range.collapsed || range.toString().trim().length === 0) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          "[RDA Annotator] Range is empty after trimming whitespace"
+        );
+      }
+      hideAnnotatorPopup();
+      window.getSelection()?.removeAllRanges();
+      return;
+    }
+
+    // Create selectors
+    const selectors = await describeRange(range, document.body);
+
+    // CRITICAL: Validate we have at least a TextQuoteSelector with exact text
+    // This is required for the Create form to display the annotated text
+    const textQuoteSelector = selectors.find(
+      (s) => s.type === "TextQuoteSelector"
+    );
+    if (
+      !textQuoteSelector ||
+      !("exact" in textQuoteSelector) ||
+      !textQuoteSelector.exact
+    ) {
+      console.error(
+        "[RDA Annotator] Failed to create TextQuoteSelector - cannot proceed"
+      );
+      hideAnnotatorPopup();
+      window.getSelection()?.removeAllRanges();
+      return;
+    }
+
+    const target: AnnotationTarget = {
+      source: getDocumentURL(),
+      selector: selectors,
+    };
+
+    const annotationData = {
+      target,
+      timestamp: Date.now(),
+    };
+
+    try {
+      if (onCreateTemporaryHighlight) {
+        await onCreateTemporaryHighlight(range);
+      }
+    } catch (error) {
+      console.error("Failed to create temporary highlight:", error);
+    }
+
+    try {
+      const response = await sendMessage("storeAnnotation", annotationData);
+      if (!response.success) {
+        console.error("[RDA Annotator] Failed to store annotation");
         hideAnnotatorPopup();
         window.getSelection()?.removeAllRanges();
         return;
       }
-
-      const selectors = await describeRange(range, document.body);
-
-      const target: AnnotationTarget = {
-        source: getDocumentURL(),
-        selector: selectors,
-      };
-
-      const annotationData = {
-        target,
-        timestamp: Date.now(),
-      };
-
-      try {
-        if (onCreateTemporaryHighlight) {
-          await onCreateTemporaryHighlight(range);
-        }
-      } catch (error) {
-        console.error("Failed to create temporary highlight:", error);
-      }
-
-      try {
-        const response = await sendMessage("storeAnnotation", annotationData);
-        if (!response.success) {
-          console.error("[RDA Annotator] Failed to store annotation");
-        }
-      } catch (error) {
-        console.error("[RDA Annotator] Failed to send annotation:", error);
-      }
-
-      await onAnnotate();
-
+    } catch (error) {
+      console.error("[RDA Annotator] Failed to send annotation:", error);
       hideAnnotatorPopup();
       window.getSelection()?.removeAllRanges();
+      return;
     }
+
+    await onAnnotate();
+
+    hideAnnotatorPopup();
+    window.getSelection()?.removeAllRanges();
   };
 
   const handleTextSelection = () => {
