@@ -1,4 +1,5 @@
 import { ContentScriptContext } from "#imports";
+import { isDev } from "@/utils/is-dev";
 
 export type FrameCallback = (frame: HTMLIFrameElement) => void;
 export type FrameLoadCallback = (frame: HTMLIFrameElement, url: string) => void;
@@ -90,7 +91,7 @@ export class FrameObserver {
       const loadHandler = () => {
         try {
           const url = frame.contentWindow?.location.href || "";
-          if (import.meta.env.DEV) {
+          if (isDev) {
             console.log(`[FrameObserver] Frame loaded:`, url);
           }
           this.onFrameLoad?.(frame, url);

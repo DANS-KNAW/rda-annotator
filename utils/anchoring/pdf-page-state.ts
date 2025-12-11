@@ -1,3 +1,5 @@
+import { isDev } from "@/utils/is-dev";
+
 interface PageState {
   pageIndex: number;
   textLayerReady: boolean;
@@ -66,7 +68,7 @@ class PDFPageStateManagerImpl implements PDFPageStateManager {
 
     const app = this.getPDFViewerApplication();
     if (!app) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.warn("[PDFPageStateManager] PDFViewerApplication not found");
       }
       return;
@@ -76,7 +78,7 @@ class PDFPageStateManagerImpl implements PDFPageStateManager {
     this.eventBus = app.eventBus || app.pdfViewer?.eventBus || null;
 
     if (!this.eventBus) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.warn(
           "[PDFPageStateManager] No eventBus found, falling back to polling"
         );
@@ -90,7 +92,7 @@ class PDFPageStateManagerImpl implements PDFPageStateManager {
     this.scanExistingPages();
     this.initialized = true;
 
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.log("[PDFPageStateManager] Initialized with eventBus");
     }
   }
@@ -123,7 +125,7 @@ class PDFPageStateManagerImpl implements PDFPageStateManager {
     this.eventBus = null;
     this.initialized = false;
 
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.log("[PDFPageStateManager] Destroyed");
     }
   }
@@ -237,7 +239,7 @@ class PDFPageStateManagerImpl implements PDFPageStateManager {
       }
     }
 
-    if (import.meta.env.DEV) {
+    if (isDev) {
       const readyCount = this.getReadyPages().length;
       console.log(
         `[PDFPageStateManager] Scanned ${app.pdfViewer.pagesCount} pages, ${readyCount} ready`
@@ -285,7 +287,7 @@ class PDFPageStateManagerImpl implements PDFPageStateManager {
       state.textLayerReady = true;
       state.renderingDone = true;
 
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.log(
           `[PDFPageStateManager] Text layer ready for page ${pageIndex}`
         );
@@ -321,7 +323,7 @@ class PDFPageStateManagerImpl implements PDFPageStateManager {
       state.renderingDone = false;
     }
 
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.log(`[PDFPageStateManager] Page ${pageIndex} destroyed`);
     }
 

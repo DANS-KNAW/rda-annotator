@@ -2,6 +2,7 @@ import { storage } from "#imports";
 import { onMessage, sendMessage } from "@/utils/messaging";
 import { isPDFURL } from "@/utils/detect-content-type";
 import type { DataSource } from "@/types/datasource.interface";
+import { isDev } from "@/utils/is-dev";
 
 /**
  * Get the URL for viewing a PDF in our custom PDF.js viewer
@@ -292,6 +293,58 @@ export default defineBackground(() => {
     }
   });
 
+  // Identity API proxy - browser.identity is not available in iframe contexts on Firefox
+  onMessage("getAuthRedirectUrl", async () => {
+    return browser.identity.getRedirectURL();
+  });
+
+  onMessage("launchAuthFlow", async (message) => {
+    const redirectedUrl = await browser.identity.launchWebAuthFlow({
+      url: message.data.url,
+      interactive: true,
+    });
+    return redirectedUrl;
+  });
+
+  // Session storage proxy - browser.storage.session is not available in iframe contexts on Firefox
+  onMessage("getSessionStorageItem", async (message) => {
+    const value = await storage.getItem(message.data.key as any);
+    return value;
+  });
+
+  onMessage("removeSessionStorageItem", async (message) => {
+    await storage.removeItem(message.data.key as any);
+  });
+
+  // Tabs API proxy - browser.tabs is not available in iframe contexts on Firefox
+  onMessage("getActiveTab", async () => {
+    const tabs = await browser.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    return { id: tabs[0]?.id, url: tabs[0]?.url };
+  });
+
+  // Highlight click proxy - route through background for Firefox iframe compatibility
+  onMessage("storeHighlightClick", async (message) => {
+    try {
+      await storage.setItem("session:highlightClick", message.data);
+      return { success: true };
+    } catch (error) {
+      return { success: false };
+    }
+  });
+
+  // Highlight hover proxy - route through background for Firefox iframe compatibility
+  onMessage("storeHighlightHover", async (message) => {
+    try {
+      await storage.setItem("session:highlightHover", message.data);
+      return { success: true };
+    } catch (error) {
+      return { success: false };
+    }
+  });
+
   browser.action.onClicked.addListener(async (tab) => {
     const currentState = await storage.getItem("local:extension-enabled");
     const newState = !currentState;
@@ -331,7 +384,7 @@ export default defineBackground(() => {
     if (newState && !isOurPDFViewer(tab.url)) {
       // Check if this is a direct PDF URL (not already in our viewer)
       if (isPDFURL(tab.url)) {
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.log(
             "[RDA Background] Redirecting PDF after enable:",
             tab.url
@@ -347,7 +400,7 @@ export default defineBackground(() => {
       try {
         await sendMessage("toggleSidebar", { action: "toggle" }, tab.id);
       } catch (error) {
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.warn(
             "[RDA Background] Failed to send toggleSidebar message:",
             error

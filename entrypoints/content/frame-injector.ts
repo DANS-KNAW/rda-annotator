@@ -3,6 +3,7 @@ import { detectContentTypeAsync } from "@/utils/detect-content-type";
 import { AnnotationManager } from "./annotation-manager";
 import { createAnnotatorPopup } from "./annotator-popup";
 import { waitForPDFReady } from "@/utils/anchoring/pdf";
+import { isDev } from "@/utils/is-dev";
 
 /**
  * Frame Injector
@@ -77,7 +78,7 @@ export async function injectIntoFrame(
   // Wait for frame to be ready
   const ready = await waitForFrameReady(frame);
   if (!ready) {
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.warn("[RDA Frame Injector] Frame not ready, skipping");
     }
     return null;
@@ -87,7 +88,7 @@ export async function injectIntoFrame(
   const frameWindow = frame.contentWindow;
 
   if (!frameDoc || !frameWindow) {
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.warn(
         "[RDA Frame Injector] Cannot access frame document or window"
       );
@@ -116,13 +117,13 @@ export async function injectIntoFrame(
   if (contentType?.type === "PDF") {
     try {
       const isReady = await waitForPDFReady(frameWindow);
-      if (!isReady && import.meta.env.DEV) {
+      if (!isReady && isDev) {
         console.log(
           "[RDA Frame Injector] PDF.js not ready yet, AnnotationManager will retry"
         );
       }
     } catch (error) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.warn(
           "[RDA Frame Injector] Error checking PDF ready, continuing anyway:",
           error

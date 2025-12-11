@@ -55,6 +55,28 @@ interface ProtocolMap {
   createAnnotation(data: {
     payload: Record<string, unknown>;
   }): Promise<{ success: boolean; data?: unknown; error?: string }>;
+
+  // Identity API proxy - browser.identity is not available in iframe contexts on Firefox
+  getAuthRedirectUrl(): Promise<string>;
+  launchAuthFlow(data: { url: string }): Promise<string | undefined>;
+
+  // Session storage proxy - browser.storage.session is not available in iframe contexts on Firefox
+  getSessionStorageItem<T>(data: { key: string }): Promise<T | null>;
+  removeSessionStorageItem(data: { key: string }): Promise<void>;
+
+  // Tabs API proxy - browser.tabs is not available in iframe contexts on Firefox
+  getActiveTab(): Promise<{ id?: number; url?: string }>;
+
+  // Highlight click proxy - route through background for Firefox iframe compatibility
+  storeHighlightClick(data: {
+    annotationIds: string[];
+    timestamp: number;
+  }): Promise<{ success: boolean }>;
+
+  // Highlight hover proxy - route through background for Firefox iframe compatibility
+  storeHighlightHover(data: {
+    annotationIds: string[];
+  }): Promise<{ success: boolean }>;
 }
 
 export const { sendMessage, onMessage } =

@@ -1,4 +1,5 @@
 import { Keycloak, UserProfile } from "@/types/keycloak.interface";
+import { storage } from "#imports";
 
 export class AuthStorage {
   private static readonly OAUTH_KEY = "local:oauth";

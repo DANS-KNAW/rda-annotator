@@ -8,6 +8,7 @@ import {
   ReactNode,
 } from "react";
 import { onMessage, sendMessage, AnchorStatus } from "@/utils/messaging";
+import { isDev } from "@/utils/is-dev";
 
 interface AnchorStatusState {
   orphanedIds: string[];
@@ -151,7 +152,7 @@ export function AnchorStatusProvider({ children }: AnchorStatusProviderProps) {
         }
       }
     } catch (error) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.warn("Failed to request anchor status:", error);
       }
     }

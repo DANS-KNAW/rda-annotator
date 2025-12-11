@@ -3,6 +3,7 @@ import { anchorByRange } from "./range";
 import { anchorByTextPosition } from "./text-position";
 import { anchorByTextQuote } from "./text-quote";
 import { isPDFDocument, anchorPDF } from "./pdf";
+import { isDev } from "@/utils/is-dev";
 
 /**
  * Anchor selectors to a range in the document.
@@ -56,7 +57,7 @@ export async function anchor(
     } catch (error) {
       // Failed - try next selector
       if (error instanceof Error && error.message.includes("Quote mismatch")) {
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.warn(
             "[Anchor] RangeSelector succeeded but quote mismatch:",
             error.message
@@ -74,7 +75,7 @@ export async function anchor(
     } catch (error) {
       // Failed - try next selector
       if (error instanceof Error && error.message.includes("Quote mismatch")) {
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.warn(
             "[Anchor] TextPositionSelector succeeded but quote mismatch:",
             error.message

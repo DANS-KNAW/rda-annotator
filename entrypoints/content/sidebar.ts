@@ -1,5 +1,6 @@
 import { ContentScriptContext } from "#imports";
 import { EXTENSION_NAME, SIDEBAR_WIDTH, TOGGLE_TAB_WIDTH } from "./constant";
+import { isDev } from "@/utils/is-dev";
 
 interface SidebarProps {
   ctx: ContentScriptContext;
@@ -20,7 +21,7 @@ export async function createSidebar({ ctx }: SidebarProps) {
     mode: "closed",
 
     onMount(_, shadowRoot, shadowHost) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.log("[RDA Sidebar] Mounted");
       }
 
@@ -41,11 +42,11 @@ export async function createSidebar({ ctx }: SidebarProps) {
       contentWrapper.id = "content-wrapper";
       container.appendChild(contentWrapper);
 
-      const sheet = new CSSStyleSheet();
-      sheet.replaceSync(`
+      const style = document.createElement("style");
+      style.textContent = `
         :host {
           position: fixed;
-          top: 0; 
+          top: 0;
           right: 0;
           z-index: 2147483647;
           width: ${SIDEBAR_WIDTH + TOGGLE_TAB_WIDTH}px;
@@ -100,8 +101,8 @@ export async function createSidebar({ ctx }: SidebarProps) {
           padding-left: ${TOGGLE_TAB_WIDTH}px;
           box-sizing: border-box;
         }
-      `);
-      shadowRoot.adoptedStyleSheets = [sheet];
+      `;
+      shadowRoot.appendChild(style);
 
       // Toggle button handler
       toggleButton.addEventListener("click", () => {
@@ -124,7 +125,7 @@ export async function createSidebar({ ctx }: SidebarProps) {
         anchor: contentWrapper,
 
         onMount(wrapper, iframe) {
-          if (import.meta.env.DEV) {
+          if (isDev) {
             console.log("[RDA Sidebar] Iframe mounted");
           }
           wrapper.style.width = "100%";
@@ -140,7 +141,7 @@ export async function createSidebar({ ctx }: SidebarProps) {
     },
 
     onRemove() {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.log("[RDA Sidebar] Removed");
       }
     },

@@ -11,6 +11,7 @@ import type { AnnotationHit } from "@/types/elastic-search-document.interface";
 import { injectHighlightStyles } from "@/utils/inject-highlight-styles";
 import { getAnnotationIdsAtPoint } from "@/utils/highlights-at-point";
 import { getDocumentURL } from "@/utils/document-url";
+import { isDev } from "@/utils/is-dev";
 import {
   isPDFDocument,
   isPlaceholderRange,
@@ -219,7 +220,7 @@ export class AnnotationManager {
 
     if (toReanchor.length === 0) return;
 
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.log(
         `[AnnotationManager] Re-anchoring ${toReanchor.length} annotations after DOM change`
       );
@@ -256,7 +257,7 @@ export class AnnotationManager {
       (pageIndex) => this.handlePageDestroyed(pageIndex)
     );
 
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.log("[AnnotationManager] PDF page tracking initialized");
     }
   }
@@ -272,7 +273,7 @@ export class AnnotationManager {
       return;
     }
 
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.log(
         `[AnnotationManager] Page ${pageIndex} ready, ${annotationsForPage.length} annotations to process`
       );
@@ -375,7 +376,7 @@ export class AnnotationManager {
       if (wasOrphaned) {
         this.recoveredAnnotationIds.add(id);
         this.scheduleStatusUpdate(id, "recovered");
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.log(
             `[AnnotationManager] Annotation ${id} recovered from orphaned state`
           );
@@ -391,7 +392,7 @@ export class AnnotationManager {
       this.orphanedAnnotations.set(id, annotation);
       this.scheduleStatusUpdate(id, "orphaned");
 
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.warn(`[AnnotationManager] Re-anchor failed for ${id}:`, error);
       }
 
@@ -469,7 +470,7 @@ export class AnnotationManager {
           await sendMessage("anchorStatusUpdate", { annotationId, status });
         }
       } catch (error) {
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.warn("Failed to send anchor status update:", error);
         }
       }
@@ -491,7 +492,7 @@ export class AnnotationManager {
     try {
       this.rootElement.normalize();
     } catch (error) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.warn("Failed to normalize root element:", error);
       }
     }
@@ -639,7 +640,7 @@ export class AnnotationManager {
     this.retryAttempts.delete(id);
     this.scheduleStatusUpdate(id, "orphaned");
 
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.log(
         `[AnnotationManager] Annotation ${id} marked orphaned after ${this.MAX_TIMED_RETRIES} retries`
       );
@@ -680,7 +681,7 @@ export class AnnotationManager {
           try {
             (parent as Element).normalize();
           } catch (error) {
-            if (import.meta.env.DEV) {
+            if (isDev) {
               console.warn(
                 "Failed to normalize parent after removing temporary highlight:",
                 error

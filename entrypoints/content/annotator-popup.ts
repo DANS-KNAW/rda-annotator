@@ -5,6 +5,7 @@ import { describeRange } from "@/utils/anchoring/describe";
 import { trimRange } from "@/utils/anchoring/trim-range";
 import { sendMessage } from "@/utils/messaging";
 import { getDocumentURL } from "@/utils/document-url";
+import { isDev } from "@/utils/is-dev";
 
 interface AnnotatorPopupProps {
   ctx: ContentScriptContext;
@@ -66,7 +67,7 @@ export async function createAnnotatorPopup({
     mode: "closed",
 
     onMount(_, shadowRoot, shadowHost) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.log("[RDA Annotator] Mounted");
       }
 
@@ -74,8 +75,8 @@ export async function createAnnotatorPopup({
       container.id = "annotator-popup";
       shadowRoot.replaceChildren(container);
 
-      const sheet = new CSSStyleSheet();
-      sheet.replaceSync(`
+      const style = document.createElement("style");
+      style.textContent = `
         :host {
           position: absolute;
           top: 0;
@@ -120,9 +121,7 @@ export async function createAnnotatorPopup({
           width: 0;
           height: 0;
           border-style: solid;
-          border-width: 0 ${ARROW_HEIGHT - 1}px ${ARROW_HEIGHT - 1}px ${
-        ARROW_HEIGHT - 1
-      }px;
+          border-width: 0 ${ARROW_HEIGHT - 1}px ${ARROW_HEIGHT - 1}px ${ARROW_HEIGHT - 1}px;
           border-color: transparent transparent #fff transparent;
         }
 
@@ -141,9 +140,7 @@ export async function createAnnotatorPopup({
           width: 0;
           height: 0;
           border-style: solid;
-          border-width: ${ARROW_HEIGHT - 1}px ${ARROW_HEIGHT - 1}px 0 ${
-        ARROW_HEIGHT - 1
-      }px;
+          border-width: ${ARROW_HEIGHT - 1}px ${ARROW_HEIGHT - 1}px 0 ${ARROW_HEIGHT - 1}px;
           border-color: #fff transparent transparent transparent;
         }
 
@@ -167,8 +164,8 @@ export async function createAnnotatorPopup({
         button:active {
           background: #1d4ed8;
         }
-      `);
-      shadowRoot.adoptedStyleSheets = [sheet];
+      `;
+      shadowRoot.appendChild(style);
 
       const button = document.createElement("button");
       button.textContent = "Annotate text";
@@ -197,7 +194,7 @@ export async function createAnnotatorPopup({
     },
 
     onRemove() {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.log("[RDA Annotator] Removed");
       }
       currentSelection = null;
@@ -376,13 +373,13 @@ export async function createAnnotatorPopup({
     try {
       range = trimRange(range);
     } catch (error) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.warn("Failed to trim range, using original:", error);
       }
     }
 
     if (range.collapsed || range.toString().trim().length === 0) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.warn(
           "[RDA Annotator] Range is empty after trimming whitespace"
         );

@@ -4,10 +4,12 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   ReactNode,
 } from "react";
-import { storage } from "#imports";
 import { AnnotationTarget } from "@/types/selector.interface";
+import { sendMessage } from "@/utils/messaging";
+import { isDev } from "@/utils/is-dev";
 
 /**
  * Data structure for a pending annotation (text selection waiting to be annotated)
@@ -57,9 +59,10 @@ export function PendingAnnotationProvider({
 
   const loadFromStorage = useCallback(async () => {
     try {
-      const data = await storage.getItem<PendingAnnotationData>(
-        "session:pendingAnnotation"
-      );
+      // Use messaging to access session storage - browser.storage.session is not available in iframe contexts on Firefox
+      const data = await sendMessage("getSessionStorageItem", {
+        key: "session:pendingAnnotation",
+      }) as PendingAnnotationData | null;
       setPendingAnnotation(data || null);
     } catch (error) {
       console.error(
@@ -75,7 +78,10 @@ export function PendingAnnotationProvider({
 
   const clearPendingAnnotation = useCallback(async () => {
     try {
-      await storage.removeItem("session:pendingAnnotation");
+      // Use messaging to access session storage - browser.storage.session is not available in iframe contexts on Firefox
+      await sendMessage("removeSessionStorageItem", {
+        key: "session:pendingAnnotation",
+      });
       setPendingAnnotation(null);
     } catch (error) {
       console.error("[PendingAnnotationContext] Failed to clear:", error);
@@ -92,28 +98,39 @@ export function PendingAnnotationProvider({
     loadFromStorage();
   }, [loadFromStorage]);
 
-  // Watch for storage changes (handles case where annotation is created while sidebar is open)
-  useEffect(() => {
-    const unwatch = storage.watch<PendingAnnotationData>(
-      "session:pendingAnnotation",
-      (newValue) => {
-        if (import.meta.env.DEV) {
-          console.log(
-            "[PendingAnnotationContext] Storage changed:",
-            newValue ? `timestamp: ${newValue.timestamp}` : "null"
-          );
-        }
+  // Track the last known timestamp to detect changes
+  const lastTimestampRef = useRef<number | null>(null);
 
-        // Always update state to reflect storage
-        // The navigation component uses timestamp to detect new annotations
-        setPendingAnnotation(newValue || null);
-        setIsReady(true);
-        setIsLoading(false);
+  // Poll for storage changes (storage.watch is not available in iframe contexts on Firefox)
+  // This handles the case where annotation is created while sidebar is open
+  useEffect(() => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const data = await sendMessage("getSessionStorageItem", {
+          key: "session:pendingAnnotation",
+        }) as PendingAnnotationData | null;
+
+        // Only update if there's a new annotation (different timestamp)
+        if (data?.timestamp !== lastTimestampRef.current) {
+          if (isDev) {
+            console.log(
+              "[PendingAnnotationContext] Storage changed:",
+              data ? `timestamp: ${data.timestamp}` : "null"
+            );
+          }
+
+          lastTimestampRef.current = data?.timestamp ?? null;
+          setPendingAnnotation(data || null);
+          setIsReady(true);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        // Silently ignore polling errors
       }
-    );
+    }, 500); // Poll every 500ms
 
     return () => {
-      unwatch();
+      clearInterval(pollInterval);
     };
   }, []);
 

@@ -7,6 +7,7 @@ import { detectContentType } from "@/utils/detect-content-type";
 import { waitForPDFReady } from "@/utils/anchoring/pdf";
 import { getDocumentURL } from "@/utils/document-url";
 import { createAnnotatorPopup } from "./annotator-popup";
+import { isDev } from "@/utils/is-dev";
 
 // Declare global window property for atomic injection guard
 declare global {
@@ -122,7 +123,7 @@ export default defineContentScript({
     // This prevents race conditions where multiple content script instances
     // could pass the DOM marker check before any marker is created
     if (window.__RDA_CONTENT_SCRIPT_INITIALIZED__) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.warn("[RDA Boot] Already injected (window flag), skipping");
       }
       return;
@@ -131,7 +132,7 @@ export default defineContentScript({
 
     // Also check DOM marker as secondary guard (for edge cases like page restore)
     if (document.querySelector("[data-rda-injected]")) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.warn("[RDA Boot] Already injected (DOM marker), skipping");
       }
       return;
@@ -179,8 +180,10 @@ export default defineContentScript({
           await host.openSidebar();
 
           try {
-            await sendMessage("showAnnotationsFromHighlight", {
+            // Route through background for Firefox iframe compatibility
+            await sendMessage("storeHighlightClick", {
               annotationIds: event.data.annotationIds,
+              timestamp: Date.now(),
             });
           } catch (error) {
             console.error(
@@ -190,16 +193,12 @@ export default defineContentScript({
           }
         } else if (event.data.type === "rda:hoverAnnotations") {
           try {
-            await sendMessage("hoverAnnotations", {
+            // Route through background for Firefox iframe compatibility
+            await sendMessage("storeHighlightHover", {
               annotationIds: event.data.annotationIds,
-            }).catch(() => {
-              // Sidebar might not be ready yet, ignore
             });
           } catch (error) {
-            console.error(
-              "[RDA Host] Failed to forward hover from frame:",
-              error
-            );
+            // Sidebar might not be ready yet, ignore
           }
         } else if (event.data.type === "rda:openSidebar") {
           if (!host) return;
@@ -238,8 +237,10 @@ export default defineContentScript({
           await host.openSidebar();
 
           try {
-            await sendMessage("showAnnotationsFromHighlight", {
+            // Route through background for Firefox iframe compatibility
+            await sendMessage("storeHighlightClick", {
               annotationIds,
+              timestamp: Date.now(),
             });
           } catch (error) {
             console.error(
@@ -251,13 +252,10 @@ export default defineContentScript({
 
         onHighlightHover: async (annotationIds) => {
           try {
-            await sendMessage("hoverAnnotations", { annotationIds }).catch(
-              () => {
-                // Sidebar might not be ready yet, ignore
-              }
-            );
+            // Route through background for Firefox iframe compatibility
+            await sendMessage("storeHighlightHover", { annotationIds });
           } catch (error) {
-            console.error("[RDA] Failed to send hover state:", error);
+            // Sidebar might not be ready yet, ignore
           }
         },
         isPDF,
@@ -358,7 +356,7 @@ export default defineContentScript({
           }
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.warn('[RDA] Listener for "toggleSidebar" already registered');
         }
       }
@@ -369,7 +367,7 @@ export default defineContentScript({
           await annotationManager.scrollToAnnotation(message.data.annotationId);
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.warn(
             '[RDA] Listener for "scrollToAnnotation" already registered'
           );
@@ -382,7 +380,7 @@ export default defineContentScript({
           annotationManager.removeTemporaryHighlight();
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.warn(
             '[RDA] Listener for "removeTemporaryHighlight" already registered'
           );
@@ -402,7 +400,7 @@ export default defineContentScript({
           broadcastToCrossOriginFrames({ type: "rda:reloadAnnotations" });
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.warn(
             '[RDA] Listener for "reloadAnnotations" already registered'
           );
@@ -430,7 +428,7 @@ export default defineContentScript({
           ]);
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.warn(
             '[RDA] Listener for "requestAnchorStatus" already registered'
           );

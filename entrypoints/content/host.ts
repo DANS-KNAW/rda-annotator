@@ -1,6 +1,7 @@
 import { ContentScriptContext } from "#imports";
 import { createSidebar } from "./sidebar";
 import { createAnnotatorPopup } from "./annotator-popup";
+import { isDev } from "@/utils/is-dev";
 
 interface CreateHostProps {
   ctx: ContentScriptContext;
@@ -73,7 +74,7 @@ export async function createHost({ ctx, onCreateTemporaryHighlight, onMountState
 
   async function openSidebar() {
     if (!sidebarMounted) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.warn("Cannot open sidebar - not mounted");
       }
       return;

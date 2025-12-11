@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { useLocation } from "react-router";
 import {
   searchAnnotationsByUrl,
@@ -10,9 +10,8 @@ import AnnotationDrawer from "@/components/AnnotationDrawer";
 import AnnotationCard from "@/components/AnnotationCard";
 import { AuthenticationContext } from "@/context/authentication.context";
 import { useAnchorStatus } from "@/context/anchor-status.context";
-import { sendMessage, onMessage } from "@/utils/messaging";
+import { sendMessage } from "@/utils/messaging";
 import { extractDocumentURL } from "@/utils/extract-document-url";
-import { storage } from "#imports";
 
 export default function Annotations() {
   const { isAuthenticated, oauth } = useContext(AuthenticationContext);
@@ -61,15 +60,13 @@ export default function Annotations() {
 
     if (shouldScroll) {
       try {
-        const tabs = await browser.tabs.query({
-          active: true,
-          currentWindow: true,
-        });
-        if (tabs[0]?.id) {
+        // Use messaging to access tabs API - browser.tabs is not available in iframe contexts on Firefox
+        const tab = await sendMessage("getActiveTab", undefined);
+        if (tab?.id) {
           await sendMessage(
             "scrollToAnnotation",
             { annotationId: annotation._id },
-            tabs[0].id
+            tab.id
           );
         }
       } catch (error) {
@@ -115,12 +112,10 @@ export default function Annotations() {
 
   useEffect(() => {
     (async () => {
-      const tabs = await browser.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
-      if (tabs[0]?.url) {
-        const documentUrl = extractDocumentURL(tabs[0].url);
+      // Use messaging to access tabs API - browser.tabs is not available in iframe contexts on Firefox
+      const tab = await sendMessage("getActiveTab", undefined);
+      if (tab?.url) {
+        const documentUrl = extractDocumentURL(tab.url);
         setCurrentUrl(documentUrl);
       }
     })();
@@ -144,103 +139,126 @@ export default function Annotations() {
     })();
   }, [isAuthenticated, location]);
 
-  // Listen for highlight clicks - set persistent filter
+  // Track last known highlight click timestamp to detect changes
+  const lastHighlightClickTimestampRef = useRef<number | null>(null);
+
+  // Poll for highlight clicks from session storage (routed through background for Firefox iframe compatibility)
   useEffect(() => {
-    const unsubscribe = onMessage(
-      "showAnnotationsFromHighlight",
-      async (message) => {
-        if (!message.data?.annotationIds) return;
+    const pollInterval = setInterval(async () => {
+      try {
+        const data = (await sendMessage("getSessionStorageItem", {
+          key: "session:highlightClick",
+        })) as { annotationIds: string[]; timestamp: number } | null;
 
-        const { annotationIds } = message.data;
+        // Only process if there's a new click (different timestamp)
+        if (data?.timestamp && data.timestamp !== lastHighlightClickTimestampRef.current) {
+          lastHighlightClickTimestampRef.current = data.timestamp;
 
-        // Set persistent filter (no timeout)
-        setFilteredAnnotationIds(annotationIds);
+          const { annotationIds } = data;
 
-        // If only one annotation, show it in the modal
-        if (annotationIds.length === 1) {
-          const annotation = annotations.find(
-            (ann) => ann._id === annotationIds[0]
-          );
-          if (annotation) {
-            setSelected(annotation);
+          // Set persistent filter (no timeout)
+          setFilteredAnnotationIds(annotationIds);
+
+          // If only one annotation, show it in the modal
+          if (annotationIds.length === 1) {
+            const annotation = annotations.find(
+              (ann) => ann._id === annotationIds[0]
+            );
+            if (annotation) {
+              setSelected(annotation);
+            }
           }
+          // If multiple annotations, they're now filtered in the list
+          // User can click any to see details
+
+          // Clear the highlight click data after processing
+          await sendMessage("removeSessionStorageItem", {
+            key: "session:highlightClick",
+          });
         }
-        // If multiple annotations, they're now filtered in the list
-        // User can click any to see details
+      } catch (error) {
+        // Silently ignore polling errors
       }
-    );
+    }, 200); // Poll every 200ms for quick response to clicks
 
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      clearInterval(pollInterval);
     };
   }, [annotations]);
 
-  // Listen for highlight hovers - set temporary hover state
+  // Poll for highlight hovers from session storage (routed through background for Firefox iframe compatibility)
   useEffect(() => {
-    const unsubscribe = onMessage("hoverAnnotations", async (message) => {
-      if (!message.data?.annotationIds) {
-        setHoveredAnnotationIds([]);
-        return;
-      }
+    let lastHoverIds: string[] = [];
 
-      const { annotationIds } = message.data;
-      setHoveredAnnotationIds(annotationIds);
-    });
+    const pollInterval = setInterval(async () => {
+      try {
+        const data = (await sendMessage("getSessionStorageItem", {
+          key: "session:highlightHover",
+        })) as { annotationIds: string[] } | null;
+
+        const newIds = data?.annotationIds || [];
+
+        // Only update if hover state changed
+        if (JSON.stringify(newIds) !== JSON.stringify(lastHoverIds)) {
+          lastHoverIds = newIds;
+          setHoveredAnnotationIds(newIds);
+        }
+      } catch (error) {
+        // Silently ignore polling errors
+      }
+    }, 100); // Poll every 100ms for responsive hover
 
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      clearInterval(pollInterval);
     };
   }, []);
 
-  // Watch tab-specific storage for frame URL changes
-  useEffect(() => {
-    let unwatch: (() => void) | undefined;
+  // Track last known URLs to detect changes
+  const lastFrameUrlsRef = useRef<string[]>([]);
 
-    const setupWatcher = async () => {
+  // Poll for frame URL changes (storage.watch is not available in iframe contexts on Firefox)
+  useEffect(() => {
+    let tabId: number | undefined;
+
+    const loadFrameUrls = async () => {
       try {
-        const tabs = await browser.tabs.query({
-          active: true,
-          currentWindow: true,
-        });
-        const tabId = tabs[0]?.id;
+        // Use messaging to access tabs API - browser.tabs is not available in iframe contexts on Firefox
+        const tab = await sendMessage("getActiveTab", undefined);
+        tabId = tab?.id;
         if (!tabId) return;
 
-        const key = `session:frameUrls:${tabId}` as const;
+        const key = `session:frameUrls:${tabId}`;
 
-        // Check storage on mount for any URLs written before we mounted
-        const storedUrls = await storage.getItem<string[]>(key);
+        // Use messaging to access session storage - browser.storage.session is not available in iframe contexts on Firefox
+        const storedUrls = (await sendMessage("getSessionStorageItem", {
+          key,
+        })) as string[] | null;
+
         if (storedUrls && storedUrls.length > 0) {
-          const data = await searchAnnotationsByUrl(storedUrls);
-          setAnnotations((prev) => mergeAnnotations(prev, data.hits.hits));
-        }
+          // Check if URLs changed
+          const urlsChanged =
+            storedUrls.length !== lastFrameUrlsRef.current.length ||
+            storedUrls.some((url) => !lastFrameUrlsRef.current.includes(url));
 
-        // Watch for changes to frame URLs in storage
-        unwatch = storage.watch<string[]>(key, async (newUrls) => {
-          if (!newUrls || newUrls.length === 0) return;
-
-          try {
-            const data = await searchAnnotationsByUrl(newUrls);
+          if (urlsChanged) {
+            lastFrameUrlsRef.current = storedUrls;
+            const data = await searchAnnotationsByUrl(storedUrls);
             setAnnotations((prev) => mergeAnnotations(prev, data.hits.hits));
-          } catch (error) {
-            console.error(
-              "[Annotations] Error fetching annotations for new frame URLs:",
-              error
-            );
           }
-        });
+        }
       } catch (error) {
-        console.error("[Annotations] Error setting up storage watcher:", error);
+        console.error("[Annotations] Error loading frame URLs:", error);
       }
     };
 
-    setupWatcher();
+    // Initial load
+    loadFrameUrls();
+
+    // Poll for changes
+    const pollInterval = setInterval(loadFrameUrls, 1000);
 
     return () => {
-      if (unwatch) unwatch();
+      clearInterval(pollInterval);
     };
   }, []);
 

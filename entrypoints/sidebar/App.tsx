@@ -18,6 +18,7 @@ import {
 } from "@/context/pending-annotation.context";
 import Settings from "@/views/Settings";
 import Create from "@/views/Create";
+import { isDev } from "@/utils/is-dev";
 import Alert from "@/components/Alert.tsx";
 import { isVersionGreaterOrEqual } from "@/utils/version-comparison";
 
@@ -47,7 +48,7 @@ function NavigateOnPendingAnnotation() {
       pendingAnnotation &&
       pendingAnnotation.timestamp !== lastNavigatedTimestampRef.current
     ) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.log(
           "[NavigateOnPendingAnnotation] Navigating to /create for timestamp:",
           pendingAnnotation.timestamp

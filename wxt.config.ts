@@ -13,6 +13,15 @@ export default defineConfig({
     version: "1.1.6",
     permissions: ["storage", "identity", "tabs"],
     host_permissions: [import.meta.env.HOST_PERMISSION],
+    browser_specific_settings:
+      env.browser === "firefox"
+        ? {
+            gecko: {
+              id: import.meta.env.WXT_FIREFOX_EXTENSION_ID,
+              strict_min_version: "109.0",
+            },
+          }
+        : undefined,
     web_accessible_resources: [
       { resources: ["sidebar.html"], matches: ["<all_urls>"] },
       {

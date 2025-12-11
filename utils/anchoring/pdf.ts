@@ -6,6 +6,7 @@ import {
 } from "@/types/selector.interface";
 import { matchQuote } from "./match-quote";
 import { translateOffsets } from "@/utils/normalize";
+import { isDev } from "@/utils/is-dev";
 export {
   createPDFPageStateManager,
   destroyPDFPageStateManager,
@@ -176,7 +177,7 @@ async function waitForPDFDocumentLoaded(win: Window = window): Promise<any> {
     // Timeout after 10 seconds (page-level retries handle individual pages)
     setTimeout(() => {
       if (!resolved) {
-        if (import.meta.env.DEV) {
+        if (isDev) {
           console.warn("[PDF] Timeout waiting for PDF document to load");
         }
         cleanup();
@@ -190,7 +191,7 @@ async function waitForPDFDocumentLoaded(win: Window = window): Promise<any> {
 export async function waitForPDFReady(win: Window = window): Promise<boolean> {
   try {
     const isPDF = isPDFDocument(win);
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.log(
         `[PDF waitForPDFReady] isPDFDocument: ${isPDF}, window:`,
         win === window ? "main" : "frame"
@@ -201,13 +202,13 @@ export async function waitForPDFReady(win: Window = window): Promise<boolean> {
       return false;
     }
 
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.log(`[PDF waitForPDFReady] Waiting for PDF document to load...`);
     }
 
     await waitForPDFDocumentLoaded(win);
 
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.log(`[PDF waitForPDFReady] PDF document loaded successfully`);
     }
 
@@ -564,7 +565,7 @@ async function anchorByPosition(
     getPageTextContent(pageIndex),
   ]);
 
-  if (import.meta.env.DEV) {
+  if (isDev) {
     console.log(`[PDF anchorByPosition] Page ${pageIndex}:`, {
       renderingState: page.renderingState,
       hasTextLayer: !!page.textLayer,
@@ -584,7 +585,7 @@ async function anchorByPosition(
   ) {
     const textLayerDiv = page.textLayer.div || page.textLayer.textLayerDiv;
     if (!textLayerDiv) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.warn(
           `[PDF anchorByPosition] Text layer div not found for page ${pageIndex}`
         );
@@ -594,7 +595,7 @@ async function anchorByPosition(
 
     const textLayerStr = textLayerDiv.textContent!;
 
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.log(`[PDF anchorByPosition] Text layer for page ${pageIndex}:`, {
         textLayerLength: textLayerStr.length,
         pageTextLength: pageText.length,
@@ -606,7 +607,7 @@ async function anchorByPosition(
       textLayerStr.length === 0 ||
       textLayerStr.length < pageText.length * 0.5
     ) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.log(
           `[PDF anchorByPosition] Text layer too short, creating placeholder for page ${pageIndex}`
         );
@@ -633,7 +634,7 @@ async function anchorByPosition(
     const pageTextQuote = stripSpaces(pageText.slice(start, end));
 
     if (textLayerQuote.normalize("NFKD") !== pageTextQuote.normalize("NFKD")) {
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.warn("[PDF Anchor] Text layer mismatch detected");
       }
     }
@@ -677,7 +678,7 @@ async function anchorByPosition(
     range.setStart(startNode, startOffset);
     range.setEnd(endNode, endOffset);
 
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.log(
         `[PDF anchorByPosition] Successfully anchored on page ${pageIndex}:`,
         {
@@ -689,7 +690,7 @@ async function anchorByPosition(
     return range;
   }
 
-  if (import.meta.env.DEV) {
+  if (isDev) {
     console.log(
       `[PDF anchorByPosition] Text layer not ready, creating placeholder for page ${pageIndex}:`,
       {

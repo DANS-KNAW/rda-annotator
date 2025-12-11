@@ -14,6 +14,7 @@ import Alert from "@/components/Alert";
 import { useNavigate } from "react-router";
 import { AnnotationTarget } from "@/types/selector.interface";
 import { sendMessage } from "@/utils/messaging";
+import { isDev } from "@/utils/is-dev";
 
 /**
  * Extracts the selected text from an AnnotationTarget
@@ -68,7 +69,7 @@ export default function Create() {
       formRef.current.setValue("selectedText", selectedText);
       formRef.current.setValue("resource", pendingAnnotation.target.source);
 
-      if (import.meta.env.DEV) {
+      if (isDev) {
         console.log("[Create] Set form values:", {
           selectedText: selectedText.substring(0, 50) + "...",
           resource: pendingAnnotation.target.source,

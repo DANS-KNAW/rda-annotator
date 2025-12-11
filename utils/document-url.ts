@@ -1,3 +1,5 @@
+import { isDev } from "@/utils/is-dev";
+
 /**
  * Get the actual document URL, handling the case where we're in our PDF.js viewer.
  *
@@ -19,7 +21,7 @@ export function getDocumentURL(): string {
       return fileParam;
     }
   } catch (error) {
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.warn("[RDA] Failed to parse URL:", error);
     }
   }
@@ -50,7 +52,7 @@ export function isInPDFViewer(win: Window = window): boolean {
 
     return isOurExtension && isPDFViewerPath && hasFileParam;
   } catch (error) {
-    if (import.meta.env.DEV) {
+    if (isDev) {
       console.warn("[RDA] Failed to check PDF viewer status:", error);
     }
     return false;

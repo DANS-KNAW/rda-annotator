@@ -1,17 +1,29 @@
 import pkceChallenge from "pkce-challenge";
 import { storage } from "#imports";
 import { Keycloak } from "@/types/keycloak.interface";
+import { sendMessage } from "@/utils/messaging";
 
 export class Authentication {
   private readonly issuer: string;
   private readonly clientId: string;
-  private readonly redirectUri: string;
+  private redirectUri: string | null = null;
   private readonly scopes: string[] = ["openid", "email", "profile"];
 
   constructor(issuer: string, clientId: string) {
     this.issuer = issuer;
     this.clientId = clientId;
-    this.redirectUri = browser.identity.getRedirectURL();
+  }
+
+  /**
+   * Gets the redirect URL from the background script via messaging.
+   * This is needed because browser.identity is not available in iframe contexts on Firefox.
+   */
+  private async getRedirectUri(): Promise<string> {
+    if (this.redirectUri) {
+      return this.redirectUri;
+    }
+    this.redirectUri = await sendMessage("getAuthRedirectUrl", undefined);
+    return this.redirectUri;
   }
 
   /**
@@ -35,11 +47,12 @@ export class Authentication {
   }> {
     const state = crypto.randomUUID();
     const { code_challenge, code_verifier } = await pkceChallenge();
+    const redirectUri = await this.getRedirectUri();
 
     const authUrl = new URL(`${this.issuer}/protocol/openid-connect/auth`);
     authUrl.searchParams.set("client_id", this.clientId);
     authUrl.searchParams.set("response_type", "code");
-    authUrl.searchParams.set("redirect_uri", this.redirectUri);
+    authUrl.searchParams.set("redirect_uri", redirectUri);
     authUrl.searchParams.set("scope", this.scopes.join(" "));
     authUrl.searchParams.set("state", state);
     authUrl.searchParams.set("code_challenge", code_challenge);
@@ -65,10 +78,9 @@ export class Authentication {
   async authenticate(): Promise<Keycloak> {
     const ctx = await this.buildAuthUrl();
 
-    const redirectedUrl = await browser.identity.launchWebAuthFlow({
-      url: ctx.url,
-      interactive: true,
-    });
+    // Use messaging to call browser.identity.launchWebAuthFlow in background script
+    // This is required because browser.identity is not available in iframe contexts on Firefox
+    const redirectedUrl = await sendMessage("launchAuthFlow", { url: ctx.url });
 
     if (!redirectedUrl) {
       throw new Error("Authentication was cancelled or failed");
@@ -83,11 +95,12 @@ export class Authentication {
     }
 
     const tokenUrl = `${this.issuer}/protocol/openid-connect/token`;
+    const redirectUri = await this.getRedirectUri();
 
     const body = new URLSearchParams();
     body.set("grant_type", "authorization_code");
     body.set("code", code);
-    body.set("redirect_uri", this.redirectUri);
+    body.set("redirect_uri", redirectUri);
     body.set("client_id", this.clientId);
     body.set("code_verifier", ctx.verifier);
 
