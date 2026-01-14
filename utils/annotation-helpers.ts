@@ -82,8 +82,10 @@ function normalizeVocabularyField(
   const items = Array.isArray(rawValue) ? rawValue : [rawValue]
 
   // Transform each item using the shared transformer
+  // Use namespace from vocabularyOptions for transformation, fallback to vocabulary type
+  const vocabularyType = fieldConfig.vocabularyOptions?.namespace || fieldConfig.vocabulary
   return items.map((item) => {
-    const dataSource = transformVocabularyItem(item, fieldConfig.vocabulary)
+    const dataSource = transformVocabularyItem(item, vocabularyType)
     return dataSourceToVocabularyItem(dataSource, variant)
   })
 }

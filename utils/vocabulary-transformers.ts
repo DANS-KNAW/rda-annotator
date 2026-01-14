@@ -1,7 +1,4 @@
-import type {
-  DataSource,
-  PredefinedDataSource,
-} from '@/types/datasource.interface'
+import type { DataSource } from '@/types/datasource.interface'
 
 /**
  * Transform vocabulary items from Elasticsearch format to DataSource format.
@@ -9,19 +6,20 @@ import type {
  * This function normalizes them into a consistent DataSource structure.
  *
  * @param item - The vocabulary item from Elasticsearch
- * @param vocabularyType - The type of vocabulary
+ * @param vocabularyType - The type of vocabulary (namespace string or 'open_vocabularies')
  * @returns A normalized DataSource object
  */
 export function transformVocabularyItem(
   item: any,
-  vocabularyType: PredefinedDataSource,
+  vocabularyType: string,
 ): DataSource {
   if (!item) {
     return { label: '', value: '' }
   }
 
-  // Handle different vocabulary structures
+  // Handle different vocabulary structures based on namespace
   switch (vocabularyType) {
+    case 'rda_interest_groups':
     case 'interest_groups':
       return {
         label: item.title || '',
@@ -30,6 +28,7 @@ export function transformVocabularyItem(
         description: item.description || undefined,
       }
 
+    case 'rda_working_groups':
     case 'working_groups':
       return {
         label: item.title || '',
@@ -67,12 +66,14 @@ export function transformVocabularyItem(
         description: item.description || undefined,
       }
 
+    case 'rda_keywords':
     case 'keywords':
       return {
         label: item.keyword || item.title || '',
         value: item.uuid_keyword || item.uuid || '',
       }
 
+    case 'rda_resource_types':
     case 'resource_types':
       return {
         label: item.uri_type || item.title || item.label || '',
@@ -80,6 +81,7 @@ export function transformVocabularyItem(
         description: item.description || undefined,
       }
 
+    case 'iso-639':
     case 'languages':
       return {
         label: item.label || item.title || '',
@@ -88,20 +90,13 @@ export function transformVocabularyItem(
       }
 
     case 'open_vocabularies':
-      // For custom vocabularies like MOMSI
-      return {
-        label: item.value || item.label || '',
-        value: item.uuid || '',
-        secondarySearch: item.value_uri || undefined,
-        description: item.description || undefined,
-      }
-
+    case 'momsi':
     default:
-      // Fallback: try to extract common fields
+      // For custom vocabularies or fallback
       return {
-        label: item.title || item.label || item.name || '',
+        label: item.value || item.label || item.title || item.name || '',
         value: item.uuid || item.id || item.value || '',
-        secondarySearch: item.url || undefined,
+        secondarySearch: item.value_uri || item.url || undefined,
         description: item.description || undefined,
       }
   }

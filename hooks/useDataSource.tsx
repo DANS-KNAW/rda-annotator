@@ -1,96 +1,123 @@
 import type { VocabularyOptions } from '@/types/annotation-schema.interface'
 import type { DataSource, PredefinedDataSource } from '@/types/datasource.interface'
-import fetchDisciplines from '@/utils/datasources/fetch-disciplines'
-import fetchGORCAttributes from '@/utils/datasources/fetch-gorc-attributes'
-import fetchGORCElements from '@/utils/datasources/fetch-gorc-elements'
-import fetchInterestGroups from '@/utils/datasources/fetch-interest-groups'
-import fetchKeywords from '@/utils/datasources/fetch-keywords'
-import fetchLanguages from '@/utils/datasources/fetch-languages'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import fetchOpenVocabularies from '@/utils/datasources/fetch-open-vocabularies'
-import fetchRDAPathways from '@/utils/datasources/fetch-rda-pathways'
-import fetchResourceTypes from '@/utils/datasources/fetch-resource-types'
-import fetchWorkingGroups from '@/utils/datasources/fetch-working-groups'
+
+const PAGE_SIZE = 50
+
+interface UseDataSourceReturn {
+  data: DataSource[]
+  loading: boolean
+  loadingMore: boolean
+  error: string | null
+  hasMore: boolean
+  loadMore: () => Promise<void>
+  search: (query: string) => void
+  searchQuery: string
+}
 
 export default function useDataSource(
   datasource: PredefinedDataSource | DataSource[],
   options?: VocabularyOptions,
-) {
+): UseDataSourceReturn {
   const [data, setData] = useState<DataSource[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const offsetRef = useRef(0)
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true)
-        setError(null)
-
-        if (Array.isArray(datasource)) {
-          setData(datasource)
-          setLoading(false)
-          return
-        }
-
-        let result: DataSource[] = []
-
-        switch (datasource) {
-          case 'languages':
-            result = await fetchLanguages()
-            break
-
-          case 'resource_types':
-            result = await fetchResourceTypes()
-            break
-
-          case 'rda_pathways':
-            result = await fetchRDAPathways()
-            break
-
-          case 'working_groups':
-            result = await fetchWorkingGroups()
-            break
-
-          case 'interest_groups':
-            result = await fetchInterestGroups()
-            break
-
-          case 'disciplines':
-            result = await fetchDisciplines()
-            break
-
-          case 'gorc_elements':
-            result = await fetchGORCElements()
-            break
-
-          case 'gorc_attributes':
-            result = await fetchGORCAttributes()
-            break
-
-          case 'keywords':
-            result = await fetchKeywords()
-            break
-          case 'open_vocabularies':
-            result = await fetchOpenVocabularies(options || {})
-            break
-          default:
-            throw new Error(`Unknown datasource: ${datasource}`)
-        }
-
-        setData(result)
-      }
-      catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load data')
-        setData([])
-      }
-      finally {
-        setLoading(false)
-      }
+  // Load initial data or search results
+  const loadData = useCallback(async (query: string = '', reset: boolean = true) => {
+    if (Array.isArray(datasource)) {
+      setData(datasource)
+      setHasMore(false)
+      return
     }
 
-    loadData()
-  // JSON.stringify(options) is used intentionally to compare by value, not reference
+    if (datasource !== 'open_vocabularies') {
+      setError(`Unknown datasource: ${datasource}`)
+      return
+    }
+
+    try {
+      if (reset) {
+        setLoading(true)
+        offsetRef.current = 0
+      }
+      setError(null)
+
+      const currentOffset = reset ? 0 : offsetRef.current
+      const fetchOptions: VocabularyOptions & { value_scheme?: string, offset?: number, amount?: number } = {
+        ...options,
+        amount: PAGE_SIZE,
+        // Only include offset if > 0 (API validation requires positive number)
+        ...(currentOffset > 0 && { offset: currentOffset }),
+      }
+
+      // Add search filter if query provided
+      if (query.trim()) {
+        fetchOptions.value_scheme = query.trim()
+      }
+
+      const result = await fetchOpenVocabularies(fetchOptions)
+
+      if (reset) {
+        setData(result)
+        offsetRef.current = result.length
+      }
+      else {
+        setData(prev => [...prev, ...result])
+        offsetRef.current += result.length
+      }
+
+      // If we got fewer than PAGE_SIZE results, there's no more data
+      setHasMore(result.length >= PAGE_SIZE)
+    }
+    catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load data')
+      if (reset) {
+        setData([])
+      }
+      setHasMore(false)
+    }
+    finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }, [datasource, options])
+
+  // Load more data (pagination)
+  const loadMore = useCallback(async () => {
+    if (loadingMore || loading || !hasMore || Array.isArray(datasource)) {
+      return
+    }
+
+    setLoadingMore(true)
+    await loadData(searchQuery, false)
+  }, [loadingMore, loading, hasMore, datasource, loadData, searchQuery])
+
+  // Search function - resets and loads with query
+  const search = useCallback((query: string) => {
+    setSearchQuery(query)
+    loadData(query, true)
+  }, [loadData])
+
+  // Initial load
+  useEffect(() => {
+    loadData('', true)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasource, JSON.stringify(options)])
 
-  return { data, loading, error }
+  return {
+    data,
+    loading,
+    loadingMore,
+    error,
+    hasMore,
+    loadMore,
+    search,
+    searchQuery,
+  }
 }

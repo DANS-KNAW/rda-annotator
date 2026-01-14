@@ -131,6 +131,16 @@ export default defineBackground(() => {
     }
   })
 
+  onMessage('clearPendingAnnotation', async () => {
+    try {
+      await storage.removeItem('local:pendingAnnotation')
+      return { success: true }
+    }
+    catch {
+      return { success: false }
+    }
+  })
+
   // Register frame URL - accumulates URLs per tab for sidebar to read
   // Each frame (host or guest) sends its URL directly to background
   onMessage('registerFrameUrl', async (message) => {
@@ -266,12 +276,21 @@ export default defineBackground(() => {
         subject_scheme: string
         namespace: string
         scheme_uri: string
+        additional_metadata?: {
+          description?: string
+          local_name?: string
+          url?: string
+          taxonomy_parent?: string
+          status?: string
+        }
       }) =>
         ({
           label: vocab.value_scheme,
           value: vocab.value_uri,
-          secondarySearch: `${vocab.subject_scheme} ${vocab.namespace}`,
-          description: vocab.scheme_uri,
+          secondarySearch: vocab.additional_metadata?.description
+            || vocab.additional_metadata?.local_name
+            || `${vocab.subject_scheme} ${vocab.namespace}`,
+          description: vocab.additional_metadata?.description || vocab.scheme_uri,
         } satisfies DataSource),
     )
   })

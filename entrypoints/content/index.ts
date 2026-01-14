@@ -346,6 +346,43 @@ export default defineContentScript({
       })
       frameObserver.start()
 
+      // URL change detection - clear pending annotation when navigating away
+      let lastUrl = window.location.href
+      const clearPendingOnUrlChange = async () => {
+        const currentUrl = window.location.href
+        if (currentUrl !== lastUrl) {
+          lastUrl = currentUrl
+          try {
+            // Use messaging to clear via background script (storage API not reliable in content context)
+            await sendMessage('clearPendingAnnotation', undefined)
+            if (annotationManager) {
+              annotationManager.removeTemporaryHighlight()
+            }
+            if (import.meta.env.DEV) {
+              console.debug('[RDA] Cleared pending annotation on URL change')
+            }
+          }
+          catch (error) {
+            console.error('[RDA] Failed to clear pending annotation:', error)
+          }
+        }
+      }
+
+      // Listen for browser navigation events
+      window.addEventListener('popstate', clearPendingOnUrlChange)
+
+      // Intercept history.pushState and history.replaceState for SPA navigation
+      const originalPushState = history.pushState.bind(history)
+      const originalReplaceState = history.replaceState.bind(history)
+      history.pushState = (...args) => {
+        originalPushState(...args)
+        clearPendingOnUrlChange()
+      }
+      history.replaceState = (...args) => {
+        originalReplaceState(...args)
+        clearPendingOnUrlChange()
+      }
+
       // Wrap message listeners in try-catch to prevent duplicate listener errors from breaking
       try {
         onMessage('toggleSidebar', async (message) => {

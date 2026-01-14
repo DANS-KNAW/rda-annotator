@@ -303,6 +303,7 @@ export default function Create() {
               value={field.defaultValue}
               multiple={field.multiple || false}
               vocabularyOptions={field.vocabularyOptions}
+              showDescription={field.showDescription}
             />
           )
         default:

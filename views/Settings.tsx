@@ -21,11 +21,14 @@ export default function Settings() {
   const { logout } = useContext(AuthenticationContext)
 
   const comboboxes = (AnnotationFormSchema as AnnotationSchema).fields.filter(
-    field =>
-      field.type === 'combobox'
-      && field.vocabulary
-      && field.vocabulary !== 'languages'
-      && field.vocabulary !== 'resource_types',
+    (field) => {
+      if (field.type !== 'combobox' || !field.vocabulary) {
+        return false
+      }
+      // Exclude languages and resource_types from settings (they are always shown)
+      const namespace = field.vocabularyOptions?.namespace
+      return namespace !== 'iso-639' && namespace !== 'rda_resource_types'
+    },
   )
 
   const initializeSettings = async () => {

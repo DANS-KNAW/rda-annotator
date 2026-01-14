@@ -33,6 +33,8 @@ export interface ComboboxField extends BaseField {
   multiple?: boolean
   vocabularyOptions?: VocabularyOptions
   displaySection?: 'basic' | 'rda_vocabularies' | 'additional_vocabularies'
+  allowCustomValue?: boolean
+  showDescription?: boolean // Default: true - set to false to hide descriptions in dropdown
 }
 
 export interface VocabularyOptions {

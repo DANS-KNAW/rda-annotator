@@ -8,7 +8,7 @@ export default antfu(
   },
   autoImports,
   {
-    ignores: ['.wxt/', '.output/', 'dist/', 'node_modules/', 'public/', 'docs/'],
+    ignores: ['.wxt/', '.output/', 'dist/', 'node_modules/', 'public/', 'docs/', 'CLAUDE.md'],
   },
   {
     rules: {

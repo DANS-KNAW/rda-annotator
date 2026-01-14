@@ -9,7 +9,7 @@ import {
   ComboboxOptions,
   Label,
 } from '@headlessui/react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useController } from 'react-hook-form'
 import Modal from '@/components/Model'
 import useDataSource from '@/hooks/useDataSource'
@@ -25,6 +25,7 @@ interface TypeaheadProps
   name: string
   multiple?: boolean
   vocabularyOptions?: VocabularyOptions
+  showDescription?: boolean
 }
 
 export default function TypeaheadInput({
@@ -36,11 +37,22 @@ export default function TypeaheadInput({
   info,
   multiple = false,
   vocabularyOptions,
+  showDescription = true,
   ...rest
 }: TypeaheadProps) {
-  const [query, setQuery] = useState('')
   const [showInfo, setShowInfo] = useState(false)
-  const { data, loading, error } = useDataSource(datasource, vocabularyOptions)
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const optionsRef = useRef<HTMLDivElement>(null)
+
+  const {
+    data,
+    loading,
+    loadingMore,
+    error,
+    hasMore,
+    loadMore,
+    search,
+  } = useDataSource(datasource, vocabularyOptions)
 
   // All hooks must be called before any early returns
   const { field } = useController({
@@ -74,37 +86,57 @@ export default function TypeaheadInput({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- field.onChange is stable, full field object changes every render
   }, [control, data, value, field.value, multiple])
 
+  // Debounced search when user types
+  const handleQueryChange = useCallback((newQuery: string) => {
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    // Debounce search API call
+    searchTimeoutRef.current = setTimeout(() => {
+      search(newQuery)
+    }, 300)
+  }, [search])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Scroll handler for lazy loading
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget
+    const scrolledToBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 50
+
+    if (scrolledToBottom && hasMore && !loadingMore && !loading) {
+      loadMore()
+    }
+  }, [hasMore, loadingMore, loading, loadMore])
+
   // Early return after all hooks
   if (!control) {
     console.error('TypeaheadInput requires control prop from react-hook-form')
     return null
   }
 
-  const filteredItems
-    = query === ''
-      ? data
-      : data.filter((item) => {
-          const matchesLabel = item.label
-            .toLowerCase()
-            .includes(query.toLowerCase())
-          const matchesSecondary = item.secondarySearch
-            ? item.secondarySearch.toLowerCase().includes(query.toLowerCase())
-            : false
-
-          return matchesLabel || matchesSecondary
-        })
-
+  // Filter already selected items in multiple mode
   const availableItems = multiple
-    ? filteredItems.filter(
+    ? data.filter(
         item =>
           !(field.value || []).some(
             (selected: DataSource) => selected?.value === item.value,
           ),
       )
-    : filteredItems
+    : data
 
   const handleSelect = (item: DataSource) => {
-    setQuery('')
+    // Reset search to show all items
+    search('')
     if (multiple) {
       if (item) {
         const currentValues = field.value || []
@@ -123,6 +155,14 @@ export default function TypeaheadInput({
       })
       field.onChange(newValues)
     }
+  }
+
+  const handleBlur = () => {
+    // Reset search when focus leaves
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    search('')
   }
 
   const selectedValues = multiple ? (field.value || []).filter(Boolean) : []
@@ -165,7 +205,7 @@ export default function TypeaheadInput({
         as="div"
         value={multiple ? null : field.value}
         onChange={handleSelect}
-        disabled={loading}
+        disabled={loading && data.length === 0}
       >
         <div className="flex items-center justify-between">
           <Label
@@ -256,8 +296,8 @@ export default function TypeaheadInput({
           </div>
           <ComboboxInput
             className="block w-full rounded-md bg-white py-1 pl-8 pr-12 text-sm/6 text-gray-900 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rda-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-            onChange={event => setQuery(event.target.value)}
-            onBlur={() => setQuery('')}
+            onChange={event => handleQueryChange(event.target.value)}
+            onBlur={handleBlur}
             displayValue={(item: DataSource | DataSource[] | undefined) => {
               if (multiple)
                 return ''
@@ -266,7 +306,7 @@ export default function TypeaheadInput({
             required={
               rest.required && (!multiple || selectedValues.length === 0)
             }
-            placeholder={loading ? 'Loading...' : undefined}
+            placeholder={loading && data.length === 0 ? 'Loading...' : undefined}
           />
           <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-hidden">
             <svg
@@ -287,7 +327,8 @@ export default function TypeaheadInput({
           </ComboboxButton>
 
           <ComboboxOptions
-            transition
+            ref={optionsRef}
+            onScroll={handleScroll}
             className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-sm shadow outline outline-black/5 data-leave:transition data-leave:duration-100 data-leave:ease-in data-closed:data-leave:opacity-0"
           >
             {error && (
@@ -299,15 +340,19 @@ export default function TypeaheadInput({
               </div>
             )}
 
-            {!error && availableItems.length === 0 && (
-              <div className="cursor-default px-3 py-2 text-gray-900 select-none data-focus:bg-rda-500 data-focus:text-white data-focus:outline-hidden">
+            {!error && availableItems.length === 0 && !loading && (
+              <div className="cursor-default px-3 py-2 text-gray-900 select-none">
                 <span className="block truncate">
-                  {loading
-                    ? 'Loading...'
-                    : multiple && selectedValues.length > 0
-                      ? '(No more results)'
-                      : '(No results found)'}
+                  {multiple && selectedValues.length > 0
+                    ? '(No more results)'
+                    : '(No results found)'}
                 </span>
+              </div>
+            )}
+
+            {!error && availableItems.length === 0 && loading && (
+              <div className="cursor-default px-3 py-2 text-gray-500 select-none">
+                <span className="block truncate">Loading...</span>
               </div>
             )}
 
@@ -319,13 +364,27 @@ export default function TypeaheadInput({
                   className="group cursor-default px-3 py-2 text-gray-900 select-none data-focus:bg-rda-500 data-focus:text-white data-focus:outline-hidden"
                 >
                   <span className="block break-words">{item.label}</span>
-                  {item.description && (
+                  {showDescription && item.description && (
                     <span className="block break-words text-gray-500 group-data-[focus]:text-gray-200 text-sm">
                       {item.description}
                     </span>
                   )}
                 </ComboboxOption>
               ))}
+
+            {/* Loading more indicator */}
+            {!error && loadingMore && (
+              <div className="cursor-default px-3 py-2 text-gray-500 select-none text-center">
+                <span className="block truncate">Loading more...</span>
+              </div>
+            )}
+
+            {/* Load more hint */}
+            {!error && hasMore && !loadingMore && availableItems.length > 0 && (
+              <div className="cursor-default px-3 py-1 text-gray-400 select-none text-center text-xs">
+                <span className="block truncate">Scroll for more</span>
+              </div>
+            )}
           </ComboboxOptions>
         </div>
       </Combobox>
