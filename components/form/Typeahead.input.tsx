@@ -1,3 +1,6 @@
+import type { Control, UseFormRegister } from 'react-hook-form'
+import type { VocabularyOptions } from '@/types/annotation-schema.interface'
+import type { DataSource, PredefinedDataSource } from '@/types/datasource.interface'
 import {
   Combobox,
   ComboboxButton,
@@ -5,25 +8,23 @@ import {
   ComboboxOption,
   ComboboxOptions,
   Label,
-} from "@headlessui/react";
-import { useState, useEffect } from "react";
-import { UseFormRegister, Control, useController } from "react-hook-form";
-import Modal from "@/components/Model";
-import useDataSource from "@/hooks/useDataSource";
-import { DataSource, PredefinedDataSource } from "@/types/datasource.interface";
-import { VocabularyOptions } from "@/types/annotation-schema.interface";
+} from '@headlessui/react'
+import { useEffect, useState } from 'react'
+import { useController } from 'react-hook-form'
+import Modal from '@/components/Model'
+import useDataSource from '@/hooks/useDataSource'
 
 interface TypeaheadProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "name" | "value"> {
-  register?: UseFormRegister<any>;
-  control?: Control<any>;
-  info?: string;
-  label: string;
-  datasource: PredefinedDataSource | DataSource[];
-  value?: string | string[];
-  name: string;
-  multiple?: boolean;
-  vocabularyOptions?: VocabularyOptions;
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'value'> {
+  register?: UseFormRegister<any>
+  control?: Control<any>
+  info?: string
+  label: string
+  datasource: PredefinedDataSource | DataSource[]
+  value?: string | string[]
+  name: string
+  multiple?: boolean
+  vocabularyOptions?: VocabularyOptions
 }
 
 export default function TypeaheadInput({
@@ -37,86 +38,92 @@ export default function TypeaheadInput({
   vocabularyOptions,
   ...rest
 }: TypeaheadProps) {
-  const [query, setQuery] = useState("");
-  const [showInfo, setShowInfo] = useState(false);
-  const { data, loading, error } = useDataSource(datasource, vocabularyOptions);
+  const [query, setQuery] = useState('')
+  const [showInfo, setShowInfo] = useState(false)
+  const { data, loading, error } = useDataSource(datasource, vocabularyOptions)
 
-  if (!control) {
-    console.error("TypeaheadInput requires control prop from react-hook-form");
-    return null;
-  }
-
+  // All hooks must be called before any early returns
   const { field } = useController({
     name,
-    control,
+    control: control!,
     defaultValue: multiple ? [] : null,
-  });
+  })
 
   useEffect(() => {
+    if (!control)
+      return
     if (
-      data.length > 0 &&
-      value &&
-      (multiple ? !field.value?.length : !field.value)
+      data.length > 0
+      && value
+      && (multiple ? !field.value?.length : !field.value)
     ) {
       if (multiple && Array.isArray(value)) {
-        const defaultItems = data.filter((item) => value.includes(item.value));
+        const defaultItems = data.filter(item => value.includes(item.value))
         if (defaultItems.length > 0) {
-          field.onChange(defaultItems);
+          field.onChange(defaultItems)
         }
-      } else if (!multiple && typeof value === "string") {
-        const defaultItem = data.find((item) => item.value === value);
+      }
+      else if (!multiple && typeof value === 'string') {
+        const defaultItem = data.find(item => item.value === value)
         if (defaultItem) {
-          field.onChange(defaultItem);
+          field.onChange(defaultItem)
         }
       }
     }
-  }, [data, value, field.value, multiple]);
+  }, [control, data, value, field.value, multiple])
 
-  const filteredItems =
-    query === ""
+  // Early return after all hooks
+  if (!control) {
+    console.error('TypeaheadInput requires control prop from react-hook-form')
+    return null
+  }
+
+  const filteredItems
+    = query === ''
       ? data
       : data.filter((item) => {
           const matchesLabel = item.label
             .toLowerCase()
-            .includes(query.toLowerCase());
+            .includes(query.toLowerCase())
           const matchesSecondary = item.secondarySearch
             ? item.secondarySearch.toLowerCase().includes(query.toLowerCase())
-            : false;
+            : false
 
-          return matchesLabel || matchesSecondary;
-        });
+          return matchesLabel || matchesSecondary
+        })
 
   const availableItems = multiple
     ? filteredItems.filter(
-        (item) =>
+        item =>
           !(field.value || []).some(
-            (selected: DataSource) => selected?.value === item.value
-          )
+            (selected: DataSource) => selected?.value === item.value,
+          ),
       )
-    : filteredItems;
+    : filteredItems
 
   const handleSelect = (item: DataSource) => {
-    setQuery("");
+    setQuery('')
     if (multiple) {
       if (item) {
-        const currentValues = field.value || [];
-        field.onChange([...currentValues, item]);
+        const currentValues = field.value || []
+        field.onChange([...currentValues, item])
       }
-    } else {
-      field.onChange(item);
     }
-  };
+    else {
+      field.onChange(item)
+    }
+  }
 
   const handleRemove = (itemToRemove: DataSource) => {
     if (multiple) {
       const newValues = (field.value || []).filter((item: DataSource) => {
-        return item.value !== itemToRemove.value;
-      });
-      field.onChange(newValues);
+        return item.value !== itemToRemove.value
+      })
+      field.onChange(newValues)
     }
-  };
+  }
 
-  const selectedValues = multiple ? (field.value || []).filter(Boolean) : [];
+  const selectedValues = multiple ? (field.value || []).filter(Boolean) : []
 
   return (
     <div>
@@ -146,7 +153,7 @@ export default function TypeaheadInput({
             </div>
             <div
               className="mt-4 prose prose-a:underline prose-a:text-rda-500"
-              dangerouslySetInnerHTML={{ __html: info || "" }}
+              dangerouslySetInnerHTML={{ __html: info || '' }}
             />
           </div>
         </Modal>
@@ -159,10 +166,12 @@ export default function TypeaheadInput({
       >
         <div className="flex items-center justify-between">
           <Label
-            htmlFor={name + "-input"}
+            htmlFor={`${name}-input`}
             className="block text-sm/6 font-medium text-gray-900"
           >
-            {label} {rest.required && <span className="text-red-500">*</span>}
+            {label}
+            {' '}
+            {rest.required && <span className="text-red-500">*</span>}
           </Label>
           {info && (
             <button
@@ -244,16 +253,17 @@ export default function TypeaheadInput({
           </div>
           <ComboboxInput
             className="block w-full rounded-md bg-white py-1 pl-8 pr-12 text-sm/6 text-gray-900 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rda-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-            onChange={(event) => setQuery(event.target.value)}
-            onBlur={() => setQuery("")}
+            onChange={event => setQuery(event.target.value)}
+            onBlur={() => setQuery('')}
             displayValue={(item: DataSource | DataSource[] | undefined) => {
-              if (multiple) return "";
-              return (item as DataSource)?.label ?? "";
+              if (multiple)
+                return ''
+              return (item as DataSource)?.label ?? ''
             }}
             required={
               rest.required && (!multiple || selectedValues.length === 0)
             }
-            placeholder={loading ? "Loading..." : undefined}
+            placeholder={loading ? 'Loading...' : undefined}
           />
           <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-hidden">
             <svg
@@ -279,7 +289,10 @@ export default function TypeaheadInput({
           >
             {error && (
               <div className="cursor-default px-3 py-2 text-red-600 select-none">
-                <span className="block truncate">Error: {error}</span>
+                <span className="block truncate">
+                  Error:
+                  {error}
+                </span>
               </div>
             )}
 
@@ -287,16 +300,16 @@ export default function TypeaheadInput({
               <div className="cursor-default px-3 py-2 text-gray-900 select-none data-focus:bg-rda-500 data-focus:text-white data-focus:outline-hidden">
                 <span className="block truncate">
                   {loading
-                    ? "Loading..."
+                    ? 'Loading...'
                     : multiple && selectedValues.length > 0
-                    ? "(No more results)"
-                    : "(No results found)"}
+                      ? '(No more results)'
+                      : '(No results found)'}
                 </span>
               </div>
             )}
 
-            {!error &&
-              availableItems.map((item) => (
+            {!error
+              && availableItems.map(item => (
                 <ComboboxOption
                   key={item.value}
                   value={item}
@@ -314,5 +327,5 @@ export default function TypeaheadInput({
         </div>
       </Combobox>
     </div>
-  );
+  )
 }

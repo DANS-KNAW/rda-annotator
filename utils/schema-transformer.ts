@@ -56,22 +56,22 @@
  * ```
  */
 
-import type { AnnotationSchema } from "@/types/annotation-schema.interface";
-import schema from "@/assets/schema.json";
+import type { AnnotationSchema } from '@/types/annotation-schema.interface'
+import schema from '@/assets/schema.json'
 
-const annotationSchema = schema as AnnotationSchema;
+const annotationSchema = schema as AnnotationSchema
 
 /**
  * Field mapping configuration between schema and Elasticsearch
  */
 interface FieldMapping {
-  schemaField: string;
-  elasticsearchField: string;
-  type: "simple" | "vocabulary" | "nested";
+  schemaField: string
+  elasticsearchField: string
+  type: 'simple' | 'vocabulary' | 'nested'
   transformer?: {
-    toES?: (value: any) => any;
-    fromES?: (value: any) => any;
-  };
+    toES?: (value: any) => any
+    fromES?: (value: any) => any
+  }
 }
 
 /**
@@ -81,77 +81,77 @@ interface FieldMapping {
 const FIELD_MAPPINGS: FieldMapping[] = [
   // Simple field mappings (different names)
   {
-    schemaField: "description",
-    elasticsearchField: "dc_description",
-    type: "simple",
+    schemaField: 'description',
+    elasticsearchField: 'dc_description',
+    type: 'simple',
   },
   {
-    schemaField: "language",
-    elasticsearchField: "dc_language",
-    type: "simple",
+    schemaField: 'language',
+    elasticsearchField: 'dc_language',
+    type: 'simple',
   },
-  { schemaField: "resource", elasticsearchField: "uri", type: "simple" },
+  { schemaField: 'resource', elasticsearchField: 'uri', type: 'simple' },
   {
-    schemaField: "resource_type",
-    elasticsearchField: "dc_type",
-    type: "simple",
+    schemaField: 'resource_type',
+    elasticsearchField: 'dc_type',
+    type: 'simple',
   },
 
   // Direct mappings (same name in schema and ES)
-  { schemaField: "title", elasticsearchField: "title", type: "simple" },
-  { schemaField: "notes", elasticsearchField: "notes", type: "simple" },
+  { schemaField: 'title', elasticsearchField: 'title', type: 'simple' },
+  { schemaField: 'notes', elasticsearchField: 'notes', type: 'simple' },
 
   // Vocabulary field mappings (arrays of objects)
   {
-    schemaField: "keywords",
-    elasticsearchField: "keywords",
-    type: "vocabulary",
+    schemaField: 'keywords',
+    elasticsearchField: 'keywords',
+    type: 'vocabulary',
   },
   {
-    schemaField: "pathways",
-    elasticsearchField: "pathways",
-    type: "vocabulary",
+    schemaField: 'pathways',
+    elasticsearchField: 'pathways',
+    type: 'vocabulary',
   },
   {
-    schemaField: "gorc_elements",
-    elasticsearchField: "gorc_elements",
-    type: "vocabulary",
+    schemaField: 'gorc_elements',
+    elasticsearchField: 'gorc_elements',
+    type: 'vocabulary',
   },
   {
-    schemaField: "gorc_attributes",
-    elasticsearchField: "gorc_attributes",
-    type: "vocabulary",
+    schemaField: 'gorc_attributes',
+    elasticsearchField: 'gorc_attributes',
+    type: 'vocabulary',
   },
   {
-    schemaField: "interest_groups",
-    elasticsearchField: "interest_groups",
-    type: "vocabulary",
+    schemaField: 'interest_groups',
+    elasticsearchField: 'interest_groups',
+    type: 'vocabulary',
   },
   {
-    schemaField: "working_groups",
-    elasticsearchField: "working_groups",
-    type: "vocabulary",
+    schemaField: 'working_groups',
+    elasticsearchField: 'working_groups',
+    type: 'vocabulary',
   },
   {
-    schemaField: "disciplines",
-    elasticsearchField: "disciplines",
-    type: "vocabulary",
+    schemaField: 'disciplines',
+    elasticsearchField: 'disciplines',
+    type: 'vocabulary',
   },
 
   // Custom vocabularies (special handling for namespaced vocabularies like MOMSI)
   {
-    schemaField: "momsi",
-    elasticsearchField: "custom_vocabularies",
-    type: "nested",
+    schemaField: 'momsi',
+    elasticsearchField: 'custom_vocabularies',
+    type: 'nested',
   },
-];
+]
 
 /**
  * Build a map from schema field names to Elasticsearch field names
  */
 const schemaToESMap = new Map<string, FieldMapping>(
-  FIELD_MAPPINGS.map((mapping) => [mapping.schemaField, mapping])
-);
+  FIELD_MAPPINGS.map(mapping => [mapping.schemaField, mapping]),
+)
 
 /**
  * Get the Elasticsearch field name for a schema field.
@@ -159,11 +159,11 @@ const schemaToESMap = new Map<string, FieldMapping>(
  * @returns The corresponding Elasticsearch field name
  */
 export function getElasticsearchFieldName(schemaFieldName: string): string {
-  const mapping = schemaToESMap.get(schemaFieldName);
-  return mapping ? mapping.elasticsearchField : schemaFieldName;
+  const mapping = schemaToESMap.get(schemaFieldName)
+  return mapping ? mapping.elasticsearchField : schemaFieldName
 }
 
 /**
  * Export the schema for use in other modules
  */
-export { annotationSchema };
+export { annotationSchema }

@@ -9,26 +9,26 @@
 export function getAnnotationIdsAtPoint(
   x: number,
   y: number,
-  targetDocument: Document = document
+  targetDocument: Document = document,
 ): string[] {
   // Get all elements at the given coordinates
-  const elements = targetDocument.elementsFromPoint(x, y);
+  const elements = targetDocument.elementsFromPoint(x, y)
 
   // Filter to only rda-highlight elements and extract their annotation IDs
-  const annotationIds: string[] = [];
-  const seenIds = new Set<string>();
+  const annotationIds: string[] = []
+  const seenIds = new Set<string>()
 
   for (const el of elements) {
-    if (el.tagName.toLowerCase() === "rda-highlight") {
-      const annotationId = el.getAttribute("data-annotation-id");
+    if (el.tagName.toLowerCase() === 'rda-highlight') {
+      const annotationId = el.getAttribute('data-annotation-id')
       if (annotationId && !seenIds.has(annotationId)) {
-        annotationIds.push(annotationId);
-        seenIds.add(annotationId);
+        annotationIds.push(annotationId)
+        seenIds.add(annotationId)
       }
     }
   }
 
-  return annotationIds;
+  return annotationIds
 }
 
 /**
@@ -42,10 +42,10 @@ export function getAnnotationIdsAtPoint(
 export function getHighlightElementsAtPoint(
   x: number,
   y: number,
-  targetDocument: Document = document
+  targetDocument: Document = document,
 ): HTMLElement[] {
-  const elements = targetDocument.elementsFromPoint(x, y);
+  const elements = targetDocument.elementsFromPoint(x, y)
   return elements.filter(
-    (el) => el.tagName.toLowerCase() === "rda-highlight"
-  ) as HTMLElement[];
+    el => el.tagName.toLowerCase() === 'rda-highlight',
+  ) as HTMLElement[]
 }

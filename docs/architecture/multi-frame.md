@@ -128,9 +128,9 @@ JavaScript can dynamically add iframes at any time:
 
 ```javascript
 // Page JavaScript adds iframe after page load
-const iframe = document.createElement("iframe");
-iframe.src = "/embed";
-document.body.appendChild(iframe);
+const iframe = document.createElement('iframe')
+iframe.src = '/embed'
+document.body.appendChild(iframe)
 ```
 
 MutationObserver catches these dynamic additions immediately.
@@ -149,25 +149,26 @@ Iframes load asynchronously. Wait for the frame's document to be ready before in
 
 ```typescript
 async function waitForFrameReady(frame: HTMLIFrameElement): Promise<boolean> {
-  const doc = frame.contentDocument;
-  if (!doc) return false;
+  const doc = frame.contentDocument
+  if (!doc)
+    return false
 
-  if (doc.readyState === "complete" || doc.readyState === "interactive") {
-    return true;
+  if (doc.readyState === 'complete' || doc.readyState === 'interactive') {
+    return true
   }
 
   // Wait for load event (with 10-second timeout)
   return new Promise((resolve) => {
     const onLoad = () => {
-      frame.removeEventListener("load", onLoad);
-      resolve(true);
-    };
-    frame.addEventListener("load", onLoad);
+      frame.removeEventListener('load', onLoad)
+      resolve(true)
+    }
+    frame.addEventListener('load', onLoad)
     setTimeout(() => {
-      frame.removeEventListener("load", onLoad);
-      resolve(false);
-    }, 10000);
-  });
+      frame.removeEventListener('load', onLoad)
+      resolve(false)
+    }, 10000)
+  })
 }
 ```
 
@@ -178,11 +179,12 @@ Avoid double-injection by checking for marker:
 ```typescript
 function hasRDAInjected(frame: HTMLIFrameElement): boolean {
   try {
-    const doc = frame.contentDocument;
-    return doc?.querySelector("[data-rda-injected]") !== null;
-  } catch {
+    const doc = frame.contentDocument
+    return doc?.querySelector('[data-rda-injected]') !== null
+  }
+  catch {
     // Cross-origin frame - can't access
-    return false;
+    return false
   }
 }
 ```
@@ -243,37 +245,41 @@ Guest frames:
 The host listens for messages from guest frames (`entrypoints/content/index.ts`):
 
 ```typescript
-window.addEventListener("message", async (event) => {
-  if (event.data.type === "rda:showAnnotations") {
-    if (!host) return;
+window.addEventListener('message', async (event) => {
+  if (event.data.type === 'rda:showAnnotations') {
+    if (!host)
+      return
 
     // Ensure sidebar is mounted and open
     if (!host.isMounted.sidebar) {
-      await host.mount();
+      await host.mount()
     }
-    await host.openSidebar();
+    await host.openSidebar()
 
     // Forward to sidebar via extension messaging
     try {
-      await sendMessage("showAnnotationsFromHighlight", {
+      await sendMessage('showAnnotationsFromHighlight', {
         annotationIds: event.data.annotationIds,
-      });
-    } catch (error) {
-      console.error("Failed to show annotations from frame:", error);
+      })
     }
-  } else if (event.data.type === "rda:hoverAnnotations") {
-    // Forward hover state to sidebar
-    await sendMessage("hoverAnnotations", {
-      annotationIds: event.data.annotationIds,
-    });
-  } else if (event.data.type === "rda:registerFrameUrl") {
-    // Track frame URLs for sidebar
-    frameUrls.add(event.data.url);
-    await sendMessage("frameUrlsChanged", {
-      urls: Array.from(frameUrls),
-    });
+    catch (error) {
+      console.error('Failed to show annotations from frame:', error)
+    }
   }
-});
+  else if (event.data.type === 'rda:hoverAnnotations') {
+    // Forward hover state to sidebar
+    await sendMessage('hoverAnnotations', {
+      annotationIds: event.data.annotationIds,
+    })
+  }
+  else if (event.data.type === 'rda:registerFrameUrl') {
+    // Track frame URLs for sidebar
+    frameUrls.add(event.data.url)
+    await sendMessage('frameUrlsChanged', {
+      urls: Array.from(frameUrls),
+    })
+  }
+})
 ```
 
 The host acts as a relay between guest frames and the sidebar.
@@ -360,10 +366,10 @@ JavaScript can add iframes at any time:
 ```javascript
 // After 5 seconds, add an iframe
 setTimeout(() => {
-  const iframe = document.createElement("iframe");
-  iframe.src = "/embed";
-  document.body.appendChild(iframe);
-}, 5000);
+  const iframe = document.createElement('iframe')
+  iframe.src = '/embed'
+  document.body.appendChild(iframe)
+}, 5000)
 ```
 
 The MutationObserver catches this immediately:
@@ -387,8 +393,8 @@ No manual refresh needed - new iframes get annotations automatically.
 When JavaScript removes an iframe:
 
 ```javascript
-const iframe = document.querySelector("iframe");
-iframe.remove(); // Remove from DOM
+const iframe = document.querySelector('iframe')
+iframe.remove() // Remove from DOM
 ```
 
 The extension cleans up automatically:
@@ -452,10 +458,10 @@ Race conditions can occur:
 
 ```typescript
 // Host sets up listener during initialization
-window.addEventListener("message", handler);
+window.addEventListener('message', handler)
 
 // Guest sends after frame is ready
-await annotationManager.loadAnnotations();
+await annotationManager.loadAnnotations()
 // Host listener is guaranteed to be ready by now
 ```
 

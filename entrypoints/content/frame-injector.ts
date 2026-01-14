@@ -1,8 +1,8 @@
-import { ContentScriptContext } from "#imports";
-import { detectContentTypeAsync } from "@/utils/detect-content-type";
-import { AnnotationManager } from "./annotation-manager";
-import { createAnnotatorPopup } from "./annotator-popup";
-import { waitForPDFReady } from "@/utils/anchoring/pdf";
+import type { ContentScriptContext } from '#imports'
+import type { createAnnotatorPopup } from './annotator-popup'
+import { waitForPDFReady } from '@/utils/anchoring/pdf'
+import { detectContentTypeAsync } from '@/utils/detect-content-type'
+import { AnnotationManager } from './annotation-manager'
 
 /**
  * Frame Injector
@@ -13,9 +13,9 @@ import { waitForPDFReady } from "@/utils/anchoring/pdf";
  */
 
 interface FrameGuestInstance {
-  annotationManager: AnnotationManager;
-  annotatorPopup: Awaited<ReturnType<typeof createAnnotatorPopup>> | null;
-  cleanup: () => void;
+  annotationManager: AnnotationManager
+  annotatorPopup: Awaited<ReturnType<typeof createAnnotatorPopup>> | null
+  cleanup: () => void
 }
 
 /**
@@ -23,30 +23,30 @@ interface FrameGuestInstance {
  */
 async function waitForFrameReady(frame: HTMLIFrameElement): Promise<boolean> {
   return new Promise((resolve) => {
-    const doc = frame.contentDocument;
+    const doc = frame.contentDocument
     if (!doc) {
-      resolve(false);
-      return;
+      resolve(false)
+      return
     }
 
-    if (doc.readyState === "complete" || doc.readyState === "interactive") {
-      resolve(true);
-      return;
+    if (doc.readyState === 'complete' || doc.readyState === 'interactive') {
+      resolve(true)
+      return
     }
 
     const onLoad = () => {
-      frame.removeEventListener("load", onLoad);
-      resolve(true);
-    };
+      frame.removeEventListener('load', onLoad)
+      resolve(true)
+    }
 
-    frame.addEventListener("load", onLoad);
+    frame.addEventListener('load', onLoad)
 
     // Timeout after 10 seconds
     setTimeout(() => {
-      frame.removeEventListener("load", onLoad);
-      resolve(false);
-    }, 10000);
-  });
+      frame.removeEventListener('load', onLoad)
+      resolve(false)
+    }, 10000)
+  })
 }
 
 /**
@@ -54,11 +54,13 @@ async function waitForFrameReady(frame: HTMLIFrameElement): Promise<boolean> {
  */
 function hasRDAInjected(frame: HTMLIFrameElement): boolean {
   try {
-    const doc = frame.contentDocument;
-    if (!doc) return false;
-    return doc.querySelector("[data-rda-injected]") !== null;
-  } catch {
-    return false;
+    const doc = frame.contentDocument
+    if (!doc)
+      return false
+    return doc.querySelector('[data-rda-injected]') !== null
+  }
+  catch {
+    return false
   }
 }
 
@@ -67,137 +69,138 @@ function hasRDAInjected(frame: HTMLIFrameElement): boolean {
  */
 export async function injectIntoFrame(
   frame: HTMLIFrameElement,
-  ctx: ContentScriptContext
+  _ctx: ContentScriptContext,
 ): Promise<FrameGuestInstance | null> {
   // Check if already injected
   if (hasRDAInjected(frame)) {
-    return null;
+    return null
   }
 
   // Wait for frame to be ready
-  const ready = await waitForFrameReady(frame);
+  const ready = await waitForFrameReady(frame)
   if (!ready) {
     if (import.meta.env.DEV) {
-      console.warn("[RDA Frame Injector] Frame not ready, skipping");
+      console.warn('[RDA Frame Injector] Frame not ready, skipping')
     }
-    return null;
+    return null
   }
 
-  const frameDoc = frame.contentDocument;
-  const frameWindow = frame.contentWindow;
+  const frameDoc = frame.contentDocument
+  const frameWindow = frame.contentWindow
 
   if (!frameDoc || !frameWindow) {
     if (import.meta.env.DEV) {
       console.warn(
-        "[RDA Frame Injector] Cannot access frame document or window"
-      );
+        '[RDA Frame Injector] Cannot access frame document or window',
+      )
     }
-    return null;
+    return null
   }
 
   // Register frame URL IMMEDIATELY - sidebar can fetch annotations right away
   // This is independent of PDF readiness - just a URL query to Elasticsearch
-  const frameUrl = frameWindow.location.href;
-  console.log("[RDA Frame Injector] Registering frame URL:", frameUrl);
+  const frameUrl = frameWindow.location.href
+  console.log('[RDA Frame Injector] Registering frame URL:', frameUrl)
   frameWindow.parent.postMessage(
     {
-      type: "rda:registerFrameUrl",
+      type: 'rda:registerFrameUrl',
       url: frameUrl,
-      source: "frame-injector",
+      source: 'frame-injector',
     },
-    "*"
-  );
-  console.log("[RDA Frame Injector] Posted registerFrameUrl message to parent");
+    '*',
+  )
+  console.log('[RDA Frame Injector] Posted registerFrameUrl message to parent')
 
-  const contentType = await detectContentTypeAsync(frameDoc);
+  const contentType = await detectContentTypeAsync(frameDoc)
 
   // For PDFs, check if PDF.js is ready in the FRAME window (not host window)
   // Don't fail if not ready - AnnotationManager will handle retry logic
-  if (contentType?.type === "PDF") {
+  if (contentType?.type === 'PDF') {
     try {
-      const isReady = await waitForPDFReady(frameWindow);
+      const isReady = await waitForPDFReady(frameWindow)
       if (!isReady && import.meta.env.DEV) {
         console.log(
-          "[RDA Frame Injector] PDF.js not ready yet, AnnotationManager will retry"
-        );
+          '[RDA Frame Injector] PDF.js not ready yet, AnnotationManager will retry',
+        )
       }
-    } catch (error) {
+    }
+    catch (error) {
       if (import.meta.env.DEV) {
         console.warn(
-          "[RDA Frame Injector] Error checking PDF ready, continuing anyway:",
-          error
-        );
+          '[RDA Frame Injector] Error checking PDF ready, continuing anyway:',
+          error,
+        )
       }
     }
   }
 
-  const marker = frameDoc.createElement("meta");
-  marker.setAttribute("data-rda-injected", "true");
-  marker.setAttribute("data-rda-frame-type", "guest");
-  marker.setAttribute("data-rda-content-type", contentType?.type || "HTML");
-  frameDoc.head.appendChild(marker);
+  const marker = frameDoc.createElement('meta')
+  marker.setAttribute('data-rda-injected', 'true')
+  marker.setAttribute('data-rda-frame-type', 'guest')
+  marker.setAttribute('data-rda-content-type', contentType?.type || 'HTML')
+  frameDoc.head.appendChild(marker)
 
   const annotationManager = new AnnotationManager({
     rootElement: frameDoc.body,
     documentUrl: frameUrl,
-    isPDF: contentType?.type === "PDF",
+    isPDF: contentType?.type === 'PDF',
     isGuestFrame: true,
     onHighlightClick: async (annotationIds) => {
       frameWindow.parent.postMessage(
         {
-          type: "rda:showAnnotations",
+          type: 'rda:showAnnotations',
           annotationIds,
-          source: "frame-injector",
+          source: 'frame-injector',
         },
-        "*"
-      );
+        '*',
+      )
     },
     onHighlightHover: async (annotationIds) => {
       frameWindow.parent.postMessage(
         {
-          type: "rda:hoverAnnotations",
+          type: 'rda:hoverAnnotations',
           annotationIds,
-          source: "frame-injector",
+          source: 'frame-injector',
         },
-        "*"
-      );
+        '*',
+      )
     },
-  });
+  })
 
   // Load annotations for this frame
-  await annotationManager.loadAnnotations();
+  await annotationManager.loadAnnotations()
 
   // Set highlights visible
-  annotationManager.setHighlightsVisible(true);
+  annotationManager.setHighlightsVisible(true)
 
   return {
     annotationManager,
     annotatorPopup: null,
     cleanup: () => {
-      annotationManager.destroy();
+      annotationManager.destroy()
     },
-  };
+  }
 }
 
 /**
  * Anchor status type matching AnnotationManager.getAnchorStatus() return type
  */
 interface AnchorStatus {
-  anchored: string[];
-  pending: string[];
-  orphaned: string[];
-  recovered: string[];
+  anchored: string[]
+  pending: string[]
+  orphaned: string[]
+  recovered: string[]
 }
 
 /**
  * Frame Injector class that monitors frames and injects the annotator
  */
 export class FrameInjector {
-  private injectedFrames = new Map<HTMLIFrameElement, FrameGuestInstance>();
-  private ctx: ContentScriptContext;
+  private injectedFrames = new Map<HTMLIFrameElement, FrameGuestInstance>()
+  private ctx: ContentScriptContext
 
   constructor(ctx: ContentScriptContext) {
-    this.ctx = ctx;
+    this.ctx = ctx
   }
 
   /**
@@ -206,12 +209,12 @@ export class FrameInjector {
   async injectFrame(frame: HTMLIFrameElement): Promise<void> {
     // Check if already injected
     if (this.injectedFrames.has(frame)) {
-      return;
+      return
     }
 
-    const instance = await injectIntoFrame(frame, this.ctx);
+    const instance = await injectIntoFrame(frame, this.ctx)
     if (instance) {
-      this.injectedFrames.set(frame, instance);
+      this.injectedFrames.set(frame, instance)
     }
   }
 
@@ -219,10 +222,10 @@ export class FrameInjector {
    * Remove injection from a frame
    */
   removeFrame(frame: HTMLIFrameElement): void {
-    const instance = this.injectedFrames.get(frame);
+    const instance = this.injectedFrames.get(frame)
     if (instance) {
-      instance.cleanup();
-      this.injectedFrames.delete(frame);
+      instance.cleanup()
+      this.injectedFrames.delete(frame)
     }
   }
 
@@ -230,11 +233,11 @@ export class FrameInjector {
    * Get anchor statuses from all same-origin guest frames (direct access)
    */
   getAllGuestStatuses(): AnchorStatus[] {
-    const statuses: AnchorStatus[] = [];
+    const statuses: AnchorStatus[] = []
     for (const [, instance] of this.injectedFrames) {
-      statuses.push(instance.annotationManager.getAnchorStatus());
+      statuses.push(instance.annotationManager.getAnchorStatus())
     }
-    return statuses;
+    return statuses
   }
 
   /**
@@ -242,7 +245,7 @@ export class FrameInjector {
    */
   async reloadAllGuestAnnotations(): Promise<void> {
     for (const [, instance] of this.injectedFrames) {
-      await instance.annotationManager.loadAnnotations();
+      await instance.annotationManager.loadAnnotations()
     }
   }
 
@@ -251,8 +254,8 @@ export class FrameInjector {
    */
   destroy(): void {
     for (const [, instance] of this.injectedFrames) {
-      instance.cleanup();
+      instance.cleanup()
     }
-    this.injectedFrames.clear();
+    this.injectedFrames.clear()
   }
 }

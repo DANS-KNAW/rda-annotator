@@ -1,37 +1,37 @@
 import type {
+  AnnotationField,
   AnnotationSchema,
   ComboboxField,
-  AnnotationField,
-} from "@/types/annotation-schema.interface";
-import type { Annotation } from "@/types/elastic-search-document.interface";
-import type { DataSource } from "@/types/datasource.interface";
-import { transformVocabularyItem } from "@/utils/vocabulary-transformers";
+} from '@/types/annotation-schema.interface'
+import type { DataSource } from '@/types/datasource.interface'
+import type { Annotation } from '@/types/elastic-search-document.interface'
 import {
-  getElasticsearchFieldName,
   annotationSchema,
-} from "@/utils/schema-transformer";
+  getElasticsearchFieldName,
+} from '@/utils/schema-transformer'
+import { transformVocabularyItem } from '@/utils/vocabulary-transformers'
 
 /**
  * Normalized vocabulary item for consistent rendering
  */
 export interface VocabularyItem {
-  id: string;
-  label: string;
-  url?: string | null;
-  description?: string;
-  variant?: "default" | "custom";
+  id: string
+  label: string
+  url?: string | null
+  description?: string
+  variant?: 'default' | 'custom'
 }
 
 /**
  * Normalized annotation interface with schema-aligned field names.
  */
 interface NormalizedAnnotation {
-  _id: string;
-  uuid: string;
-  submitter: string;
-  dc_date: string;
-  fragment?: any;
-  [fieldName: string]: string | VocabularyItem[] | any;
+  _id: string
+  uuid: string
+  submitter: string
+  dc_date: string
+  fragment?: any
+  [fieldName: string]: string | VocabularyItem[] | any
 }
 
 /**
@@ -39,15 +39,15 @@ interface NormalizedAnnotation {
  */
 function dataSourceToVocabularyItem(
   dataSource: DataSource,
-  variant: "default" | "custom" = "default"
+  variant: 'default' | 'custom' = 'default',
 ): VocabularyItem {
   return {
-    id: dataSource.value || "",
-    label: dataSource.label || "",
+    id: dataSource.value || '',
+    label: dataSource.label || '',
     url: dataSource.secondarySearch,
     description: dataSource.description,
     variant,
-  };
+  }
 }
 
 /**
@@ -55,36 +55,37 @@ function dataSourceToVocabularyItem(
  */
 function normalizeVocabularyField(
   annotation: Annotation,
-  fieldConfig: ComboboxField
+  fieldConfig: ComboboxField,
 ): VocabularyItem[] {
-  const dataFieldName = getElasticsearchFieldName(fieldConfig.name);
-  const rawValue = (annotation as any)[dataFieldName];
+  const dataFieldName = getElasticsearchFieldName(fieldConfig.name)
+  const rawValue = (annotation as any)[dataFieldName]
 
-  if (!rawValue) return [];
+  if (!rawValue)
+    return []
 
-  const variant =
-    fieldConfig.displaySection === "additional_vocabularies"
-      ? "custom"
-      : "default";
+  const variant
+    = fieldConfig.displaySection === 'additional_vocabularies'
+      ? 'custom'
+      : 'default'
 
   // Handle simple string values (like dc_language, dc_type)
-  if (typeof rawValue === "string") {
+  if (typeof rawValue === 'string') {
     return [
       {
         id: rawValue,
         label: rawValue,
         variant,
       },
-    ];
+    ]
   }
 
-  const items = Array.isArray(rawValue) ? rawValue : [rawValue];
+  const items = Array.isArray(rawValue) ? rawValue : [rawValue]
 
   // Transform each item using the shared transformer
   return items.map((item) => {
-    const dataSource = transformVocabularyItem(item, fieldConfig.vocabulary);
-    return dataSourceToVocabularyItem(dataSource, variant);
-  });
+    const dataSource = transformVocabularyItem(item, fieldConfig.vocabulary)
+    return dataSourceToVocabularyItem(dataSource, variant)
+  })
 }
 
 /**
@@ -92,42 +93,43 @@ function normalizeVocabularyField(
  */
 function normalizeSimpleField(
   annotation: Annotation,
-  fieldConfig: AnnotationField
+  fieldConfig: AnnotationField,
 ): any {
-  const dataFieldName = getElasticsearchFieldName(fieldConfig.name);
-  return (annotation as any)[dataFieldName];
+  const dataFieldName = getElasticsearchFieldName(fieldConfig.name)
+  return (annotation as any)[dataFieldName]
 }
 
 /**
  * Normalize an Elasticsearch annotation document to schema-aligned format.
  */
 export function normalizeAnnotation(
-  annotation: Annotation
+  annotation: Annotation,
 ): NormalizedAnnotation {
   const normalized: NormalizedAnnotation = {
     _id: annotation.uuid,
     uuid: annotation.uuid,
     submitter: annotation.submitter,
     dc_date: annotation.dc_date,
-  };
+  }
 
   // Process each field defined in the schema
   annotationSchema.fields.forEach((field) => {
-    if (field.type === "combobox") {
+    if (field.type === 'combobox') {
       // Vocabulary fields → VocabularyItem[]
-      normalized[field.name] = normalizeVocabularyField(annotation, field);
-    } else {
-      // Simple fields → raw value
-      normalized[field.name] = normalizeSimpleField(annotation, field);
+      normalized[field.name] = normalizeVocabularyField(annotation, field)
     }
-  });
+    else {
+      // Simple fields → raw value
+      normalized[field.name] = normalizeSimpleField(annotation, field)
+    }
+  })
 
   // Preserve fragment for text highlighting
   if (annotation.fragment) {
-    normalized.fragment = annotation.fragment;
+    normalized.fragment = annotation.fragment
   }
 
-  return normalized;
+  return normalized
 }
 
 /**
@@ -135,10 +137,10 @@ export function normalizeAnnotation(
  */
 function isVocabularyFieldEmpty(
   normalized: NormalizedAnnotation,
-  fieldName: string
+  fieldName: string,
 ): boolean {
-  const data = normalized[fieldName];
-  return !Array.isArray(data) || data.length === 0;
+  const data = normalized[fieldName]
+  return !Array.isArray(data) || data.length === 0
 }
 
 /**
@@ -146,10 +148,10 @@ function isVocabularyFieldEmpty(
  */
 function getVocabularyFieldCount(
   normalized: NormalizedAnnotation,
-  fieldName: string
+  fieldName: string,
 ): number {
-  const data = normalized[fieldName];
-  return Array.isArray(data) ? data.length : 0;
+  const data = normalized[fieldName]
+  return Array.isArray(data) ? data.length : 0
 }
 
 /**
@@ -157,13 +159,13 @@ function getVocabularyFieldCount(
  */
 export function getFieldsBySection(
   schema: AnnotationSchema,
-  section: "basic" | "rda_vocabularies" | "additional_vocabularies"
+  section: 'basic' | 'rda_vocabularies' | 'additional_vocabularies',
 ): ComboboxField[] {
   return schema.fields.filter(
     (field): field is ComboboxField =>
-      field.type === "combobox" &&
-      (field as ComboboxField).displaySection === section
-  );
+      field.type === 'combobox'
+      && (field as ComboboxField).displaySection === section,
+  )
 }
 
 /**
@@ -172,12 +174,12 @@ export function getFieldsBySection(
 export function isSectionEmpty(
   normalized: NormalizedAnnotation,
   schema: AnnotationSchema,
-  section: "basic" | "rda_vocabularies" | "additional_vocabularies"
+  section: 'basic' | 'rda_vocabularies' | 'additional_vocabularies',
 ): boolean {
-  const fields = getFieldsBySection(schema, section);
-  return fields.every((field) =>
-    isVocabularyFieldEmpty(normalized, field.name)
-  );
+  const fields = getFieldsBySection(schema, section)
+  return fields.every(field =>
+    isVocabularyFieldEmpty(normalized, field.name),
+  )
 }
 
 /**
@@ -186,25 +188,27 @@ export function isSectionEmpty(
 export function getSectionItemCount(
   normalized: NormalizedAnnotation,
   schema: AnnotationSchema,
-  section: "basic" | "rda_vocabularies" | "additional_vocabularies"
+  section: 'basic' | 'rda_vocabularies' | 'additional_vocabularies',
 ): number {
-  const fields = getFieldsBySection(schema, section);
+  const fields = getFieldsBySection(schema, section)
   return fields.reduce(
     (total, field) => total + getVocabularyFieldCount(normalized, field.name),
-    0
-  );
+    0,
+  )
 }
 
 /**
  * Validates if a URL string is valid.
  */
 export function isValidUrl(url: string | null | undefined): boolean {
-  if (!url || url.trim() === "") return false;
+  if (!url || url.trim() === '')
+    return false
   try {
-    new URL(url);
-    return true;
-  } catch {
-    return false;
+    const _parsed = new URL(url)
+    return !!_parsed
+  }
+  catch {
+    return false
   }
 }
 
@@ -212,9 +216,9 @@ export function isValidUrl(url: string | null | undefined): boolean {
  * Vocabulary count for display in annotation cards.
  */
 export interface VocabularyCount {
-  fieldName: string;
-  label: string;
-  count: number;
+  fieldName: string
+  label: string
+  count: number
 }
 
 /**
@@ -223,25 +227,25 @@ export interface VocabularyCount {
  */
 export function getVocabularyCounts(
   annotation: Annotation,
-  schema: AnnotationSchema
+  schema: AnnotationSchema,
 ): VocabularyCount[] {
-  const counts: VocabularyCount[] = [];
+  const counts: VocabularyCount[] = []
 
   // Iterate through all combobox fields with multiple=true
   schema.fields.forEach((field) => {
-    if (field.type === "combobox" && field.multiple) {
-      const dataFieldName = getElasticsearchFieldName(field.name);
-      const rawValue = (annotation as any)[dataFieldName];
+    if (field.type === 'combobox' && field.multiple) {
+      const dataFieldName = getElasticsearchFieldName(field.name)
+      const rawValue = (annotation as any)[dataFieldName]
 
       if (rawValue && Array.isArray(rawValue) && rawValue.length > 0) {
         counts.push({
           fieldName: field.name,
           label: field.label,
           count: rawValue.length,
-        });
+        })
       }
     }
-  });
+  })
 
-  return counts;
+  return counts
 }

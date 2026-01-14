@@ -1,6 +1,6 @@
 interface OrcidLinkProps {
-  orcidId: string;
-  textSize?: "xs" | "sm";
+  orcidId: string
+  textSize?: 'xs' | 'sm'
 }
 
 /**
@@ -8,11 +8,11 @@ interface OrcidLinkProps {
  */
 export default function OrcidLink({ orcidId, textSize }: OrcidLinkProps) {
   // Validate ORCID format (XXXX-XXXX-XXXX-XXXX)
-  const isValidOrcid = /^\d{4}-\d{4}-\d{4}-\d{3}[0-9X]$/.test(orcidId);
+  const isValidOrcid = /^\d{4}-\d{4}-\d{4}-\d{3}[0-9X]$/.test(orcidId)
 
   if (!isValidOrcid) {
     // Display as plain text if invalid format
-    return <span className="text-gray-600">{orcidId}</span>;
+    return <span className="text-gray-600">{orcidId}</span>
   }
 
   return (
@@ -21,7 +21,7 @@ export default function OrcidLink({ orcidId, textSize }: OrcidLinkProps) {
       target="_blank"
       rel="noopener noreferrer"
       className={`inline-flex items-center gap-1 text-rda-500 hover:text-rda-600 hover:underline ${
-        textSize === "xs" ? "text-xs" : "text-sm"
+        textSize === 'xs' ? 'text-xs' : 'text-sm'
       }`}
       aria-label={`ORCID profile for ${orcidId}`}
     >
@@ -53,5 +53,5 @@ export default function OrcidLink({ orcidId, textSize }: OrcidLinkProps) {
         </g>
       </svg>
     </a>
-  );
+  )
 }

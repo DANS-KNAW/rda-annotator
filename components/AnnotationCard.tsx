@@ -1,18 +1,18 @@
-import { AnnotationHit } from "@/types/elastic-search-document.interface";
-import OrcidLink from "@/components/OrcidLink";
-import { getVocabularyCounts } from "@/utils/annotation-helpers";
-import schemaData from "@/assets/schema.json";
-import type { AnnotationSchema } from "@/types/annotation-schema.interface";
+import type { AnnotationSchema } from '@/types/annotation-schema.interface'
+import type { AnnotationHit } from '@/types/elastic-search-document.interface'
+import schemaData from '@/assets/schema.json'
+import OrcidLink from '@/components/OrcidLink'
+import { getVocabularyCounts } from '@/utils/annotation-helpers'
 
-const annotationSchema = schemaData as AnnotationSchema;
+const annotationSchema = schemaData as AnnotationSchema
 
 interface AnnotationCardProps {
-  annotation: AnnotationHit;
-  isOrphaned?: boolean;
-  isPending?: boolean;
-  isRecovered?: boolean;
-  isHovered?: boolean;
-  onClick: () => void;
+  annotation: AnnotationHit
+  isOrphaned?: boolean
+  isPending?: boolean
+  isRecovered?: boolean
+  isHovered?: boolean
+  onClick: () => void
 }
 
 export default function AnnotationCard({
@@ -23,21 +23,21 @@ export default function AnnotationCard({
   isHovered = false,
   onClick,
 }: AnnotationCardProps) {
-  const source = annotation._source;
-  const vocabularyCounts = getVocabularyCounts(source, annotationSchema);
+  const source = annotation._source
+  const vocabularyCounts = getVocabularyCounts(source, annotationSchema)
 
-  const baseClasses = "bg-white p-2 rounded-md shadow cursor-pointer min-h-14";
+  const baseClasses = 'bg-white p-2 rounded-md shadow cursor-pointer min-h-14'
 
   const hoverClass = isHovered
-    ? "bg-rda-50 ring-2 ring-rda-400"
-    : "hover:bg-rda-50";
+    ? 'bg-rda-50 ring-2 ring-rda-400'
+    : 'hover:bg-rda-50'
 
   // Pending uses blue, orphaned uses amber
   const statusClass = isPending
-    ? "border-2 border-blue-400 bg-blue-50"
+    ? 'border-2 border-blue-400 bg-blue-50'
     : isOrphaned
-    ? "border-2 border-amber-400 bg-amber-50"
-    : "";
+      ? 'border-2 border-amber-400 bg-amber-50'
+      : ''
 
   return (
     <div
@@ -59,12 +59,14 @@ export default function AnnotationCard({
 
       {vocabularyCounts.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2">
-          {vocabularyCounts.map((vocab) => (
+          {vocabularyCounts.map(vocab => (
             <span
               key={vocab.fieldName}
               className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-700 text-xs font-medium"
             >
-              {vocab.count} {vocab.label}
+              {vocab.count}
+              {' '}
+              {vocab.label}
             </span>
           ))}
         </div>
@@ -136,5 +138,5 @@ export default function AnnotationCard({
         </div>
       )}
     </div>
-  );
+  )
 }

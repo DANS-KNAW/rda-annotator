@@ -1,12 +1,12 @@
-import {
-  TextQuoteSelector,
-  TextPositionSelector,
+import type {
   RangeSelector,
   Selector,
-} from "@/types/selector.interface";
-import { getTextPosition, getTextContext } from "./text-range";
-import { getXPathForNode } from "./xpath";
-import { isPDFDocument, describePDFRange } from "./pdf";
+  TextPositionSelector,
+  TextQuoteSelector,
+} from '@/types/selector.interface'
+import { describePDFRange, isPDFDocument } from './pdf'
+import { getTextContext, getTextPosition } from './text-range'
+import { getXPathForNode } from './xpath'
 
 /**
  * Creates a TextQuoteSelector from a Range
@@ -14,35 +14,36 @@ import { isPDFDocument, describePDFRange } from "./pdf";
  */
 export function createTextQuoteSelector(
   range: Range,
-  root: Node = document.body
+  root: Node = document.body,
 ): TextQuoteSelector | null {
   try {
-    const exact = range.toString();
+    const exact = range.toString()
 
     if (!exact || exact.trim().length === 0) {
-      return null;
+      return null
     }
 
     // Get character positions for context calculation
     const start = getTextPosition(
       range.startContainer,
       range.startOffset,
-      root
-    );
-    const end = getTextPosition(range.endContainer, range.endOffset, root);
+      root,
+    )
+    const end = getTextPosition(range.endContainer, range.endOffset, root)
 
     // Get surrounding context (32 characters before and after)
-    const { prefix, suffix } = getTextContext(root, start, end, 32);
+    const { prefix, suffix } = getTextContext(root, start, end, 32)
 
     return {
-      type: "TextQuoteSelector",
+      type: 'TextQuoteSelector',
       exact,
       prefix: prefix.length > 0 ? prefix : undefined,
       suffix: suffix.length > 0 ? suffix : undefined,
-    };
-  } catch (error) {
-    console.error("Failed to create TextQuoteSelector:", error);
-    return null;
+    }
+  }
+  catch (error) {
+    console.error('Failed to create TextQuoteSelector:', error)
+    return null
   }
 }
 
@@ -52,28 +53,29 @@ export function createTextQuoteSelector(
  */
 export function createTextPositionSelector(
   range: Range,
-  root: Node = document.body
+  root: Node = document.body,
 ): TextPositionSelector | null {
   try {
     const start = getTextPosition(
       range.startContainer,
       range.startOffset,
-      root
-    );
-    const end = getTextPosition(range.endContainer, range.endOffset, root);
+      root,
+    )
+    const end = getTextPosition(range.endContainer, range.endOffset, root)
 
     if (start === end) {
-      return null;
+      return null
     }
 
     return {
-      type: "TextPositionSelector",
+      type: 'TextPositionSelector',
       start,
       end,
-    };
-  } catch (error) {
-    console.error("Failed to create TextPositionSelector:", error);
-    return null;
+    }
+  }
+  catch (error) {
+    console.error('Failed to create TextPositionSelector:', error)
+    return null
   }
 }
 
@@ -83,26 +85,27 @@ export function createTextPositionSelector(
  */
 export function createRangeSelector(
   range: Range,
-  root: Node = document.body
+  root: Node = document.body,
 ): RangeSelector | null {
   try {
-    const startContainer = getXPathForNode(range.startContainer, root);
-    const endContainer = getXPathForNode(range.endContainer, root);
+    const startContainer = getXPathForNode(range.startContainer, root)
+    const endContainer = getXPathForNode(range.endContainer, root)
 
     if (!startContainer || !endContainer) {
-      return null;
+      return null
     }
 
     return {
-      type: "RangeSelector",
+      type: 'RangeSelector',
       startContainer,
       startOffset: range.startOffset,
       endContainer,
       endOffset: range.endOffset,
-    };
-  } catch (error) {
-    console.error("Failed to create RangeSelector:", error);
-    return null;
+    }
+  }
+  catch (error) {
+    console.error('Failed to create RangeSelector:', error)
+    return null
   }
 }
 
@@ -117,31 +120,31 @@ export function createRangeSelector(
  */
 export async function describeRange(
   range: Range,
-  root: Node = document.body
+  root: Node = document.body,
 ): Promise<Selector[]> {
   if (isPDFDocument()) {
-    return await describePDFRange(range);
+    return await describePDFRange(range)
   }
 
-  const selectors: Selector[] = [];
+  const selectors: Selector[] = []
 
   // TextQuoteSelector - most robust, try first
-  const textQuote = createTextQuoteSelector(range, root);
+  const textQuote = createTextQuoteSelector(range, root)
   if (textQuote) {
-    selectors.push(textQuote);
+    selectors.push(textQuote)
   }
 
   // TextPositionSelector - fast and precise when document unchanged
-  const textPosition = createTextPositionSelector(range, root);
+  const textPosition = createTextPositionSelector(range, root)
   if (textPosition) {
-    selectors.push(textPosition);
+    selectors.push(textPosition)
   }
 
   // RangeSelector - XPath-based fallback
-  const rangeSelector = createRangeSelector(range, root);
+  const rangeSelector = createRangeSelector(range, root)
   if (rangeSelector) {
-    selectors.push(rangeSelector);
+    selectors.push(rangeSelector)
   }
 
-  return selectors;
+  return selectors
 }

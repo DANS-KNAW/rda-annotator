@@ -5,24 +5,24 @@
 export function getTextPosition(
   node: Node,
   offset: number,
-  root: Node = document.body
+  root: Node = document.body,
 ): number {
-  let position = 0;
+  let position = 0
   const nodeIterator = document.createNodeIterator(
     root,
     NodeFilter.SHOW_TEXT,
-    null
-  );
+    null,
+  )
 
-  let currentNode: Node | null;
+  let currentNode: Node | null
   while ((currentNode = nodeIterator.nextNode())) {
     if (currentNode === node) {
-      return position + offset;
+      return position + offset
     }
-    position += currentNode.textContent?.length || 0;
+    position += currentNode.textContent?.length || 0
   }
 
-  return position;
+  return position
 }
 
 /**
@@ -33,27 +33,27 @@ export function getTextPosition(
  */
 export function resolveTextPosition(
   root: Node,
-  offset: number
+  offset: number,
 ): [Node, number] | null {
-  let currentOffset = 0;
+  let currentOffset = 0
   const nodeIterator = document.createNodeIterator(
     root,
     NodeFilter.SHOW_TEXT,
-    null
-  );
+    null,
+  )
 
-  let node: Node | null;
+  let node: Node | null
   while ((node = nodeIterator.nextNode())) {
-    const nodeLength = node.textContent?.length || 0;
+    const nodeLength = node.textContent?.length || 0
 
     if (currentOffset + nodeLength >= offset) {
-      return [node, offset - currentOffset];
+      return [node, offset - currentOffset]
     }
 
-    currentOffset += nodeLength;
+    currentOffset += nodeLength
   }
 
-  return null;
+  return null
 }
 
 /**
@@ -67,15 +67,15 @@ export function getTextContext(
   root: Node,
   start: number,
   end: number,
-  contextLength: number = 32
-): { prefix: string; suffix: string } {
-  const fullText = root.textContent || "";
+  contextLength: number = 32,
+): { prefix: string, suffix: string } {
+  const fullText = root.textContent || ''
 
-  const prefixStart = Math.max(0, start - contextLength);
-  const prefix = fullText.substring(prefixStart, start);
+  const prefixStart = Math.max(0, start - contextLength)
+  const prefix = fullText.substring(prefixStart, start)
 
-  const suffixEnd = Math.min(fullText.length, end + contextLength);
-  const suffix = fullText.substring(end, suffixEnd);
+  const suffixEnd = Math.min(fullText.length, end + contextLength)
+  const suffix = fullText.substring(end, suffixEnd)
 
-  return { prefix, suffix };
+  return { prefix, suffix }
 }

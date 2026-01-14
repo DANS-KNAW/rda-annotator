@@ -1,15 +1,15 @@
-import { DataSource } from "@/types/datasource.interface";
-import { sendMessage } from "@/utils/messaging";
+import type { DataSource } from '@/types/datasource.interface'
+import { sendMessage } from '@/utils/messaging'
 
 interface FetchVocabulariesOptions {
-  subject_scheme?: string;
-  scheme_uri?: string;
-  value_scheme?: string;
-  value_uri?: string;
-  namespace?: string;
-  amount?: number;
-  offset?: number;
-  deleted?: boolean;
+  subject_scheme?: string
+  scheme_uri?: string
+  value_scheme?: string
+  value_uri?: string
+  namespace?: string
+  amount?: number
+  offset?: number
+  deleted?: boolean
 }
 
 /**
@@ -20,12 +20,13 @@ interface FetchVocabulariesOptions {
  * @returns Array of DataSource objects representing vocabularies
  */
 export default async function fetchOpenVocabularies(
-  options: FetchVocabulariesOptions = {}
+  options: FetchVocabulariesOptions = {},
 ): Promise<DataSource[]> {
   try {
-    return await sendMessage("fetchVocabularies", options);
-  } catch (error) {
-    console.error("Error fetching open vocabularies:", error);
-    throw error;
+    return await sendMessage('fetchVocabularies', options)
+  }
+  catch (error) {
+    console.error('Error fetching open vocabularies:', error)
+    throw error
   }
 }

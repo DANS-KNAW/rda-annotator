@@ -1,6 +1,6 @@
 enum TrimDirection {
-  Forwards = "forwards",
-  Backwards = "backwards",
+  Forwards = 'forwards',
+  Backwards = 'backwards',
 }
 
 /**
@@ -11,20 +11,21 @@ enum TrimDirection {
  * @return Offset of first non-whitespace char, or -1 if not found
  */
 function closestNonSpaceInString(str: string, fromEnd: boolean): number {
-  const regex = /\S/g;
+  const regex = /\S/g
 
   if (fromEnd) {
     // Search from end backwards
-    let match;
-    let lastIndex = -1;
+    let match
+    let lastIndex = -1
     while ((match = regex.exec(str)) !== null) {
-      lastIndex = match.index;
+      lastIndex = match.index
     }
-    return lastIndex;
-  } else {
+    return lastIndex
+  }
+  else {
     // Search from start forwards
-    const match = regex.exec(str);
-    return match ? match.index : -1;
+    const match = regex.exec(str)
+    return match ? match.index : -1
   }
 }
 
@@ -37,52 +38,53 @@ function closestNonSpaceInString(str: string, fromEnd: boolean): number {
  */
 function closestNonSpaceInRange(
   range: Range,
-  direction: TrimDirection
+  direction: TrimDirection,
 ): [Node, number] | null {
-  const root = range.commonAncestorContainer;
+  const root = range.commonAncestorContainer
   const nodeIter = root.ownerDocument!.createNodeIterator(
     root,
-    NodeFilter.SHOW_TEXT
-  );
+    NodeFilter.SHOW_TEXT,
+  )
 
-  let node: Node | null;
-  const textNodes: Text[] = [];
+  let node: Node | null
+  const textNodes: Text[] = []
 
   // Collect all text nodes in range
   while ((node = nodeIter.nextNode())) {
-    const text = node as Text;
+    const text = node as Text
     if (
-      range.comparePoint(text, 0) <= 0 &&
-      range.comparePoint(text, text.length) >= 0
+      range.comparePoint(text, 0) <= 0
+      && range.comparePoint(text, text.length) >= 0
     ) {
-      textNodes.push(text);
+      textNodes.push(text)
     }
   }
 
   if (textNodes.length === 0) {
-    return null;
+    return null
   }
 
   // Search in appropriate direction
   if (direction === TrimDirection.Forwards) {
     for (const textNode of textNodes) {
-      const offset = closestNonSpaceInString(textNode.data, false);
+      const offset = closestNonSpaceInString(textNode.data, false)
       if (offset !== -1) {
-        return [textNode, offset];
+        return [textNode, offset]
       }
     }
-  } else {
+  }
+  else {
     // Search backwards
     for (let i = textNodes.length - 1; i >= 0; i--) {
-      const textNode = textNodes[i];
-      const offset = closestNonSpaceInString(textNode.data, true);
+      const textNode = textNodes[i]
+      const offset = closestNonSpaceInString(textNode.data, true)
       if (offset !== -1) {
-        return [textNode, offset];
+        return [textNode, offset]
       }
     }
   }
 
-  return null;
+  return null
 }
 
 /**
@@ -96,40 +98,40 @@ function closestNonSpaceInRange(
  */
 export function trimRange(range: Range): Range {
   if (range.collapsed) {
-    return range.cloneRange();
+    return range.cloneRange()
   }
 
-  const trimmedRange = range.cloneRange();
+  const trimmedRange = range.cloneRange()
 
   // Try to trim start within the start container first
   if (
-    range.startContainer.nodeType === Node.TEXT_NODE &&
-    range.startOffset < (range.startContainer as Text).length
+    range.startContainer.nodeType === Node.TEXT_NODE
+    && range.startOffset < (range.startContainer as Text).length
   ) {
     const text = (range.startContainer as Text).data.substring(
-      range.startOffset
-    );
-    const offset = closestNonSpaceInString(text, false);
+      range.startOffset,
+    )
+    const offset = closestNonSpaceInString(text, false)
     if (offset !== -1) {
-      trimmedRange.setStart(range.startContainer, range.startOffset + offset);
+      trimmedRange.setStart(range.startContainer, range.startOffset + offset)
     }
   }
 
   // If still at whitespace, search across nodes
   if (
-    trimmedRange.startContainer.nodeType === Node.TEXT_NODE &&
-    trimmedRange.startOffset < (trimmedRange.startContainer as Text).length
+    trimmedRange.startContainer.nodeType === Node.TEXT_NODE
+    && trimmedRange.startOffset < (trimmedRange.startContainer as Text).length
   ) {
     const startChar = (trimmedRange.startContainer as Text).data[
       trimmedRange.startOffset
-    ];
+    ]
     if (/\s/.test(startChar)) {
       const newStart = closestNonSpaceInRange(
         trimmedRange,
-        TrimDirection.Forwards
-      );
+        TrimDirection.Forwards,
+      )
       if (newStart) {
-        trimmedRange.setStart(newStart[0], newStart[1]);
+        trimmedRange.setStart(newStart[0], newStart[1])
       }
     }
   }
@@ -138,32 +140,32 @@ export function trimRange(range: Range): Range {
   if (range.endContainer.nodeType === Node.TEXT_NODE && range.endOffset > 0) {
     const text = (range.endContainer as Text).data.substring(
       0,
-      range.endOffset
-    );
-    const offset = closestNonSpaceInString(text, true);
+      range.endOffset,
+    )
+    const offset = closestNonSpaceInString(text, true)
     if (offset !== -1) {
-      trimmedRange.setEnd(range.endContainer, offset + 1);
+      trimmedRange.setEnd(range.endContainer, offset + 1)
     }
   }
 
   // If still at whitespace, search across nodes
   if (
-    trimmedRange.endContainer.nodeType === Node.TEXT_NODE &&
-    trimmedRange.endOffset > 0
+    trimmedRange.endContainer.nodeType === Node.TEXT_NODE
+    && trimmedRange.endOffset > 0
   ) {
     const endChar = (trimmedRange.endContainer as Text).data[
       trimmedRange.endOffset - 1
-    ];
+    ]
     if (/\s/.test(endChar)) {
       const newEnd = closestNonSpaceInRange(
         trimmedRange,
-        TrimDirection.Backwards
-      );
+        TrimDirection.Backwards,
+      )
       if (newEnd) {
-        trimmedRange.setEnd(newEnd[0], newEnd[1] + 1);
+        trimmedRange.setEnd(newEnd[0], newEnd[1] + 1)
       }
     }
   }
 
-  return trimmedRange;
+  return trimmedRange
 }

@@ -1,8 +1,8 @@
 interface BaseModelInput {
-  label: string;
+  label: string
 }
 
 export interface TypeAheadModelInput extends BaseModelInput {
-  type: "typeahead";
-  source: "orcid";
+  type: 'typeahead'
+  source: 'orcid'
 }

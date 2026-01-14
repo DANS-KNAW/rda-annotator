@@ -1,10 +1,10 @@
 export function injectHighlightStyles(targetDocument: Document = document): void {
   if (targetDocument.getElementById('rda-highlight-styles')) {
-    return;
+    return
   }
 
-  const style = targetDocument.createElement('style');
-  style.id = 'rda-highlight-styles';
+  const style = targetDocument.createElement('style')
+  style.id = 'rda-highlight-styles'
   style.textContent = `
     rda-highlight {
       background-color: rgba(174, 219, 153, 0.4) !important;
@@ -28,7 +28,7 @@ export function injectHighlightStyles(targetDocument: Document = document): void
       cursor: inherit !important;
       outline: none !important;
     }
-  `;
+  `
 
-  targetDocument.head.appendChild(style);
+  targetDocument.head.appendChild(style)
 }

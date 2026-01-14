@@ -1,78 +1,81 @@
-import React, { useContext, useState, useEffect } from "react";
-import { Form } from "@/components/form/Form";
-import Toggle from "@/components/form/Toggle";
-import AnnotationFormSchema from "@/assets/schema.json";
-import { AnnotationSchema } from "@/types/annotation-schema.interface";
-import { AuthenticationContext } from "@/context/authentication.context";
-import Button from "@/components/Button";
-import Modal from "@/components/Model";
-import { ISettings } from "@/types/settings.interface";
-import { storage } from "#imports";
+import type { AnnotationSchema } from '@/types/annotation-schema.interface'
+import type { ISettings } from '@/types/settings.interface'
+import { storage } from '#imports'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import AnnotationFormSchema from '@/assets/schema.json'
+import Button from '@/components/Button'
+import { Form } from '@/components/form/Form'
+import Toggle from '@/components/form/Toggle'
+import Modal from '@/components/Model'
+import { AuthenticationContext } from '@/context/authentication.context'
 
 interface VocabularySettings {
-  [key: string]: boolean;
+  [key: string]: boolean
 }
 
 export default function Settings() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [settings, setSettings] = useState<VocabularySettings>({});
-  const [activeModal, setActiveModal] = useState<string | null>(null);
-  const { logout } = useContext(AuthenticationContext);
+  const [isLoading, setIsLoading] = useState(true)
+  const [settings, setSettings] = useState<VocabularySettings>({})
+  const [activeModal, setActiveModal] = useState<string | null>(null)
+  const { logout } = use(AuthenticationContext)
 
   const comboboxes = (AnnotationFormSchema as AnnotationSchema).fields.filter(
-    (field) =>
-      field.type === "combobox" &&
-      field.vocabulary &&
-      field.vocabulary !== "languages" &&
-      field.vocabulary !== "resource_types"
-  );
-
-  useEffect(() => {
-    initializeSettings();
-  }, []);
+    field =>
+      field.type === 'combobox'
+      && field.vocabulary
+      && field.vocabulary !== 'languages'
+      && field.vocabulary !== 'resource_types',
+  )
 
   const initializeSettings = async () => {
     try {
       const existingSettings = await storage.getItem<ISettings>(
-        "local:settings"
-      );
+        'local:settings',
+      )
 
-      const updatedSettings: VocabularySettings = {};
+      const updatedSettings: VocabularySettings = {}
 
       comboboxes.forEach((field) => {
-        updatedSettings[field.name] =
-          existingSettings?.vocabularies?.[field.name] ?? true;
-      });
+        updatedSettings[field.name]
+          = existingSettings?.vocabularies?.[field.name] ?? true
+      })
 
-      await storage.setItem("local:settings", {
+      await storage.setItem('local:settings', {
         vocabularies: updatedSettings,
-      });
+      })
 
-      setSettings(updatedSettings);
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Failed to initialize settings:", error);
-      setIsLoading(false);
+      setSettings(updatedSettings)
+      setIsLoading(false)
     }
-  };
+    catch (error) {
+      console.error('Failed to initialize settings:', error)
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    initializeSettings()
+  }, [])
 
   const onSubmit = async (data: Record<string, boolean>) => {
     try {
-      const newSettings: VocabularySettings = {};
+      const newSettings: VocabularySettings = {}
       comboboxes.forEach((field) => {
-        newSettings[field.name] = data[field.name] === true;
-      });
-      await storage.setItem("local:settings", {
+        newSettings[field.name] = data[field.name] === true
+      })
+      await storage.setItem('local:settings', {
         vocabularies: newSettings,
-      });
-      setSettings(newSettings);
-    } catch (error) {
-      console.error("Failed to save settings:", error);
+      })
+      setSettings(newSettings)
     }
-  };
+    catch (error) {
+      console.error('Failed to save settings:', error)
+    }
+  }
 
   if (isLoading) {
-    return <div className="mx-2 mt-4">Loading settings...</div>;
+    return <div className="mx-2 mt-4">Loading settings...</div>
   }
 
   return (
@@ -87,7 +90,7 @@ export default function Settings() {
             available and visible when creating annotations.
           </p>
           <div className="mt-8 space-y-4">
-            {comboboxes.map((field) => (
+            {comboboxes.map(field => (
               <React.Fragment key={field.name}>
                 {field.info && (
                   <Modal
@@ -119,7 +122,7 @@ export default function Settings() {
                       </div>
                       <div
                         className="mt-4 prose prose-a:underline prose-a:text-rda-500"
-                        dangerouslySetInnerHTML={{ __html: field.info || "" }}
+                        dangerouslySetInnerHTML={{ __html: field.info || '' }}
                       />
                     </div>
                   </Modal>
@@ -178,5 +181,5 @@ export default function Settings() {
         />
       </div>
     </>
-  );
+  )
 }

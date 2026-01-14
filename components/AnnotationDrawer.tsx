@@ -1,114 +1,118 @@
-import { useMemo } from "react";
-import Drawer from "@/components/Drawer";
-import Button from "@/components/Button";
-import CollapsibleSection from "@/components/CollapsibleSection";
-import FieldDisplay from "@/components/FieldDisplay";
-import VocabularyList from "@/components/VocabularyList";
-import OrcidLink from "@/components/OrcidLink";
-import { AnnotationHit } from "@/types/elastic-search-document.interface";
-import {
-  isSectionEmpty,
-  getSectionItemCount,
-  getFieldsBySection,
-  normalizeAnnotation,
-  type VocabularyItem,
-} from "@/utils/annotation-helpers";
-import schemaData from "@/assets/schema.json";
 import type {
-  AnnotationSchema,
   AnnotationField,
-} from "@/types/annotation-schema.interface";
+  AnnotationSchema,
+} from '@/types/annotation-schema.interface'
+import type { AnnotationHit } from '@/types/elastic-search-document.interface'
+import type { VocabularyItem } from '@/utils/annotation-helpers'
+import { useMemo } from 'react'
+import schemaData from '@/assets/schema.json'
+import Button from '@/components/Button'
+import CollapsibleSection from '@/components/CollapsibleSection'
+import Drawer from '@/components/Drawer'
+import FieldDisplay from '@/components/FieldDisplay'
+import OrcidLink from '@/components/OrcidLink'
+import VocabularyList from '@/components/VocabularyList'
+import {
+  getFieldsBySection,
+  getSectionItemCount,
+  isSectionEmpty,
+  normalizeAnnotation,
 
-const annotationSchema = schemaData as AnnotationSchema;
+} from '@/utils/annotation-helpers'
+
+const annotationSchema = schemaData as AnnotationSchema
 
 interface AnnotationDrawerProps {
-  annotation: AnnotationHit;
-  setAnnotation: (annotation: AnnotationHit | null) => void;
+  annotation: AnnotationHit
+  setAnnotation: (annotation: AnnotationHit | null) => void
 }
 
 export default function AnnotationDrawer({
   annotation,
   setAnnotation,
 }: AnnotationDrawerProps) {
-  const source = annotation._source;
+  const source = annotation._source
 
-  const normalized = useMemo(() => normalizeAnnotation(source), [source]);
+  const normalized = useMemo(() => normalizeAnnotation(source), [source])
 
   // Helper to render individual field based on type
   const renderField = (field: AnnotationField) => {
-    if (field.type === "combobox") {
-      const items = normalized[field.name] as VocabularyItem[];
+    if (field.type === 'combobox') {
+      const items = normalized[field.name] as VocabularyItem[]
 
       // Render as text field if not a multiple-select field
       if (!field.multiple) {
-        const value = items.length > 0 ? items[0].label : null;
+        const value = items.length > 0 ? items[0].label : null
         return (
           <FieldDisplay key={field.name} label={field.label} value={value} />
-        );
+        )
       }
 
       // Render as vocabulary list with badges for multiple-select fields
       return (
         <VocabularyList key={field.name} label={field.label} items={items} />
-      );
-    } else {
+      )
+    }
+    else {
       // Text or textarea field
-      const value = normalized[field.name];
+      const value = normalized[field.name]
       return (
         <FieldDisplay key={field.name} label={field.label} value={value} />
-      );
+      )
     }
-  };
+  }
 
   const basicFields = annotationSchema.fields.filter((f) => {
-    if (f.name === "title") return false;
-    if (f.type === "text" || f.type === "textarea") return true;
-    if (f.type === "combobox") {
-      return !f.displaySection || f.displaySection === "basic";
+    if (f.name === 'title')
+      return false
+    if (f.type === 'text' || f.type === 'textarea')
+      return true
+    if (f.type === 'combobox') {
+      return !f.displaySection || f.displaySection === 'basic'
     }
 
-    return false;
-  });
+    return false
+  })
   const rdaVocabFields = getFieldsBySection(
     annotationSchema,
-    "rda_vocabularies"
-  );
+    'rda_vocabularies',
+  )
   const additionalVocabFields = getFieldsBySection(
     annotationSchema,
-    "additional_vocabularies"
-  );
+    'additional_vocabularies',
+  )
 
   const isVocabEmpty = isSectionEmpty(
     normalized,
     annotationSchema,
-    "rda_vocabularies"
-  );
+    'rda_vocabularies',
+  )
   const isAdditionalEmpty = isSectionEmpty(
     normalized,
     annotationSchema,
-    "additional_vocabularies"
-  );
+    'additional_vocabularies',
+  )
   const vocabCount = getSectionItemCount(
     normalized,
     annotationSchema,
-    "rda_vocabularies"
-  );
+    'rda_vocabularies',
+  )
   const additionalCount = getSectionItemCount(
     normalized,
     annotationSchema,
-    "additional_vocabularies"
-  );
+    'additional_vocabularies',
+  )
 
   return (
     <Drawer
-      title={source.title || "Annotation Details"}
+      title={source.title || 'Annotation Details'}
       open={!!annotation}
       setOpen={() => setAnnotation(null)}
     >
       <div className="px-4 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-base font-semibold text-gray-900">
-            {source.title || "Annotation Details"}
+            {source.title || 'Annotation Details'}
           </h2>
           <button
             onClick={() => setAnnotation(null)}
@@ -135,7 +139,7 @@ export default function AnnotationDrawer({
         <Button
           label="View in RDA Discovery Facility"
           href={
-            import.meta.env.WXT_KNOWLEDGE_BASE_URL + "/record/" + annotation._id
+            `${import.meta.env.WXT_KNOWLEDGE_BASE_URL}/record/${annotation._id}`
           }
           newTab={true}
           className="flex justify-center"
@@ -187,5 +191,5 @@ export default function AnnotationDrawer({
         </CollapsibleSection>
       </div>
     </Drawer>
-  );
+  )
 }

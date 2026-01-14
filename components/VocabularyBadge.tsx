@@ -1,27 +1,27 @@
-import { isValidUrl } from "@/utils/annotation-helpers";
+import { isValidUrl } from '@/utils/annotation-helpers'
 
 interface VocabularyBadgeProps {
-  label: string;
-  url?: string | null;
-  description?: string;
-  variant?: "default" | "custom";
+  label: string
+  url?: string | null
+  description?: string
+  variant?: 'default' | 'custom'
 }
 
 export default function VocabularyBadge({
   label,
   url,
   description,
-  variant = "default",
+  variant = 'default',
 }: VocabularyBadgeProps) {
-  const baseClasses =
-    "inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium inset-ring transition-colors";
+  const baseClasses
+    = 'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium inset-ring transition-colors'
 
-  const variantClasses =
-    variant === "custom"
-      ? "bg-blue-50 text-blue-700 inset-ring-blue-500/10 hover:bg-blue-100 hover:text-blue-900"
-      : "bg-rda-50 text-rda-700 inset-ring-rda-500/10 hover:bg-rda-100 hover:text-rda-900";
+  const variantClasses
+    = variant === 'custom'
+      ? 'bg-blue-50 text-blue-700 inset-ring-blue-500/10 hover:bg-blue-100 hover:text-blue-900'
+      : 'bg-rda-50 text-rda-700 inset-ring-rda-500/10 hover:bg-rda-100 hover:text-rda-900'
 
-  const isClickable = url && isValidUrl(url);
+  const isClickable = url && isValidUrl(url)
 
   if (isClickable) {
     return (
@@ -53,12 +53,12 @@ export default function VocabularyBadge({
           />
         </svg>
       </a>
-    );
+    )
   }
 
   return (
     <span className={`${baseClasses} ${variantClasses}`} title={description}>
       {label}
     </span>
-  );
+  )
 }

@@ -1,17 +1,17 @@
-import { useState } from "react";
-import { UseFormRegister } from "react-hook-form";
-import Modal from "@/components/Model";
+import type { UseFormRegister } from 'react-hook-form'
+import { useState } from 'react'
+import Modal from '@/components/Model'
 
 interface InputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "name"> {
-  register?: UseFormRegister<any>;
-  info?: string;
-  label: string | React.ReactNode;
-  name: string;
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name'> {
+  register?: UseFormRegister<any>
+  info?: string
+  label: string | React.ReactNode
+  name: string
 }
 
 export function Input({ register, name, label, info, ...rest }: InputProps) {
-  const [showInfo, setShowInfo] = useState(false);
+  const [showInfo, setShowInfo] = useState(false)
 
   return (
     <div>
@@ -41,17 +41,19 @@ export function Input({ register, name, label, info, ...rest }: InputProps) {
             </div>
             <div
               className="mt-4 prose prose-a:underline prose-a:text-rda-500"
-              dangerouslySetInnerHTML={{ __html: info || "" }}
+              dangerouslySetInnerHTML={{ __html: info || '' }}
             />
           </div>
         </Modal>
       )}
       <div className="flex items-center justify-between">
         <label
-          htmlFor={name + "-input"}
+          htmlFor={`${name}-input`}
           className="block text-sm/6 font-medium text-gray-900"
         >
-          {label} {rest.required && <span className="text-red-500">*</span>}
+          {label}
+          {' '}
+          {rest.required && <span className="text-red-500">*</span>}
         </label>
         {info && (
           <button
@@ -79,12 +81,12 @@ export function Input({ register, name, label, info, ...rest }: InputProps) {
       </div>
       <div className="mt-1">
         <input
-          id={name + "-input"}
+          id={`${name}-input`}
           className="block w-full rounded-md bg-white px-2 py-1 text-sm/6 text-gray-900 outline-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rda-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
           {...(register ? register(name) : {})}
           {...rest}
         />
       </div>
     </div>
-  );
+  )
 }

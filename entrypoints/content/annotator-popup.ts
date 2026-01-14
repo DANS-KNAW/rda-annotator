@@ -1,81 +1,82 @@
-import { ContentScriptContext } from "#imports";
-import { EXTENSION_NAME } from "./constant";
-import { AnnotationTarget } from "@/types/selector.interface";
-import { describeRange } from "@/utils/anchoring/describe";
-import { trimRange } from "@/utils/anchoring/trim-range";
-import { sendMessage } from "@/utils/messaging";
-import { getDocumentURL } from "@/utils/document-url";
+import type { ContentScriptContext } from '#imports'
+import type { AnnotationTarget } from '@/types/selector.interface'
+import { describeRange } from '@/utils/anchoring/describe'
+import { trimRange } from '@/utils/anchoring/trim-range'
+import { getDocumentURL } from '@/utils/document-url'
+import { sendMessage } from '@/utils/messaging'
+import { EXTENSION_NAME } from './constant'
 
 interface AnnotatorPopupProps {
-  ctx: ContentScriptContext;
-  onAnnotate: () => Promise<void>;
-  onCreateTemporaryHighlight?: (range: Range) => Promise<void>;
+  ctx: ContentScriptContext
+  onAnnotate: () => Promise<void>
+  onCreateTemporaryHighlight?: (range: Range) => Promise<void>
 }
 
 enum ArrowDirection {
-  UP = "up",
-  DOWN = "down",
+  UP = 'up',
+  DOWN = 'down',
 }
 
 interface PositionTarget {
-  left: number;
-  top: number;
-  arrowDirection: ArrowDirection;
+  left: number
+  top: number
+  arrowDirection: ArrowDirection
 }
 
 function isTouchDevice(): boolean {
   return (
-    "ontouchstart" in window ||
-    navigator.maxTouchPoints > 0 ||
-    (navigator as any).msMaxTouchPoints > 0
-  );
+    'ontouchstart' in window
+    || navigator.maxTouchPoints > 0
+    || (navigator as any).msMaxTouchPoints > 0
+  )
 }
 
 function nearestPositionedAncestor(el: Element): Element {
-  let parentEl = el.parentElement!;
+  let parentEl = el.parentElement!
   while (parentEl.parentElement) {
-    if (getComputedStyle(parentEl).position !== "static") {
-      break;
+    if (getComputedStyle(parentEl).position !== 'static') {
+      break
     }
-    parentEl = parentEl.parentElement;
+    parentEl = parentEl.parentElement
   }
-  return parentEl;
+  return parentEl
 }
 
-const ARROW_HEIGHT = 10;
-const ARROW_H_MARGIN = 20;
+const ARROW_HEIGHT = 10
+const ARROW_H_MARGIN = 20
 
 export async function createAnnotatorPopup({
   ctx,
   onAnnotate,
   onCreateTemporaryHighlight,
 }: AnnotatorPopupProps) {
-  let currentSelection: Selection | null = null;
-  let container: HTMLElement;
+  let currentSelection: Selection | null = null
+  let container: HTMLElement
 
-  const anchorElement = document.body || document.documentElement;
+  const anchorElement = document.body || document.documentElement
   if (!anchorElement) {
-    console.error("[RDA Popup] Cannot mount: no anchor element available");
-    throw new Error("No suitable anchor element for popup");
+    console.error('[RDA Popup] Cannot mount: no anchor element available')
+    throw new Error('No suitable anchor element for popup')
   }
 
   const annotatorPopup = await createShadowRootUi(ctx, {
     name: `${EXTENSION_NAME}-popup`,
-    position: "inline",
+    position: 'inline',
     anchor: anchorElement,
-    mode: "closed",
+    mode: 'closed',
 
     onMount(_, shadowRoot, shadowHost) {
       if (import.meta.env.DEV) {
-        console.log("[RDA Annotator] Mounted");
+        console.log('[RDA Annotator] Mounted')
       }
 
-      container = document.createElement("div");
-      container.id = "annotator-popup";
-      shadowRoot.replaceChildren(container);
+      container = document.createElement('div')
+      container.id = 'annotator-popup'
+      shadowRoot.replaceChildren(container)
 
-      const sheet = new CSSStyleSheet();
-      sheet.replaceSync(`
+      // Use <style> element instead of adoptedStyleSheets for Firefox compatibility
+      const styleElement = document.createElement('style')
+      styleElement.textContent = `
         :host {
           position: absolute;
           top: 0;
@@ -121,8 +122,8 @@ export async function createAnnotatorPopup({
           height: 0;
           border-style: solid;
           border-width: 0 ${ARROW_HEIGHT - 1}px ${ARROW_HEIGHT - 1}px ${
-        ARROW_HEIGHT - 1
-      }px;
+            ARROW_HEIGHT - 1
+          }px;
           border-color: transparent transparent #fff transparent;
         }
 
@@ -142,8 +143,8 @@ export async function createAnnotatorPopup({
           height: 0;
           border-style: solid;
           border-width: ${ARROW_HEIGHT - 1}px ${ARROW_HEIGHT - 1}px 0 ${
-        ARROW_HEIGHT - 1
-      }px;
+            ARROW_HEIGHT - 1
+          }px;
           border-color: #fff transparent transparent transparent;
         }
 
@@ -167,72 +168,73 @@ export async function createAnnotatorPopup({
         button:active {
           background: #1d4ed8;
         }
-      `);
-      shadowRoot.adoptedStyleSheets = [sheet];
+      `
+      shadowRoot.appendChild(styleElement)
 
-      const button = document.createElement("button");
-      button.textContent = "Annotate text";
-      button.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        handleAnnotateClick();
-      });
-      container.appendChild(button);
+      const button = document.createElement('button')
+      button.textContent = 'Annotate text'
+      button.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        handleAnnotateClick()
+      })
+      container.appendChild(button)
 
       const handleMouseUp = () => {
-        setTimeout(() => handleTextSelection(), 10);
-      };
+        setTimeout(() => handleTextSelection(), 10)
+      }
 
       const handleMouseDown = (e: MouseEvent) => {
         if (!shadowHost.contains(e.target as Node)) {
-          const selection = window.getSelection();
+          const selection = window.getSelection()
           if (!selection || selection.isCollapsed) {
-            hideAnnotatorPopup();
+            hideAnnotatorPopup()
           }
         }
-      };
+      }
 
-      ctx.addEventListener(document, "mouseup", handleMouseUp);
-      ctx.addEventListener(document, "mousedown", handleMouseDown);
+      ctx.addEventListener(document, 'mouseup', handleMouseUp)
+      ctx.addEventListener(document, 'mousedown', handleMouseDown)
     },
 
     onRemove() {
       if (import.meta.env.DEV) {
-        console.log("[RDA Annotator] Removed");
+        console.log('[RDA Annotator] Removed')
       }
-      currentSelection = null;
+      currentSelection = null
     },
-  });
+  })
 
-  const getPopupDimensions = (): { width: number; height: number } => {
+  const getPopupDimensions = (): { width: number, height: number } => {
     if (!container) {
-      return { width: 0, height: 0 };
+      return { width: 0, height: 0 }
     }
-    const rect = container.getBoundingClientRect();
-    return { width: rect.width, height: rect.height };
-  };
+    const rect = container.getBoundingClientRect()
+    return { width: rect.width, height: rect.height }
+  }
 
   const isRTLSelection = (selection: Selection): boolean => {
-    if (selection.rangeCount === 0) return false;
+    if (selection.rangeCount === 0)
+      return false
 
-    const tempRange = document.createRange();
+    const tempRange = document.createRange()
 
     // Compare anchor and focus positions to determine direction
     if (selection.anchorNode && selection.focusNode) {
-      tempRange.setStart(selection.anchorNode, selection.anchorOffset);
-      tempRange.setEnd(selection.focusNode, selection.focusOffset);
-      return tempRange.collapsed;
+      tempRange.setStart(selection.anchorNode, selection.anchorOffset)
+      tempRange.setEnd(selection.focusNode, selection.focusOffset)
+      return tempRange.collapsed
     }
 
-    return false;
-  };
+    return false
+  }
 
   const findOptimalZIndex = (left: number, top: number): number => {
     if (!document.elementsFromPoint) {
-      return 2147483646;
+      return 2147483646
     }
 
-    const { width, height } = getPopupDimensions();
+    const { width, height } = getPopupDimensions()
 
     // Sample 5 points around the popup position
     const elements = new Set([
@@ -241,238 +243,246 @@ export async function createAnnotatorPopup({
       ...document.elementsFromPoint(left + width / 2, top + height / 2),
       ...document.elementsFromPoint(left + width, top),
       ...document.elementsFromPoint(left + width, top + height),
-    ]);
+    ])
 
     const getZIndex = (el: Element): number => {
-      const zIndex = parseInt(getComputedStyle(el).zIndex);
-      return Number.isInteger(zIndex) ? zIndex : 0;
-    };
+      const zIndex = Number.parseInt(getComputedStyle(el).zIndex)
+      return Number.isInteger(zIndex) ? zIndex : 0
+    }
 
     const zIndexes = Array.from(elements)
       .map(getZIndex)
-      .filter((z) => Number.isInteger(z));
+      .filter(z => Number.isInteger(z))
 
-    let minZIndex = 0;
-    for (const el of document.querySelectorAll("[data-rda-highlight]")) {
-      minZIndex = Math.max(minZIndex, getZIndex(el));
+    let minZIndex = 0
+    for (const el of document.querySelectorAll('[data-rda-highlight]')) {
+      minZIndex = Math.max(minZIndex, getZIndex(el))
     }
-    zIndexes.push(minZIndex);
+    zIndexes.push(minZIndex)
 
-    return Math.max(...zIndexes, 1000) + 1;
-  };
+    return Math.max(...zIndexes, 1000) + 1
+  }
 
   const calculatePosition = (
     selectionRect: DOMRect,
-    isRTL: boolean
+    isRTL: boolean,
   ): PositionTarget => {
-    const { width: adderWidth, height: adderHeight } = getPopupDimensions();
+    const { width: adderWidth, height: adderHeight } = getPopupDimensions()
 
-    let arrowDirection: ArrowDirection;
+    let arrowDirection: ArrowDirection
     if (isRTL && !isTouchDevice()) {
-      arrowDirection = ArrowDirection.DOWN;
-    } else {
-      arrowDirection = ArrowDirection.UP;
+      arrowDirection = ArrowDirection.DOWN
+    }
+    else {
+      arrowDirection = ArrowDirection.UP
     }
 
     // Calculate horizontal margin, capped at selection width
-    const hMargin = Math.min(ARROW_H_MARGIN, selectionRect.width);
+    const hMargin = Math.min(ARROW_H_MARGIN, selectionRect.width)
 
     // Extra offset for touch devices to avoid native selection handles
-    const touchScreenOffset = isTouchDevice() ? 10 : 0;
+    const touchScreenOffset = isTouchDevice() ? 10 : 0
 
     // Position horizontally based on selection direction
-    let left: number;
+    let left: number
     if (isRTL) {
       // For RTL, position near the left edge (start) of selection
-      left = selectionRect.left - adderWidth / 2 + hMargin;
-    } else {
+      left = selectionRect.left - adderWidth / 2 + hMargin
+    }
+    else {
       // For LTR, position near the right edge (end) of selection
-      left =
-        selectionRect.left + selectionRect.width - adderWidth / 2 - hMargin;
+      left
+        = selectionRect.left + selectionRect.width - adderWidth / 2 - hMargin
     }
 
     // Check if popup would go off top or bottom of viewport and flip if needed
     if (
-      selectionRect.top - adderHeight < 0 &&
-      arrowDirection === ArrowDirection.DOWN
+      selectionRect.top - adderHeight < 0
+      && arrowDirection === ArrowDirection.DOWN
     ) {
-      arrowDirection = ArrowDirection.UP;
-    } else if (
-      selectionRect.top + selectionRect.height + adderHeight + ARROW_HEIGHT >
-      window.innerHeight
+      arrowDirection = ArrowDirection.UP
+    }
+    else if (
+      selectionRect.top + selectionRect.height + adderHeight + ARROW_HEIGHT
+      > window.innerHeight
     ) {
-      arrowDirection = ArrowDirection.DOWN;
+      arrowDirection = ArrowDirection.DOWN
     }
 
-    let top: number;
+    let top: number
     if (arrowDirection === ArrowDirection.UP) {
-      top =
-        selectionRect.top +
-        selectionRect.height +
-        ARROW_HEIGHT +
-        touchScreenOffset;
-    } else {
-      top = selectionRect.top - adderHeight - ARROW_HEIGHT;
+      top
+        = selectionRect.top
+          + selectionRect.height
+          + ARROW_HEIGHT
+          + touchScreenOffset
+    }
+    else {
+      top = selectionRect.top - adderHeight - ARROW_HEIGHT
     }
 
-    left = Math.max(left, 0);
-    left = Math.min(left, window.innerWidth - adderWidth);
+    left = Math.max(left, 0)
+    left = Math.min(left, window.innerWidth - adderWidth)
 
-    top = Math.max(top, 0);
-    top = Math.min(top, window.innerHeight - adderHeight);
+    top = Math.max(top, 0)
+    top = Math.min(top, window.innerHeight - adderHeight)
 
-    return { top, left, arrowDirection };
-  };
+    return { top, left, arrowDirection }
+  }
 
   const showAnnotatorPopup = (selectionRect: DOMRect, isRTL: boolean) => {
-    if (!annotatorPopup.shadowHost || !container) return;
+    if (!annotatorPopup.shadowHost || !container)
+      return
 
-    const host = annotatorPopup.shadowHost as HTMLElement;
+    const host = annotatorPopup.shadowHost as HTMLElement
 
     // Make visible but keep transparent for measurement
-    host.style.display = "block";
-    host.style.visibility = "hidden";
+    host.style.display = 'block'
+    host.style.visibility = 'hidden'
 
     const { left, top, arrowDirection } = calculatePosition(
       selectionRect,
-      isRTL
-    );
+      isRTL,
+    )
 
     // Find the nearest positioned ancestor for proper positioning
-    const positionedAncestor = nearestPositionedAncestor(host);
-    const parentRect = positionedAncestor.getBoundingClientRect();
+    const positionedAncestor = nearestPositionedAncestor(host)
+    const parentRect = positionedAncestor.getBoundingClientRect()
 
     // Calculate optimal z-index
-    const zIndex = findOptimalZIndex(left, top);
+    const zIndex = findOptimalZIndex(left, top)
 
     // Update arrow direction class
-    container.className = `arrow-${arrowDirection}`;
+    container.className = `arrow-${arrowDirection}`
 
     // Apply final positioning
-    host.style.left = `${left - parentRect.left}px`;
-    host.style.top = `${top - parentRect.top}px`;
-    host.style.zIndex = zIndex.toString();
-    host.style.visibility = "visible";
-  };
+    host.style.left = `${left - parentRect.left}px`
+    host.style.top = `${top - parentRect.top}px`
+    host.style.zIndex = zIndex.toString()
+    host.style.visibility = 'visible'
+  }
 
   const hideAnnotatorPopup = () => {
     if (annotatorPopup.shadowHost) {
-      const host = annotatorPopup.shadowHost as HTMLElement;
-      host.style.display = "none";
-      host.style.left = "0px";
-      host.style.top = "0px";
+      const host = annotatorPopup.shadowHost as HTMLElement
+      host.style.display = 'none'
+      host.style.left = '0px'
+      host.style.top = '0px'
     }
-  };
+  }
 
   const handleAnnotateClick = async () => {
     if (!currentSelection || currentSelection.rangeCount === 0) {
-      console.warn("[RDA Annotator] No selection available");
-      hideAnnotatorPopup();
-      return;
+      console.warn('[RDA Annotator] No selection available')
+      hideAnnotatorPopup()
+      return
     }
 
-    let range = currentSelection.getRangeAt(0);
+    let range = currentSelection.getRangeAt(0)
 
     try {
-      range = trimRange(range);
-    } catch (error) {
+      range = trimRange(range)
+    }
+    catch (error) {
       if (import.meta.env.DEV) {
-        console.warn("Failed to trim range, using original:", error);
+        console.warn('Failed to trim range, using original:', error)
       }
     }
 
     if (range.collapsed || range.toString().trim().length === 0) {
       if (import.meta.env.DEV) {
         console.warn(
-          "[RDA Annotator] Range is empty after trimming whitespace"
-        );
+          '[RDA Annotator] Range is empty after trimming whitespace',
+        )
       }
-      hideAnnotatorPopup();
-      window.getSelection()?.removeAllRanges();
-      return;
+      hideAnnotatorPopup()
+      window.getSelection()?.removeAllRanges()
+      return
     }
 
     // Create selectors
-    const selectors = await describeRange(range, document.body);
+    const selectors = await describeRange(range, document.body)
 
     // CRITICAL: Validate we have at least a TextQuoteSelector with exact text
     // This is required for the Create form to display the annotated text
     const textQuoteSelector = selectors.find(
-      (s) => s.type === "TextQuoteSelector"
-    );
+      s => s.type === 'TextQuoteSelector',
+    )
     if (
-      !textQuoteSelector ||
-      !("exact" in textQuoteSelector) ||
-      !textQuoteSelector.exact
+      !textQuoteSelector
+      || !('exact' in textQuoteSelector)
+      || !textQuoteSelector.exact
     ) {
       console.error(
-        "[RDA Annotator] Failed to create TextQuoteSelector - cannot proceed"
-      );
-      hideAnnotatorPopup();
-      window.getSelection()?.removeAllRanges();
-      return;
+        '[RDA Annotator] Failed to create TextQuoteSelector - cannot proceed',
+      )
+      hideAnnotatorPopup()
+      window.getSelection()?.removeAllRanges()
+      return
     }
 
     const target: AnnotationTarget = {
       source: getDocumentURL(),
       selector: selectors,
-    };
+    }
 
     const annotationData = {
       target,
       timestamp: Date.now(),
-    };
+    }
 
     try {
       if (onCreateTemporaryHighlight) {
-        await onCreateTemporaryHighlight(range);
+        await onCreateTemporaryHighlight(range)
       }
-    } catch (error) {
-      console.error("Failed to create temporary highlight:", error);
+    }
+    catch (error) {
+      console.error('Failed to create temporary highlight:', error)
     }
 
     try {
-      const response = await sendMessage("storeAnnotation", annotationData);
+      const response = await sendMessage('storeAnnotation', annotationData)
       if (!response.success) {
-        console.error("[RDA Annotator] Failed to store annotation");
-        hideAnnotatorPopup();
-        window.getSelection()?.removeAllRanges();
-        return;
+        console.error('[RDA Annotator] Failed to store annotation')
+        hideAnnotatorPopup()
+        window.getSelection()?.removeAllRanges()
+        return
       }
-    } catch (error) {
-      console.error("[RDA Annotator] Failed to send annotation:", error);
-      hideAnnotatorPopup();
-      window.getSelection()?.removeAllRanges();
-      return;
+    }
+    catch (error) {
+      console.error('[RDA Annotator] Failed to send annotation:', error)
+      hideAnnotatorPopup()
+      window.getSelection()?.removeAllRanges()
+      return
     }
 
-    await onAnnotate();
+    await onAnnotate()
 
-    hideAnnotatorPopup();
-    window.getSelection()?.removeAllRanges();
-  };
+    hideAnnotatorPopup()
+    window.getSelection()?.removeAllRanges()
+  }
 
   const handleTextSelection = () => {
-    const selection = window.getSelection();
+    const selection = window.getSelection()
 
     if (
-      !selection ||
-      selection.isCollapsed ||
-      selection.toString().trim().length === 0
+      !selection
+      || selection.isCollapsed
+      || selection.toString().trim().length === 0
     ) {
-      hideAnnotatorPopup();
-      currentSelection = null;
-      return;
+      hideAnnotatorPopup()
+      currentSelection = null
+      return
     }
 
-    currentSelection = selection;
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
+    currentSelection = selection
+    const range = selection.getRangeAt(0)
+    const rect = range.getBoundingClientRect()
 
-    const isRTL = isRTLSelection(selection);
+    const isRTL = isRTLSelection(selection)
 
-    showAnnotatorPopup(rect, isRTL);
-  };
+    showAnnotatorPopup(rect, isRTL)
+  }
 
-  return annotatorPopup;
+  return annotatorPopup
 }

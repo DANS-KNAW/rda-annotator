@@ -1,6 +1,6 @@
-import { Outlet } from "react-router";
-import { Topbar } from "./Topbar";
-import Navigation from "./Navigation";
+import { Outlet } from 'react-router'
+import Navigation from './Navigation'
+import { Topbar } from './Topbar'
 
 export default function Layout() {
   return (
@@ -14,5 +14,5 @@ export default function Layout() {
         <Outlet />
       </div>
     </div>
-  );
+  )
 }

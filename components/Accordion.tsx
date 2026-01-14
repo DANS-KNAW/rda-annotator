@@ -2,11 +2,11 @@ import {
   Disclosure,
   DisclosureButton,
   DisclosurePanel,
-} from "@headlessui/react";
+} from '@headlessui/react'
 
 interface AccordionProps {
-  question: string;
-  answer: string | React.ReactNode;
+  question: string
+  answer: string | React.ReactNode
 }
 
 export default function Accordion({ question, answer }: AccordionProps) {
@@ -50,5 +50,5 @@ export default function Accordion({ question, answer }: AccordionProps) {
         <div className="text-sm/6 text-gray-600">{answer}</div>
       </DisclosurePanel>
     </Disclosure>
-  );
+  )
 }

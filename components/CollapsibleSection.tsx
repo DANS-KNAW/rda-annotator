@@ -2,14 +2,14 @@ import {
   Disclosure,
   DisclosureButton,
   DisclosurePanel,
-} from "@headlessui/react";
+} from '@headlessui/react'
 
 interface CollapsibleSectionProps {
-  title: string;
-  isEmpty: boolean;
-  defaultOpen?: boolean;
-  itemCount?: number;
-  children: React.ReactNode;
+  title: string
+  isEmpty: boolean
+  defaultOpen?: boolean
+  itemCount?: number
+  children: React.ReactNode
 }
 
 export default function CollapsibleSection({
@@ -19,7 +19,7 @@ export default function CollapsibleSection({
   itemCount,
   children,
 }: CollapsibleSectionProps) {
-  const initialState = isEmpty ? false : defaultOpen;
+  const initialState = isEmpty ? false : defaultOpen
 
   return (
     <Disclosure as="div" defaultOpen={initialState}>
@@ -33,7 +33,7 @@ export default function CollapsibleSection({
                   viewBox="0 0 20 20"
                   fill="currentColor"
                   className={`size-5 text-gray-400 transition-transform duration-200 ${
-                    open ? "rotate-90" : ""
+                    open ? 'rotate-90' : ''
                   }`}
                   aria-hidden="true"
                 >
@@ -61,5 +61,5 @@ export default function CollapsibleSection({
         </>
       )}
     </Disclosure>
-  );
+  )
 }

@@ -76,10 +76,10 @@ Structure:
 
 ```typescript
 interface TextQuoteSelector {
-  type: "TextQuoteSelector";
-  exact: string; // The exact text to highlight
-  prefix: string; // Text immediately before (up to 20 chars)
-  suffix: string; // Text immediately after (up to 20 chars)
+  type: 'TextQuoteSelector'
+  exact: string // The exact text to highlight
+  prefix: string // Text immediately before (up to 20 chars)
+  suffix: string // Text immediately after (up to 20 chars)
 }
 ```
 
@@ -105,7 +105,7 @@ export function anchorByTextQuote(
   hint?: number
 ): Range {
   // 1. Extract all text from root element
-  const text = root.textContent || "";
+  const text = root.textContent || ''
 
   // 2. Search for exact text with prefix/suffix validation
   const match = matchQuote(
@@ -114,25 +114,25 @@ export function anchorByTextQuote(
     selector.prefix,
     selector.suffix,
     hint // Optional hint from TextPositionSelector
-  );
+  )
 
   if (!match) {
-    throw new Error("Quote not found in document");
+    throw new Error('Quote not found in document')
   }
 
   // 3. Convert character positions to DOM Range
-  const range = document.createRange();
-  const startPos = resolveTextPosition(root, match.start);
-  const endPos = resolveTextPosition(root, match.end);
+  const range = document.createRange()
+  const startPos = resolveTextPosition(root, match.start)
+  const endPos = resolveTextPosition(root, match.end)
 
   if (!startPos || !endPos) {
-    throw new Error("Could not resolve quote to DOM range");
+    throw new Error('Could not resolve quote to DOM range')
   }
 
-  range.setStart(startPos[0], startPos[1]);
-  range.setEnd(endPos[0], endPos[1]);
+  range.setStart(startPos[0], startPos[1])
+  range.setEnd(endPos[0], endPos[1])
 
-  return range;
+  return range
 }
 ```
 
@@ -156,30 +156,30 @@ The `matchQuote` function searches for the exact text and validates with prefix/
 // Simplified logic
 function matchQuote(text, exact, prefix, suffix, hint) {
   // Start search near hint position if provided (optimization)
-  const searchStart = hint ? Math.max(0, hint - 100) : 0;
+  const searchStart = hint ? Math.max(0, hint - 100) : 0
 
   // Find exact text
-  let index = text.indexOf(exact, searchStart);
+  let index = text.indexOf(exact, searchStart)
 
   while (index >= 0) {
     // Check if prefix matches
-    const actualPrefix = text.substring(index - prefix.length, index);
+    const actualPrefix = text.substring(index - prefix.length, index)
     if (actualPrefix === prefix) {
       // Check if suffix matches
       const actualSuffix = text.substring(
         index + exact.length,
         index + exact.length + suffix.length
-      );
+      )
       if (actualSuffix === suffix) {
-        return { start: index, end: index + exact.length };
+        return { start: index, end: index + exact.length }
       }
     }
 
     // Try next occurrence
-    index = text.indexOf(exact, index + 1);
+    index = text.indexOf(exact, index + 1)
   }
 
-  return null; // Not found
+  return null // Not found
 }
 ```
 
@@ -225,9 +225,9 @@ Structure:
 
 ```typescript
 interface TextPositionSelector {
-  type: "TextPositionSelector";
-  start: number; // Character offset from document start
-  end: number; // Character offset from document start
+  type: 'TextPositionSelector'
+  start: number // Character offset from document start
+  end: number // Character offset from document start
 }
 ```
 
@@ -252,20 +252,20 @@ export function anchorByTextPosition(
   root: Element,
   selector: TextPositionSelector
 ): Range {
-  const range = document.createRange();
+  const range = document.createRange()
 
   // Convert character positions to DOM positions
-  const startPos = resolveTextPosition(root, selector.start);
-  const endPos = resolveTextPosition(root, selector.end);
+  const startPos = resolveTextPosition(root, selector.start)
+  const endPos = resolveTextPosition(root, selector.end)
 
   if (!startPos || !endPos) {
-    throw new Error("Text position out of range");
+    throw new Error('Text position out of range')
   }
 
-  range.setStart(startPos[0], startPos[1]);
-  range.setEnd(endPos[0], endPos[1]);
+  range.setStart(startPos[0], startPos[1])
+  range.setEnd(endPos[0], endPos[1])
 
-  return range;
+  return range
 }
 ```
 
@@ -300,11 +300,11 @@ Structure:
 
 ```typescript
 interface RangeSelector {
-  type: "RangeSelector";
-  startContainer: string; // XPath to start node
-  startOffset: number; // Offset in start node
-  endContainer: string; // XPath to end node
-  endOffset: number; // Offset in end node
+  type: 'RangeSelector'
+  startContainer: string // XPath to start node
+  startOffset: number // Offset in start node
+  endContainer: string // XPath to end node
+  endOffset: number // Offset in end node
 }
 ```
 
@@ -329,18 +329,18 @@ File: `utils/anchoring/range.ts`
 ```typescript
 export function anchorByRange(root: Element, selector: RangeSelector): Range {
   // Evaluate XPath to find start node
-  const startNode = evaluateXPath(root, selector.startContainer);
-  const endNode = evaluateXPath(root, selector.endContainer);
+  const startNode = evaluateXPath(root, selector.startContainer)
+  const endNode = evaluateXPath(root, selector.endContainer)
 
   if (!startNode || !endNode) {
-    throw new Error("XPath did not match any nodes");
+    throw new Error('XPath did not match any nodes')
   }
 
-  const range = document.createRange();
-  range.setStart(startNode, selector.startOffset);
-  range.setEnd(endNode, selector.endOffset);
+  const range = document.createRange()
+  range.setStart(startNode, selector.startOffset)
+  range.setEnd(endNode, selector.endOffset)
 
-  return range;
+  return range
 }
 ```
 
@@ -393,8 +393,8 @@ The main anchoring function tries strategies in order of speed, with validation.
 TextQuoteSelector can use a hint from TextPositionSelector:
 
 ```typescript
-const positionHint = textPositionSelector?.start;
-const range = anchorByTextQuote(root, textQuoteSelector, positionHint);
+const positionHint = textPositionSelector?.start
+const range = anchorByTextQuote(root, textQuoteSelector, positionHint)
 ```
 
 Instead of searching the entire document, start near the hint position. This speeds up searching on large documents.
@@ -406,15 +406,15 @@ If the hint is wrong (content moved), the search still finds the correct positio
 Even when fast selectors succeed, validate against the quote:
 
 ```typescript
-const assertQuoteMatches = (range: Range): Range => {
+function assertQuoteMatches(range: Range): Range {
   if (textQuoteSelector?.exact) {
-    const rangeText = range.toString();
+    const rangeText = range.toString()
     if (rangeText !== textQuoteSelector.exact) {
-      throw new Error(`Quote mismatch`);
+      throw new Error(`Quote mismatch`)
     }
   }
-  return range;
-};
+  return range
+}
 ```
 
 This catches cases where the fast selector found _a_ position but not the _correct_ position.
@@ -463,10 +463,11 @@ Orphaned annotations are stored in `AnnotationManager.orphanedAnnotationIds`:
 
 ```typescript
 try {
-  await this.anchorAnnotation(annotation);
-} catch (error) {
+  await this.anchorAnnotation(annotation)
+}
+catch (error) {
   // Mark as orphaned
-  this.orphanedAnnotationIds.add(annotation._id);
+  this.orphanedAnnotationIds.add(annotation._id)
 }
 ```
 
@@ -506,9 +507,9 @@ AnnotationManager uses a 5-second timeout per annotation:
 await Promise.race([
   this.anchorAnnotation(annotation),
   new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("Timeout")), 5000)
+    setTimeout(() => reject(new Error('Timeout')), 5000)
   ),
-]);
+])
 ```
 
 Why 5 seconds? On a large document (10,000+ lines), TextQuoteSelector can take 1-2 seconds per annotation. With timeout, even slow annotations don't freeze the page.

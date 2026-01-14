@@ -1,47 +1,48 @@
+import type {
+  ReactNode,
+} from 'react'
 import {
   createContext,
-  useContext,
-  useState,
-  useEffect,
   useCallback,
+  useEffect,
   useRef,
-  ReactNode,
-} from "react";
-import { onMessage, sendMessage, AnchorStatus } from "@/utils/messaging";
+  useState,
+} from 'react'
+import { onMessage, sendMessage } from '@/utils/messaging'
 
 interface AnchorStatusState {
-  orphanedIds: string[];
-  pendingIds: string[];
-  recoveredIds: string[];
-  anchoredIds: Set<string>;
+  orphanedIds: string[]
+  pendingIds: string[]
+  recoveredIds: string[]
+  anchoredIds: Set<string>
 }
 
 interface AnchorStatusContextType {
-  orphanedIds: string[];
-  pendingIds: string[];
-  recoveredIds: string[];
+  orphanedIds: string[]
+  pendingIds: string[]
+  recoveredIds: string[]
   /** Check if an annotation was ever successfully anchored */
-  wasEverAnchored: (id: string) => boolean;
+  wasEverAnchored: (id: string) => boolean
   /** Request fresh status from content script */
-  requestStatus: () => Promise<void>;
+  requestStatus: () => Promise<void>
   /** Reset all status (e.g., when changing pages) */
-  resetStatus: () => void;
+  resetStatus: () => void
 }
 
-const AnchorStatusContext = createContext<AnchorStatusContextType | null>(null);
+const AnchorStatusContext = createContext<AnchorStatusContextType | null>(null)
 
 export function useAnchorStatus(): AnchorStatusContextType {
-  const context = useContext(AnchorStatusContext);
+  const context = use(AnchorStatusContext)
   if (!context) {
     throw new Error(
-      "useAnchorStatus must be used within an AnchorStatusProvider"
-    );
+      'useAnchorStatus must be used within an AnchorStatusProvider',
+    )
   }
-  return context;
+  return context
 }
 
 interface AnchorStatusProviderProps {
-  children: ReactNode;
+  children: ReactNode
 }
 
 export function AnchorStatusProvider({ children }: AnchorStatusProviderProps) {
@@ -50,126 +51,128 @@ export function AnchorStatusProvider({ children }: AnchorStatusProviderProps) {
     pendingIds: [],
     recoveredIds: [],
     anchoredIds: new Set(),
-  });
+  })
 
   // Track IDs that were ever successfully anchored (survives re-renders)
-  const everAnchoredRef = useRef<Set<string>>(new Set());
+  const everAnchoredRef = useRef<Set<string>>(new Set())
 
   // Handle individual status updates from content script
   useEffect(() => {
-    const unsubscribe = onMessage("anchorStatusUpdate", async (message) => {
-      if (!message.data) return;
+    const unsubscribe = onMessage('anchorStatusUpdate', async (message) => {
+      if (!message.data)
+        return
 
-      const { annotationId, status } = message.data;
+      const { annotationId, status } = message.data
 
       setState((prev) => {
-        const newState = { ...prev };
+        const newState = { ...prev }
 
         switch (status) {
-          case "anchored":
+          case 'anchored':
             // Track that this annotation was successfully anchored
-            everAnchoredRef.current.add(annotationId);
-            newState.anchoredIds = new Set(prev.anchoredIds).add(annotationId);
+            everAnchoredRef.current.add(annotationId)
+            newState.anchoredIds = new Set(prev.anchoredIds).add(annotationId)
             // Remove from orphaned/pending
             newState.orphanedIds = prev.orphanedIds.filter(
-              (id) => id !== annotationId
-            );
+              id => id !== annotationId,
+            )
             newState.pendingIds = prev.pendingIds.filter(
-              (id) => id !== annotationId
-            );
-            break;
+              id => id !== annotationId,
+            )
+            break
 
-          case "pending":
+          case 'pending':
             if (!prev.pendingIds.includes(annotationId)) {
-              newState.pendingIds = [...prev.pendingIds, annotationId];
+              newState.pendingIds = [...prev.pendingIds, annotationId]
             }
-            break;
+            break
 
-          case "orphaned":
+          case 'orphaned':
             // Only mark as orphaned if it was never anchored
             // This prevents flickering from late orphaned updates from other frames
             if (!everAnchoredRef.current.has(annotationId)) {
               newState.pendingIds = prev.pendingIds.filter(
-                (id) => id !== annotationId
-              );
+                id => id !== annotationId,
+              )
               if (!prev.orphanedIds.includes(annotationId)) {
-                newState.orphanedIds = [...prev.orphanedIds, annotationId];
+                newState.orphanedIds = [...prev.orphanedIds, annotationId]
               }
             }
-            break;
+            break
 
-          case "recovered":
-            everAnchoredRef.current.add(annotationId);
+          case 'recovered':
+            everAnchoredRef.current.add(annotationId)
             if (!prev.recoveredIds.includes(annotationId)) {
-              newState.recoveredIds = [...prev.recoveredIds, annotationId];
+              newState.recoveredIds = [...prev.recoveredIds, annotationId]
             }
             newState.orphanedIds = prev.orphanedIds.filter(
-              (id) => id !== annotationId
-            );
+              id => id !== annotationId,
+            )
             newState.pendingIds = prev.pendingIds.filter(
-              (id) => id !== annotationId
-            );
-            break;
+              id => id !== annotationId,
+            )
+            break
         }
 
-        return newState;
-      });
-    });
+        return newState
+      })
+    })
 
     return () => {
       if (unsubscribe) {
-        unsubscribe();
+        unsubscribe()
       }
-    };
-  }, []);
+    }
+  }, [])
 
   const requestStatus = useCallback(async () => {
     try {
       const tabs = await browser.tabs.query({
         active: true,
         currentWindow: true,
-      });
+      })
 
       if (tabs[0]?.id) {
         const status = await sendMessage(
-          "requestAnchorStatus",
+          'requestAnchorStatus',
           undefined,
-          tabs[0].id
-        );
+          tabs[0].id,
+        )
 
         if (status) {
           // Update everAnchored tracking
-          status.anchored.forEach((id) => everAnchoredRef.current.add(id));
-          status.recovered.forEach((id) => everAnchoredRef.current.add(id));
+          status.anchored.forEach(id => everAnchoredRef.current.add(id))
+          status.recovered.forEach(id => everAnchoredRef.current.add(id))
 
           setState({
             orphanedIds: status.orphaned,
             pendingIds: status.pending,
             recoveredIds: status.recovered,
             anchoredIds: new Set([...status.anchored, ...status.recovered]),
-          });
+          })
         }
       }
-    } catch (error) {
+    }
+    catch (error) {
       if (import.meta.env.DEV) {
-        console.warn("Failed to request anchor status:", error);
+        console.warn('Failed to request anchor status:', error)
       }
     }
-  }, []);
+  }, [])
 
   const resetStatus = useCallback(() => {
-    everAnchoredRef.current.clear();
+    everAnchoredRef.current.clear()
     setState({
       orphanedIds: [],
       pendingIds: [],
       recoveredIds: [],
       anchoredIds: new Set(),
-    });
-  }, []);
+    })
+  }, [])
 
   const wasEverAnchored = useCallback((id: string) => {
-    return everAnchoredRef.current.has(id);
-  }, []);
+    return everAnchoredRef.current.has(id)
+  }, [])
 
   const value: AnchorStatusContextType = {
     orphanedIds: state.orphanedIds,
@@ -178,11 +181,11 @@ export function AnchorStatusProvider({ children }: AnchorStatusProviderProps) {
     wasEverAnchored,
     requestStatus,
     resetStatus,
-  };
+  }
 
   return (
-    <AnchorStatusContext.Provider value={value}>
+    <AnchorStatusContext value={value}>
       {children}
-    </AnchorStatusContext.Provider>
-  );
+    </AnchorStatusContext>
+  )
 }

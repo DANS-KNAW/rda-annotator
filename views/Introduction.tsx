@@ -1,25 +1,25 @@
-import { useState, useEffect } from "react";
-import { storage } from "#imports";
-import Button from "@/components/Button";
-import FAQ from "@/components/FAQ";
-import { useNavigate } from "react-router";
+import { storage } from '#imports'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
+import Button from '@/components/Button'
+import FAQ from '@/components/FAQ'
 
 export default function Introduction() {
-  const [seenIntro, setSeenIntro] = useState(false);
-  let navigate = useNavigate();
+  const [seenIntro, setSeenIntro] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     (async () => {
-      const shown = await storage.getItem<boolean>("local:intro-shown");
-      setSeenIntro(!!shown);
-    })();
-  }, [seenIntro]);
+      const shown = await storage.getItem<boolean>('local:intro-shown')
+      setSeenIntro(!!shown)
+    })()
+  }, [seenIntro])
 
   const handleStart = async () => {
-    await storage.setItem("local:intro-shown", true);
-    setSeenIntro(true);
-    navigate("/annotations");
-  };
+    await storage.setItem('local:intro-shown', true)
+    setSeenIntro(true)
+    navigate('/annotations')
+  }
 
   return (
     <>
@@ -41,5 +41,5 @@ export default function Introduction() {
         </div>
       )}
     </>
-  );
+  )
 }

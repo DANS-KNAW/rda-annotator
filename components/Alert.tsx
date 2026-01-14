@@ -1,7 +1,8 @@
-import React from "react";
+import * as React from 'react'
+
 interface AlertProps {
-  title: string;
-  messages: (string | React.ReactNode)[];
+  title: string
+  messages: (string | React.ReactNode)[]
 }
 
 export default function Alert({ title, messages }: AlertProps) {
@@ -37,5 +38,5 @@ export default function Alert({ title, messages }: AlertProps) {
         </div>
       </div>
     </div>
-  );
+  )
 }

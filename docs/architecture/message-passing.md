@@ -29,11 +29,11 @@ Example of what doesn't work:
 ```typescript
 // ❌ This doesn't work
 // Content script trying to call sidebar function
-sidebar.displayAnnotation(annotation); // sidebar is undefined
+sidebar.displayAnnotation(annotation) // sidebar is undefined
 
 // ❌ This doesn't work
 // Sidebar trying to access content script variable
-const annotations = contentScript.annotations; // contentScript is undefined
+const annotations = contentScript.annotations // contentScript is undefined
 ```
 
 The only way to communicate is through message passing. The browser provides APIs for sending messages between contexts.
@@ -45,24 +45,24 @@ The standard browser messaging API is not type-safe:
 ```typescript
 // ❌ Standard API - no compile-time checking
 chrome.runtime.sendMessage({
-  action: "scrolToAnnotation", // Typo! Compiles fine, fails at runtime
+  action: 'scrolToAnnotation', // Typo! Compiles fine, fails at runtime
   id: 123, // Wrong type! Should be string, not number
-});
+})
 ```
 
 The `@webext-core/messaging` library provides type safety:
 
 ```typescript
 // ✅ Type-safe - compiler catches errors
-await sendMessage("scrollToAnnotation", {
-  annotationId: "ann_123",
-});
+await sendMessage('scrollToAnnotation', {
+  annotationId: 'ann_123',
+})
 
 // ❌ Compiler error: "scrolToAnnotation" doesn't exist
-await sendMessage("scrolToAnnotation", { annotationId: "ann_123" });
+await sendMessage('scrolToAnnotation', { annotationId: 'ann_123' })
 
 // ❌ Compiler error: annotationId must be string
-await sendMessage("scrollToAnnotation", { annotationId: 123 });
+await sendMessage('scrollToAnnotation', { annotationId: 123 })
 ```
 
 Benefits:
@@ -105,32 +105,32 @@ Optional data uses `?`. Return values can be `void` (no return), `Promise<T>` (a
 Import `sendMessage` from `utils/messaging.ts`:
 
 ```typescript
-import { sendMessage } from "@/utils/messaging";
+import { sendMessage } from '@/utils/messaging'
 ```
 
 ### Basic Send
 
 ```typescript
 // Send message with no data
-await sendMessage("removeTemporaryHighlight", undefined);
+await sendMessage('removeTemporaryHighlight', undefined)
 
 // Send message with data
-await sendMessage("scrollToAnnotation", {
-  annotationId: "ann_123",
-});
+await sendMessage('scrollToAnnotation', {
+  annotationId: 'ann_123',
+})
 ```
 
 ### With Return Value
 
 ```typescript
 // Get return value
-const state = await sendMessage("getExtensionState", undefined);
-console.log(state.enabled); // true or false
+const state = await sendMessage('getExtensionState', undefined)
+console.log(state.enabled) // true or false
 
 // Get complex return value
-const status = await sendMessage("requestAnchorStatus", undefined);
-console.log(status.anchored); // ["ann_1", "ann_2"]
-console.log(status.orphaned); // ["ann_3"]
+const status = await sendMessage('requestAnchorStatus', undefined)
+console.log(status.anchored) // ["ann_1", "ann_2"]
+console.log(status.orphaned) // ["ann_3"]
 ```
 
 ### Sending to Specific Tab
@@ -139,14 +139,14 @@ Background script can send messages to specific tabs:
 
 ```typescript
 // In background script
-import { sendMessage } from "@/utils/messaging";
+import { sendMessage } from '@/utils/messaging'
 
 browser.action.onClicked.addListener(async (tab) => {
   if (tab.id != null) {
     // Send to specific tab
-    await sendMessage("toggleSidebar", { action: "toggle" }, tab.id);
+    await sendMessage('toggleSidebar', { action: 'toggle' }, tab.id)
   }
-});
+})
 ```
 
 Content scripts and sidebar always send to the "other side" (no tab ID needed).
@@ -156,47 +156,47 @@ Content scripts and sidebar always send to the "other side" (no tab ID needed).
 Import `onMessage` from `utils/messaging.ts`:
 
 ```typescript
-import { onMessage } from "@/utils/messaging";
+import { onMessage } from '@/utils/messaging'
 ```
 
 ### Basic Receive
 
 ```typescript
 // Listen for message
-onMessage("removeTemporaryHighlight", async () => {
+onMessage('removeTemporaryHighlight', async () => {
   if (annotationManager) {
-    annotationManager.removeTemporaryHighlight();
+    annotationManager.removeTemporaryHighlight()
   }
-});
+})
 ```
 
 ### Receive with Data
 
 ```typescript
 // Access message data
-onMessage("scrollToAnnotation", async (message) => {
-  const { annotationId } = message.data;
+onMessage('scrollToAnnotation', async (message) => {
+  const { annotationId } = message.data
   if (annotationManager) {
-    await annotationManager.scrollToAnnotation(annotationId);
+    await annotationManager.scrollToAnnotation(annotationId)
   }
-});
+})
 ```
 
 ### Receive and Return Value
 
 ```typescript
 // Return value from handler
-onMessage("getExtensionState", async () => {
-  const enabled = await storage.getItem("local:extension-enabled");
-  return { enabled: !!enabled };
-});
+onMessage('getExtensionState', async () => {
+  const enabled = await storage.getItem('local:extension-enabled')
+  return { enabled: !!enabled }
+})
 
-onMessage("requestAnchorStatus", async () => {
+onMessage('requestAnchorStatus', async () => {
   return {
-    anchored: ["ann_1", "ann_2"],
-    orphaned: ["ann_3"],
-  };
-});
+    anchored: ['ann_1', 'ann_2'],
+    orphaned: ['ann_3'],
+  }
+})
 ```
 
 The return value becomes the resolved value of the `sendMessage` Promise on the sender side.
@@ -206,14 +206,15 @@ The return value becomes the resolved value of the `sendMessage` Promise on the 
 Handlers run when a message arrives. They can be async and return Promises.
 
 ```typescript
-onMessage("reloadAnnotations", async () => {
-  if (!annotationManager) return;
+onMessage('reloadAnnotations', async () => {
+  if (!annotationManager)
+    return
 
   // This can take several seconds
-  await annotationManager.loadAnnotations();
+  await annotationManager.loadAnnotations()
 
   // Sender waits for this to complete
-});
+})
 ```
 
 ## Message Flow Examples
@@ -244,20 +245,21 @@ browser.action.onClicked.addListener(async (tab) => {
 
   if (tab?.id != null) {
     try {
-      await sendMessage("toggleSidebar", { action: "toggle" }, tab.id);
-    } catch (error) {
-      console.warn("Failed to send toggleSidebar message:", error);
+      await sendMessage('toggleSidebar', { action: 'toggle' }, tab.id)
+    }
+    catch (error) {
+      console.warn('Failed to send toggleSidebar message:', error)
     }
   }
-});
+})
 ```
 
 Code in content/index.ts:
 
 ```typescript
-onMessage("toggleSidebar", async (message) => {
+onMessage('toggleSidebar', async (message) => {
   // ... toggle sidebar logic ...
-});
+})
 ```
 
 ### Example 2: User Clicks Highlight
@@ -289,12 +291,13 @@ annotationManager = new AnnotationManager({
   onHighlightClick: async (annotationIds) => {
     // Tell sidebar to show these annotations
     try {
-      await sendMessage("showAnnotationsFromHighlight", { annotationIds });
-    } catch (error) {
-      console.error("Failed to show annotations from highlight:", error);
+      await sendMessage('showAnnotationsFromHighlight', { annotationIds })
+    }
+    catch (error) {
+      console.error('Failed to show annotations from highlight:', error)
     }
   },
-});
+})
 ```
 
 Code in sidebar (views/Annotations.tsx):
@@ -302,20 +305,20 @@ Code in sidebar (views/Annotations.tsx):
 ```typescript
 useEffect(() => {
   const unsubscribe = onMessage(
-    "showAnnotationsFromHighlight",
+    'showAnnotationsFromHighlight',
     async (message) => {
-      const { annotationIds } = message.data;
+      const { annotationIds } = message.data
 
       // Load annotation details
-      const annotations = await fetchAnnotations(annotationIds);
+      const annotations = await fetchAnnotations(annotationIds)
 
       // Display in UI
-      setSelectedAnnotations(annotations);
+      setSelectedAnnotations(annotations)
     }
-  );
+  )
 
-  return unsubscribe;
-}, []);
+  return unsubscribe
+}, [])
 ```
 
 ### Example 3: Cross-Frame Communication
@@ -346,37 +349,39 @@ annotationManager = new AnnotationManager({
     // Notify parent frame to show annotations
     window.parent.postMessage(
       {
-        type: "rda:showAnnotations",
+        type: 'rda:showAnnotations',
         annotationIds,
-        source: "guest-frame",
+        source: 'guest-frame',
       },
-      "*"
-    );
+      '*'
+    )
   },
-});
+})
 ```
 
 Code in host frame (content/index.ts):
 
 ```typescript
-window.addEventListener("message", async (event) => {
-  if (event.data.type === "rda:showAnnotations") {
-    if (!host) return;
+window.addEventListener('message', async (event) => {
+  if (event.data.type === 'rda:showAnnotations') {
+    if (!host)
+      return
 
     if (!host.isMounted.sidebar) {
-      await host.mount();
+      await host.mount()
     }
-    await host.openSidebar();
+    await host.openSidebar()
 
     try {
-      await sendMessage("showAnnotationsFromHighlight", {
+      await sendMessage('showAnnotationsFromHighlight', {
         annotationIds: event.data.annotationIds,
-      });
-    } catch (error) {
-      console.error("Failed to show annotations from frame:", error);
+      })
+    }
+    catch (error) {
+      console.error('Failed to show annotations from frame:', error)
     }
   }
-});
+})
 ```
 
 Note: Guest frames use `window.postMessage` (standard web API) to talk to host. Host uses `sendMessage` (extension API) to talk to sidebar.
@@ -389,9 +394,10 @@ Message receivers might not be ready. Always wrap `sendMessage` in try-catch:
 
 ```typescript
 try {
-  await sendMessage("showAnnotationsFromHighlight", { annotationIds });
-} catch (error) {
-  console.error("Failed to send message:", error);
+  await sendMessage('showAnnotationsFromHighlight', { annotationIds })
+}
+catch (error) {
+  console.error('Failed to send message:', error)
   // Sidebar might not be mounted yet
 }
 ```
@@ -402,12 +408,12 @@ Message names should describe the action, not the implementation:
 
 ```typescript
 // ✅ Good - describes what happens
-await sendMessage("scrollToAnnotation", { annotationId });
-await sendMessage("showAnnotationsFromHighlight", { annotationIds });
+await sendMessage('scrollToAnnotation', { annotationId })
+await sendMessage('showAnnotationsFromHighlight', { annotationIds })
 
 // ❌ Bad - describes implementation
-await sendMessage("callAnnotationManagerScroll", { id });
-await sendMessage("updateSidebarState", { ids });
+await sendMessage('callAnnotationManagerScroll', { id })
+await sendMessage('updateSidebarState', { ids })
 ```
 
 ### Include All Required Data
@@ -416,12 +422,12 @@ Don't rely on shared state. Include all data the receiver needs:
 
 ```typescript
 // ✅ Good - all data provided
-await sendMessage("showAnnotationsFromHighlight", {
-  annotationIds: ["ann_1", "ann_2"],
-});
+await sendMessage('showAnnotationsFromHighlight', {
+  annotationIds: ['ann_1', 'ann_2'],
+})
 
 // ❌ Bad - assumes receiver knows current annotations
-await sendMessage("showCurrentAnnotations", undefined);
+await sendMessage('showCurrentAnnotations', undefined)
 ```
 
 ### Return Useful Values
@@ -430,16 +436,16 @@ If the sender needs information back, return it:
 
 ```typescript
 // Sender
-const state = await sendMessage("getExtensionState", undefined);
+const state = await sendMessage('getExtensionState', undefined)
 if (state.enabled) {
   // Do something
 }
 
 // Receiver
-onMessage("getExtensionState", async () => {
-  const enabled = await storage.getItem("local:extension-enabled");
-  return { enabled: !!enabled };
-});
+onMessage('getExtensionState', async () => {
+  const enabled = await storage.getItem('local:extension-enabled')
+  return { enabled: !!enabled }
+})
 ```
 
 ### Don't Send High-Frequency Messages
@@ -448,21 +454,22 @@ Sending hundreds of messages per second can cause performance issues. Throttle o
 
 ```typescript
 // ❌ Bad - sends on every mousemove (100+ times/second)
-document.addEventListener("mousemove", (event) => {
-  sendMessage("hoverAnnotations", { annotationIds: getIds(event) });
-});
+document.addEventListener('mousemove', (event) => {
+  sendMessage('hoverAnnotations', { annotationIds: getIds(event) })
+})
 
 // ✅ Good - throttled to 50ms
-let timeout: number | null = null;
-document.addEventListener("mousemove", (event) => {
-  if (timeout) return;
+let timeout: number | null = null
+document.addEventListener('mousemove', (event) => {
+  if (timeout)
+    return
 
   timeout = window.setTimeout(() => {
-    timeout = null;
-  }, 50);
+    timeout = null
+  }, 50)
 
-  sendMessage("hoverAnnotations", { annotationIds: getIds(event) });
-});
+  sendMessage('hoverAnnotations', { annotationIds: getIds(event) })
+})
 ```
 
 ### Clean Up Message Handlers
@@ -472,13 +479,13 @@ Message handlers persist until explicitly removed. Clean up in component unmount
 ```typescript
 useEffect(() => {
   // Register handler
-  const unsubscribe = onMessage("showAnnotationsFromHighlight", handler);
+  const unsubscribe = onMessage('showAnnotationsFromHighlight', handler)
 
   // Clean up when component unmounts
   return () => {
-    unsubscribe();
-  };
-}, []);
+    unsubscribe()
+  }
+}, [])
 ```
 
 ## Debugging
@@ -513,14 +520,14 @@ Add console logs to trace message flow:
 
 ```typescript
 // Sender
-console.log("[RDA Content] Sending scrollToAnnotation:", annotationId);
-await sendMessage("scrollToAnnotation", { annotationId });
+console.log('[RDA Content] Sending scrollToAnnotation:', annotationId)
+await sendMessage('scrollToAnnotation', { annotationId })
 
 // Receiver
-onMessage("scrollToAnnotation", async (message) => {
-  console.log("[RDA Content] Received scrollToAnnotation:", message.data);
-  await annotationManager.scrollToAnnotation(message.data.annotationId);
-});
+onMessage('scrollToAnnotation', async (message) => {
+  console.log('[RDA Content] Received scrollToAnnotation:', message.data)
+  await annotationManager.scrollToAnnotation(message.data.annotationId)
+})
 ```
 
 ### Message Not Received?
@@ -551,14 +558,14 @@ Message handlers are async but might not explicitly return Promises:
 
 ```typescript
 // ❌ Bad - not waiting for async operation
-onMessage("reloadAnnotations", () => {
-  annotationManager.loadAnnotations(); // Returns Promise, not awaited
-});
+onMessage('reloadAnnotations', () => {
+  annotationManager.loadAnnotations() // Returns Promise, not awaited
+})
 
 // ✅ Good - marked async and awaits
-onMessage("reloadAnnotations", async () => {
-  await annotationManager.loadAnnotations();
-});
+onMessage('reloadAnnotations', async () => {
+  await annotationManager.loadAnnotations()
+})
 ```
 
 ### Sending Before Receiver Ready
@@ -567,13 +574,13 @@ The sidebar might not be mounted when content script tries to send:
 
 ```typescript
 // ❌ Bad - might fail if sidebar not ready
-await sendMessage("showAnnotationsFromHighlight", { annotationIds });
+await sendMessage('showAnnotationsFromHighlight', { annotationIds })
 
 // ✅ Good - ensures sidebar is mounted first
 if (!host.isMounted.sidebar) {
-  await host.mount();
+  await host.mount()
 }
-await sendMessage("showAnnotationsFromHighlight", { annotationIds });
+await sendMessage('showAnnotationsFromHighlight', { annotationIds })
 ```
 
 ### Circular Message Loops
@@ -582,16 +589,16 @@ Don't send a message from a handler for the same message:
 
 ```typescript
 // ❌ Bad - infinite loop
-onMessage("reloadAnnotations", async () => {
-  await annotationManager.loadAnnotations();
-  await sendMessage("reloadAnnotations", undefined); // Triggers same handler!
-});
+onMessage('reloadAnnotations', async () => {
+  await annotationManager.loadAnnotations()
+  await sendMessage('reloadAnnotations', undefined) // Triggers same handler!
+})
 
 // ✅ Good - sends different message or breaks loop
-onMessage("reloadAnnotations", async () => {
-  await annotationManager.loadAnnotations();
-  await sendMessage("annotationsReloaded", undefined);
-});
+onMessage('reloadAnnotations', async () => {
+  await annotationManager.loadAnnotations()
+  await sendMessage('annotationsReloaded', undefined)
+})
 ```
 
 ### Not Catching Errors
@@ -600,13 +607,14 @@ Failed messages throw errors:
 
 ```typescript
 // ❌ Bad - uncaught error crashes app
-await sendMessage("showAnnotationsFromHighlight", { annotationIds });
+await sendMessage('showAnnotationsFromHighlight', { annotationIds })
 
 // ✅ Good - handles errors gracefully
 try {
-  await sendMessage("showAnnotationsFromHighlight", { annotationIds });
-} catch (error) {
-  console.error("Failed to show annotations:", error);
+  await sendMessage('showAnnotationsFromHighlight', { annotationIds })
+}
+catch (error) {
+  console.error('Failed to show annotations:', error)
   // Show error message to user
 }
 ```
@@ -617,16 +625,16 @@ Don't modify data objects after sending:
 
 ```typescript
 // ❌ Bad - modifies after sending
-const data = { annotationIds: ["ann_1"] };
-await sendMessage("showAnnotationsFromHighlight", data);
-data.annotationIds.push("ann_2"); // Don't do this
+const data = { annotationIds: ['ann_1'] }
+await sendMessage('showAnnotationsFromHighlight', data)
+data.annotationIds.push('ann_2') // Don't do this
 
 // ✅ Good - create new object if needed
-const data1 = { annotationIds: ["ann_1"] };
-await sendMessage("showAnnotationsFromHighlight", data1);
+const data1 = { annotationIds: ['ann_1'] }
+await sendMessage('showAnnotationsFromHighlight', data1)
 
-const data2 = { annotationIds: ["ann_1", "ann_2"] };
-await sendMessage("showAnnotationsFromHighlight", data2);
+const data2 = { annotationIds: ['ann_1', 'ann_2'] }
+await sendMessage('showAnnotationsFromHighlight', data2)
 ```
 
 ## Adding New Messages
@@ -640,7 +648,7 @@ interface ProtocolMap {
   // ... existing messages ...
 
   // Add new message
-  highlightAnnotation(data: { annotationId: string; color: string }): void;
+  highlightAnnotation: (data: { annotationId: string, color: string }) => void
 }
 ```
 
@@ -648,20 +656,20 @@ interface ProtocolMap {
 
 ```typescript
 // In content script or sidebar
-await sendMessage("highlightAnnotation", {
-  annotationId: "ann_123",
-  color: "yellow",
-});
+await sendMessage('highlightAnnotation', {
+  annotationId: 'ann_123',
+  color: 'yellow',
+})
 ```
 
 3. **Handle in receiver**
 
 ```typescript
 // In content script
-onMessage("highlightAnnotation", async (message) => {
-  const { annotationId, color } = message.data;
-  annotationManager.setHighlightColor(annotationId, color);
-});
+onMessage('highlightAnnotation', async (message) => {
+  const { annotationId, color } = message.data
+  annotationManager.setHighlightColor(annotationId, color)
+})
 ```
 
 ## Summary

@@ -1,18 +1,30 @@
 {
   "name": "rda-annotator",
-  "description": "RDA Annotator - a browser extension to create and view annotations for research data management resources",
-  "private": true,
-  "version": "1.2.0",
   "type": "module",
+  "version": "1.2.0",
+  "private": true,
+  "description": "RDA Annotator - a browser extension to create and view annotations for research data management resources",
   "scripts": {
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
+    "build:all": "pnpm build && pnpm build:firefox",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:e2e": "pnpm build:all && playwright test",
+    "test:e2e:chrome": "pnpm build && playwright test --project=chromium",
+    "test:e2e:firefox": "pnpm build:firefox && playwright test --project=firefox",
+    "test:e2e:headed": "pnpm build:all && playwright test --headed",
+    "test:e2e:debug": "pnpm build:all && playwright test --debug",
+    "test:all": "pnpm test && pnpm test:e2e",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
@@ -26,16 +38,27 @@
     "scroll-into-view": "^1.16.2"
   },
   "devDependencies": {
+    "@antfu/eslint-config": "^7.0.0",
     "@elastic/elasticsearch": "^9.1.1",
+    "@eslint-react/eslint-plugin": "^2.6.1",
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.13",
+    "@types/chrome": "^0.1.33",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "@types/scroll-into-view": "^1.16.4",
+    "@vitest/ui": "^4.0.17",
     "@wxt-dev/module-react": "^1.1.3",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "happy-dom": "^20.1.0",
+    "playwright-webextext": "^0.0.4",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",
+    "vitest": "^4.0.17",
     "wxt": "^0.20.6"
   }
 }

@@ -1,5 +1,5 @@
 export function Topbar() {
-  const tigerUrl = browser.runtime.getURL("/tiger.png");
+  const tigerUrl = browser.runtime.getURL('/tiger.png')
 
   return (
     <div className="w-full h-[5.5rem] relative px-4 bg-gradient-to-br from-rda-500 from-20% via-rda-600 via-60% to-brown-500 to-100%">
@@ -17,5 +17,5 @@ export function Topbar() {
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -1,5 +1,5 @@
-import { ElasticsearchResponse } from "@/types/elastic-search-document.interface";
-import { sendMessage } from "@/utils/messaging";
+import type { ElasticsearchResponse } from '@/types/elastic-search-document.interface'
+import { sendMessage } from '@/utils/messaging'
 
 /**
  * Search for annotations by URL(s)
@@ -9,12 +9,12 @@ import { sendMessage } from "@/utils/messaging";
  * @returns Elasticsearch response with annotation data
  */
 export async function searchAnnotationsByUrl(
-  urls: string | string[]
+  urls: string | string[],
 ): Promise<ElasticsearchResponse> {
-  return sendMessage("searchAnnotations", {
-    type: "byUrl",
+  return sendMessage('searchAnnotations', {
+    type: 'byUrl',
     urls,
-  });
+  })
 }
 
 /**
@@ -27,11 +27,11 @@ export async function searchAnnotationsByUrl(
  */
 export async function searchAnnotationsBySubmitter(
   submitterUuid: string,
-  oldSubmitterUuid?: string
+  oldSubmitterUuid?: string,
 ): Promise<ElasticsearchResponse> {
-  return sendMessage("searchAnnotations", {
-    type: "bySubmitter",
+  return sendMessage('searchAnnotations', {
+    type: 'bySubmitter',
     submitterUuid,
     oldSubmitterUuid,
-  });
+  })
 }

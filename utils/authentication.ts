@@ -1,17 +1,24 @@
-import pkceChallenge from "pkce-challenge";
-import { storage } from "#imports";
-import { Keycloak } from "@/types/keycloak.interface";
+import type { Keycloak } from '@/types/keycloak.interface'
+import { storage } from '#imports'
+import pkceChallenge from 'pkce-challenge'
 
 export class Authentication {
-  private readonly issuer: string;
-  private readonly clientId: string;
-  private readonly redirectUri: string;
-  private readonly scopes: string[] = ["openid", "email", "profile"];
+  private readonly issuer: string
+  private readonly clientId: string
+  private readonly redirectUri: string
+  private readonly scopes: string[] = ['openid', 'email', 'profile']
 
   constructor(issuer: string, clientId: string) {
-    this.issuer = issuer;
-    this.clientId = clientId;
-    this.redirectUri = browser.identity.getRedirectURL();
+    this.issuer = issuer
+    this.clientId = clientId
+    // browser.identity is only available in background script in Firefox MV3
+    // In sidebar/content script context, we'll get the redirect URL lazily when needed
+    try {
+      this.redirectUri = browser.identity?.getRedirectURL?.() || ''
+    }
+    catch {
+      this.redirectUri = ''
+    }
   }
 
   /**
@@ -29,23 +36,23 @@ export class Authentication {
    * The returned `verifier` and `state` should be securely stored for later validation and token exchange.
    */
   async buildAuthUrl(): Promise<{
-    url: string;
-    verifier: string;
-    state: string;
+    url: string
+    verifier: string
+    state: string
   }> {
-    const state = crypto.randomUUID();
-    const { code_challenge, code_verifier } = await pkceChallenge();
+    const state = crypto.randomUUID()
+    const { code_challenge, code_verifier } = await pkceChallenge()
 
-    const authUrl = new URL(`${this.issuer}/protocol/openid-connect/auth`);
-    authUrl.searchParams.set("client_id", this.clientId);
-    authUrl.searchParams.set("response_type", "code");
-    authUrl.searchParams.set("redirect_uri", this.redirectUri);
-    authUrl.searchParams.set("scope", this.scopes.join(" "));
-    authUrl.searchParams.set("state", state);
-    authUrl.searchParams.set("code_challenge", code_challenge);
-    authUrl.searchParams.set("code_challenge_method", "S256");
+    const authUrl = new URL(`${this.issuer}/protocol/openid-connect/auth`)
+    authUrl.searchParams.set('client_id', this.clientId)
+    authUrl.searchParams.set('response_type', 'code')
+    authUrl.searchParams.set('redirect_uri', this.redirectUri)
+    authUrl.searchParams.set('scope', this.scopes.join(' '))
+    authUrl.searchParams.set('state', state)
+    authUrl.searchParams.set('code_challenge', code_challenge)
+    authUrl.searchParams.set('code_challenge_method', 'S256')
 
-    return { url: authUrl.toString(), verifier: code_verifier, state };
+    return { url: authUrl.toString(), verifier: code_verifier, state }
   }
 
   /**
@@ -63,53 +70,53 @@ export class Authentication {
    * @returns {Promise<Keycloak>} The token response object containing authentication tokens and expiration information.
    */
   async authenticate(): Promise<Keycloak> {
-    const ctx = await this.buildAuthUrl();
+    const ctx = await this.buildAuthUrl()
 
     const redirectedUrl = await browser.identity.launchWebAuthFlow({
       url: ctx.url,
       interactive: true,
-    });
+    })
 
     if (!redirectedUrl) {
-      throw new Error("Authentication was cancelled or failed");
+      throw new Error('Authentication was cancelled or failed')
     }
 
-    const url = new URL(redirectedUrl);
-    const state = url.searchParams.get("state");
-    const code = url.searchParams.get("code");
+    const url = new URL(redirectedUrl)
+    const state = url.searchParams.get('state')
+    const code = url.searchParams.get('code')
 
     if (!state || !code) {
-      throw new Error("Missing state or code in redirect URL");
+      throw new Error('Missing state or code in redirect URL')
     }
 
-    const tokenUrl = `${this.issuer}/protocol/openid-connect/token`;
+    const tokenUrl = `${this.issuer}/protocol/openid-connect/token`
 
-    const body = new URLSearchParams();
-    body.set("grant_type", "authorization_code");
-    body.set("code", code);
-    body.set("redirect_uri", this.redirectUri);
-    body.set("client_id", this.clientId);
-    body.set("code_verifier", ctx.verifier);
+    const body = new URLSearchParams()
+    body.set('grant_type', 'authorization_code')
+    body.set('code', code)
+    body.set('redirect_uri', this.redirectUri)
+    body.set('client_id', this.clientId)
+    body.set('code_verifier', ctx.verifier)
 
     const response = await fetch(tokenUrl, {
-      method: "POST",
-      body: body,
-    });
+      method: 'POST',
+      body,
+    })
 
     if (!response.ok) {
-      throw new Error("Failed to exchange code for token");
+      throw new Error('Failed to exchange code for token')
     }
 
-    const tokenResponse: Keycloak = await response.json();
+    const tokenResponse: Keycloak = await response.json()
 
-    tokenResponse.expires_at =
-      Math.floor(Date.now() / 1000) + tokenResponse.expires_in;
-    tokenResponse.refresh_expires_at =
-      Math.floor(Date.now() / 1000) + tokenResponse.refresh_expires_in;
+    tokenResponse.expires_at
+      = Math.floor(Date.now() / 1000) + tokenResponse.expires_in
+    tokenResponse.refresh_expires_at
+      = Math.floor(Date.now() / 1000) + tokenResponse.refresh_expires_in
 
-    await storage.setItem("local:oauth", tokenResponse);
+    await storage.setItem('local:oauth', tokenResponse)
 
-    return tokenResponse;
+    return tokenResponse
   }
 
   /**
@@ -122,29 +129,29 @@ export class Authentication {
    * @returns {Promise<void>} A promise that resolves when the token has been successfully revoked and removed.
    */
   async deauthenticate(): Promise<void> {
-    const oauth = await storage.getItem<Keycloak>("local:oauth");
+    const oauth = await storage.getItem<Keycloak>('local:oauth')
 
     if (oauth === null) {
-      throw new Error("No OAuth token to revoke");
+      throw new Error('No OAuth token to revoke')
     }
 
-    const body = new URLSearchParams();
-    body.set("client_id", this.clientId);
-    body.set("refresh_token", oauth.refresh_token);
+    const body = new URLSearchParams()
+    body.set('client_id', this.clientId)
+    body.set('refresh_token', oauth.refresh_token)
 
-    const tokenUrl = `${this.issuer}/protocol/openid-connect/logout`;
+    const tokenUrl = `${this.issuer}/protocol/openid-connect/logout`
 
     const response = await fetch(tokenUrl, {
-      method: "POST",
-      body: body,
-    });
+      method: 'POST',
+      body,
+    })
 
     if (!response.ok) {
-      throw new Error("Failed to revoke token");
+      throw new Error('Failed to revoke token')
     }
 
-    await storage.removeItem("local:oauth");
-    await storage.removeItem("local:user");
+    await storage.removeItem('local:oauth')
+    await storage.removeItem('local:user')
   }
 
   /**
@@ -159,38 +166,38 @@ export class Authentication {
    * @throws {Error} If there is no stored OAuth token or if the token refresh request fails.
    */
   async refreshToken(): Promise<Keycloak> {
-    const oauth = await storage.getItem<Keycloak>("local:oauth");
+    const oauth = await storage.getItem<Keycloak>('local:oauth')
 
     if (oauth === null) {
-      throw new Error("No OAuth token to refresh");
+      throw new Error('No OAuth token to refresh')
     }
 
-    const body = new URLSearchParams();
-    body.set("grant_type", "refresh_token");
-    body.set("refresh_token", oauth.refresh_token);
-    body.set("client_id", this.clientId);
+    const body = new URLSearchParams()
+    body.set('grant_type', 'refresh_token')
+    body.set('refresh_token', oauth.refresh_token)
+    body.set('client_id', this.clientId)
 
-    const tokenUrl = `${this.issuer}/protocol/openid-connect/token`;
+    const tokenUrl = `${this.issuer}/protocol/openid-connect/token`
 
     const response = await fetch(tokenUrl, {
-      method: "POST",
-      body: body,
-    });
+      method: 'POST',
+      body,
+    })
 
     if (!response.ok) {
-      throw new Error("Failed to refresh token");
+      throw new Error('Failed to refresh token')
     }
 
-    const tokenResponse: Keycloak = await response.json();
+    const tokenResponse: Keycloak = await response.json()
 
-    tokenResponse.expires_at =
-      Math.floor(Date.now() / 1000) + tokenResponse.expires_in;
-    tokenResponse.refresh_expires_at =
-      Math.floor(Date.now() / 1000) + tokenResponse.refresh_expires_in;
+    tokenResponse.expires_at
+      = Math.floor(Date.now() / 1000) + tokenResponse.expires_in
+    tokenResponse.refresh_expires_at
+      = Math.floor(Date.now() / 1000) + tokenResponse.refresh_expires_in
 
-    await storage.setItem("local:oauth", tokenResponse);
+    await storage.setItem('local:oauth', tokenResponse)
 
-    return tokenResponse;
+    return tokenResponse
   }
 
   /**
@@ -204,27 +211,27 @@ export class Authentication {
    * @throws {Error} If there is no stored OAuth token or if the profile request fails.
    */
   async getUserProfile(): Promise<any> {
-    const oauth = await storage.getItem<Keycloak>("local:oauth");
+    const oauth = await storage.getItem<Keycloak>('local:oauth')
 
     if (oauth === null) {
-      throw new Error("No OAuth token available");
+      throw new Error('No OAuth token available')
     }
 
-    const userinfoUrl = `${this.issuer}/protocol/openid-connect/userinfo`;
+    const userinfoUrl = `${this.issuer}/protocol/openid-connect/userinfo`
 
     const response = await fetch(userinfoUrl, {
-      method: "GET",
+      method: 'GET',
       headers: {
         Authorization: `Bearer ${oauth.access_token}`,
       },
-    });
+    })
 
     if (!response.ok) {
-      throw new Error("Failed to fetch user profile");
+      throw new Error('Failed to fetch user profile')
     }
 
-    const userProfile = await response.json();
-    await storage.setItem("local:user", userProfile);
-    return userProfile;
+    const userProfile = await response.json()
+    await storage.setItem('local:user', userProfile)
+    return userProfile
   }
 }

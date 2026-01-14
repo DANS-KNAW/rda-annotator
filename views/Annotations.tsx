@@ -1,264 +1,273 @@
-import { useState, useEffect, useContext } from "react";
-import { useLocation } from "react-router";
+import type { AnnotationHit } from '@/types/elastic-search-document.interface'
+import { storage } from '#imports'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router'
+import AnnotationCard from '@/components/AnnotationCard'
+import AnnotationDrawer from '@/components/AnnotationDrawer'
+import { useAnchorStatus } from '@/context/anchor-status.context'
+import { AuthenticationContext } from '@/context/authentication.context'
+import { AuthStorage } from '@/utils/auth-storage'
 import {
-  searchAnnotationsByUrl,
   searchAnnotationsBySubmitter,
-} from "@/utils/elasticsearch-fetch";
-import { AnnotationHit } from "@/types/elastic-search-document.interface";
-import { AuthStorage } from "@/utils/auth-storage";
-import AnnotationDrawer from "@/components/AnnotationDrawer";
-import AnnotationCard from "@/components/AnnotationCard";
-import { AuthenticationContext } from "@/context/authentication.context";
-import { useAnchorStatus } from "@/context/anchor-status.context";
-import { sendMessage, onMessage } from "@/utils/messaging";
-import { extractDocumentURL } from "@/utils/extract-document-url";
-import { storage } from "#imports";
+  searchAnnotationsByUrl,
+} from '@/utils/elasticsearch-fetch'
+import { extractDocumentURL } from '@/utils/extract-document-url'
+import { onMessage, sendMessage } from '@/utils/messaging'
 
 export default function Annotations() {
-  const { isAuthenticated, oauth } = useContext(AuthenticationContext);
-  const location = useLocation();
+  const { isAuthenticated, oauth } = use(AuthenticationContext)
+  const location = useLocation()
   const {
     orphanedIds: orphanedAnnotationIds,
     pendingIds: pendingAnnotationIds,
     recoveredIds: recoveredAnnotationIds,
     requestStatus,
-  } = useAnchorStatus();
+  } = useAnchorStatus()
 
-  const [annotations, setAnnotations] = useState<AnnotationHit[]>([]);
-  const [myAnnotations, setMyAnnotations] = useState<AnnotationHit[]>([]);
-  const [selected, setSelected] = useState<AnnotationHit | null>(null);
-  const [currentUrl, setCurrentUrl] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<string>("Page Annotations");
+  const [annotations, setAnnotations] = useState<AnnotationHit[]>([])
+  const [myAnnotations, setMyAnnotations] = useState<AnnotationHit[]>([])
+  const [selected, setSelected] = useState<AnnotationHit | null>(null)
+  const [_currentUrl, setCurrentUrl] = useState<string>('')
+  const [activeTab, setActiveTab] = useState<string>('Page Annotations')
   const [filteredAnnotationIds, setFilteredAnnotationIds] = useState<string[]>(
-    []
-  );
+    [],
+  )
   const [hoveredAnnotationIds, setHoveredAnnotationIds] = useState<string[]>(
-    []
-  );
+    [],
+  )
 
   const mergeAnnotations = (
     existing: AnnotationHit[],
-    newAnnotations: AnnotationHit[]
+    newAnnotations: AnnotationHit[],
   ): AnnotationHit[] => {
-    const map = new Map<string, AnnotationHit>();
+    const map = new Map<string, AnnotationHit>()
 
-    existing.forEach((ann) => map.set(ann._id, ann));
+    existing.forEach(ann => map.set(ann._id, ann))
 
-    newAnnotations.forEach((ann) => map.set(ann._id, ann));
+    newAnnotations.forEach(ann => map.set(ann._id, ann))
 
     return Array.from(map.values()).sort((a, b) => {
-      const dateA = new Date(a._source.dc_date).getTime();
-      const dateB = new Date(b._source.dc_date).getTime();
-      return dateB - dateA;
-    });
-  };
+      const dateA = new Date(a._source.dc_date).getTime()
+      const dateB = new Date(b._source.dc_date).getTime()
+      return dateB - dateA
+    })
+  }
 
   const handleAnnotationClick = async (
     annotation: AnnotationHit,
-    shouldScroll: boolean
+    shouldScroll: boolean,
   ) => {
-    setSelected(annotation);
+    setSelected(annotation)
 
     if (shouldScroll) {
       try {
         const tabs = await browser.tabs.query({
           active: true,
           currentWindow: true,
-        });
+        })
         if (tabs[0]?.id) {
           await sendMessage(
-            "scrollToAnnotation",
+            'scrollToAnnotation',
             { annotationId: annotation._id },
-            tabs[0].id
-          );
+            tabs[0].id,
+          )
         }
-      } catch (error) {
-        console.error("Failed to scroll to annotation:", error);
+      }
+      catch (error) {
+        console.error('Failed to scroll to annotation:', error)
       }
     }
-  };
+  }
 
   const allAnnotations = Array.from(
     new Map(
-      [...annotations, ...myAnnotations].map((ann) => [ann._id, ann])
-    ).values()
-  );
-  const orphanedAnnotations = allAnnotations.filter((ann) =>
-    orphanedAnnotationIds.includes(ann._id)
-  );
+      [...annotations, ...myAnnotations].map(ann => [ann._id, ann]),
+    ).values(),
+  )
+  const orphanedAnnotations = allAnnotations.filter(ann =>
+    orphanedAnnotationIds.includes(ann._id),
+  )
 
   const pageAnnotations = annotations.filter(
-    (ann) => !orphanedAnnotationIds.includes(ann._id)
-  );
+    ann => !orphanedAnnotationIds.includes(ann._id),
+  )
 
   const myPageAnnotations = myAnnotations.filter(
-    (ann) => !orphanedAnnotationIds.includes(ann._id)
-  );
+    ann => !orphanedAnnotationIds.includes(ann._id),
+  )
 
   const tabs: Array<{
-    name: string;
-    count: number | null;
+    name: string
+    count: number | null
   }> = [
-    { name: "Page Annotations", count: pageAnnotations.length },
-    { name: "Orphans", count: orphanedAnnotations.length },
-    { name: "My Annotations", count: myPageAnnotations.length },
-  ];
+    { name: 'Page Annotations', count: pageAnnotations.length },
+    { name: 'Orphans', count: orphanedAnnotations.length },
+    { name: 'My Annotations', count: myPageAnnotations.length },
+  ]
 
-  const displayedAnnotations =
-    filteredAnnotationIds.length > 0
-      ? pageAnnotations.filter((ann) => filteredAnnotationIds.includes(ann._id))
-      : pageAnnotations;
+  const displayedAnnotations
+    = filteredAnnotationIds.length > 0
+      ? pageAnnotations.filter(ann => filteredAnnotationIds.includes(ann._id))
+      : pageAnnotations
 
   const clearFilter = () => {
-    setFilteredAnnotationIds([]);
-  };
+    setFilteredAnnotationIds([])
+  }
 
   useEffect(() => {
     (async () => {
       const tabs = await browser.tabs.query({
         active: true,
         currentWindow: true,
-      });
+      })
       if (tabs[0]?.url) {
-        const documentUrl = extractDocumentURL(tabs[0].url);
-        setCurrentUrl(documentUrl);
+        const documentUrl = extractDocumentURL(tabs[0].url)
+        setCurrentUrl(documentUrl)
       }
-    })();
-  }, []);
+    })()
+  }, [])
 
   useEffect(() => {
     (async () => {
-      const profile = await AuthStorage.getUser();
+      const profile = await AuthStorage.getUser()
       if (
-        !oauth ||
-        !oauth.identity_provider_identity ||
-        !profile ||
-        !profile.sub
-      )
-        return;
+        !oauth
+        || !oauth.identity_provider_identity
+        || !profile
+        || !profile.sub
+      ) {
+        return
+      }
       const userData = await searchAnnotationsBySubmitter(
         oauth.identity_provider_identity,
-        profile.sub
-      );
-      setMyAnnotations(userData.hits.hits);
-    })();
-  }, [isAuthenticated, location]);
+        profile.sub,
+      )
+      setMyAnnotations(userData.hits.hits)
+    })()
+  }, [isAuthenticated, location])
 
   // Listen for highlight clicks - set persistent filter
   useEffect(() => {
     const unsubscribe = onMessage(
-      "showAnnotationsFromHighlight",
+      'showAnnotationsFromHighlight',
       async (message) => {
-        if (!message.data?.annotationIds) return;
+        if (!message.data?.annotationIds)
+          return
 
-        const { annotationIds } = message.data;
+        const { annotationIds } = message.data
 
         // Set persistent filter (no timeout)
-        setFilteredAnnotationIds(annotationIds);
+        setFilteredAnnotationIds(annotationIds)
 
         // If only one annotation, show it in the modal
         if (annotationIds.length === 1) {
           const annotation = annotations.find(
-            (ann) => ann._id === annotationIds[0]
-          );
+            ann => ann._id === annotationIds[0],
+          )
           if (annotation) {
-            setSelected(annotation);
+            setSelected(annotation)
           }
         }
         // If multiple annotations, they're now filtered in the list
         // User can click any to see details
-      }
-    );
+      },
+    )
 
     return () => {
       if (unsubscribe) {
-        unsubscribe();
+        unsubscribe()
       }
-    };
-  }, [annotations]);
+    }
+  }, [annotations])
 
   // Listen for highlight hovers - set temporary hover state
   useEffect(() => {
-    const unsubscribe = onMessage("hoverAnnotations", async (message) => {
+    const unsubscribe = onMessage('hoverAnnotations', async (message) => {
       if (!message.data?.annotationIds) {
-        setHoveredAnnotationIds([]);
-        return;
+        setHoveredAnnotationIds([])
+        return
       }
 
-      const { annotationIds } = message.data;
-      setHoveredAnnotationIds(annotationIds);
-    });
+      const { annotationIds } = message.data
+      setHoveredAnnotationIds(annotationIds)
+    })
 
     return () => {
       if (unsubscribe) {
-        unsubscribe();
+        unsubscribe()
       }
-    };
-  }, []);
+    }
+  }, [])
 
   // Watch tab-specific storage for frame URL changes
   useEffect(() => {
-    let unwatch: (() => void) | undefined;
+    let unwatch: (() => void) | undefined
 
     const setupWatcher = async () => {
       try {
         const tabs = await browser.tabs.query({
           active: true,
           currentWindow: true,
-        });
-        const tabId = tabs[0]?.id;
-        if (!tabId) return;
+        })
+        const tabId = tabs[0]?.id
+        if (!tabId)
+          return
 
-        const key = `session:frameUrls:${tabId}` as const;
+        const key = `session:frameUrls:${tabId}` as const
 
         // Check storage on mount for any URLs written before we mounted
-        const storedUrls = await storage.getItem<string[]>(key);
+        const storedUrls = await storage.getItem<string[]>(key)
         if (storedUrls && storedUrls.length > 0) {
-          const data = await searchAnnotationsByUrl(storedUrls);
-          setAnnotations((prev) => mergeAnnotations(prev, data.hits.hits));
+          const data = await searchAnnotationsByUrl(storedUrls)
+          setAnnotations(prev => mergeAnnotations(prev, data.hits.hits))
         }
 
         // Watch for changes to frame URLs in storage
         unwatch = storage.watch<string[]>(key, async (newUrls) => {
-          if (!newUrls || newUrls.length === 0) return;
+          if (!newUrls || newUrls.length === 0)
+            return
 
           try {
-            const data = await searchAnnotationsByUrl(newUrls);
-            setAnnotations((prev) => mergeAnnotations(prev, data.hits.hits));
-          } catch (error) {
-            console.error(
-              "[Annotations] Error fetching annotations for new frame URLs:",
-              error
-            );
+            const data = await searchAnnotationsByUrl(newUrls)
+            setAnnotations(prev => mergeAnnotations(prev, data.hits.hits))
           }
-        });
-      } catch (error) {
-        console.error("[Annotations] Error setting up storage watcher:", error);
+          catch (error) {
+            console.error(
+              '[Annotations] Error fetching annotations for new frame URLs:',
+              error,
+            )
+          }
+        })
       }
-    };
+      catch (error) {
+        console.error('[Annotations] Error setting up storage watcher:', error)
+      }
+    }
 
-    setupWatcher();
+    setupWatcher()
 
     return () => {
-      if (unwatch) unwatch();
-    };
-  }, []);
+      if (unwatch)
+        unwatch()
+    }
+  }, [])
 
   // Request anchor status when annotations load
   // The anchorStatusUpdate listener is now in AnchorStatusProvider (App level)
   useEffect(() => {
-    if (annotations.length === 0 && myAnnotations.length === 0) return;
-    requestStatus();
-  }, [annotations.length, myAnnotations.length, requestStatus]);
+    if (annotations.length === 0 && myAnnotations.length === 0)
+      return
+    requestStatus()
+  }, [annotations.length, myAnnotations.length, requestStatus])
 
-  if (activeTab === "My Annotations") {
+  if (activeTab === 'My Annotations') {
     return (
       <div className="flex flex-col h-full">
         <div className="border-b border-gray-200">
           <nav aria-label="Tabs" className="-mb-px flex">
             {tabs.map((tab) => {
-              const isActive = activeTab === tab.name;
-              const isOrphansTab = tab.name === "Orphans";
+              const isActive = activeTab === tab.name
+              const isOrphansTab = tab.name === 'Orphans'
 
               return (
                 <p
@@ -267,9 +276,9 @@ export default function Annotations() {
                   className={`${
                     isActive
                       ? isOrphansTab
-                        ? "border-amber-500 text-amber-700"
-                        : "border-rda-500 text-rda-500"
-                      : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                        ? 'border-amber-500 text-amber-700'
+                        : 'border-rda-500 text-rda-500'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                   } w-full border-b-2 px-1 py-4 text-center text-sm font-medium cursor-pointer flex items-center justify-center gap-1`}
                 >
                   <span>{tab.name}</span>
@@ -277,17 +286,17 @@ export default function Annotations() {
                     <span
                       className={`inline-flex items-center justify-center w-5 h-5 text-xs font-semibold rounded-full ${
                         isOrphansTab
-                          ? "bg-amber-100 text-amber-800"
+                          ? 'bg-amber-100 text-amber-800'
                           : isActive
-                          ? "bg-rda-100 text-rda-800"
-                          : "bg-gray-200 text-gray-700"
+                            ? 'bg-rda-100 text-rda-800'
+                            : 'bg-gray-200 text-gray-700'
                       }`}
                     >
                       {tab.count}
                     </span>
                   )}
                 </p>
-              );
+              )
             })}
           </nav>
         </div>
@@ -317,15 +326,15 @@ export default function Annotations() {
             )}
 
             <div className="my-4 mx-2 space-y-4">
-              {myPageAnnotations.length > 0 &&
-                myPageAnnotations.map((annotation) => (
+              {myPageAnnotations.length > 0
+                && myPageAnnotations.map(annotation => (
                   <AnnotationCard
                     key={annotation._id}
                     annotation={annotation}
                     isOrphaned={false}
                     isPending={pendingAnnotationIds.includes(annotation._id)}
                     isRecovered={recoveredAnnotationIds.includes(
-                      annotation._id
+                      annotation._id,
                     )}
                     isHovered={false}
                     onClick={() => handleAnnotationClick(annotation, false)}
@@ -335,17 +344,17 @@ export default function Annotations() {
           </div>
         </div>
       </div>
-    );
+    )
   }
 
-  if (activeTab === "Orphans") {
+  if (activeTab === 'Orphans') {
     return (
       <div className="flex flex-col h-full">
         <div className="border-b border-gray-200">
           <nav aria-label="Tabs" className="-mb-px flex">
             {tabs.map((tab) => {
-              const isActive = activeTab === tab.name;
-              const isOrphansTab = tab.name === "Orphans";
+              const isActive = activeTab === tab.name
+              const isOrphansTab = tab.name === 'Orphans'
 
               return (
                 <p
@@ -354,9 +363,9 @@ export default function Annotations() {
                   className={`${
                     isActive
                       ? isOrphansTab
-                        ? "border-amber-500 text-amber-700"
-                        : "border-rda-500 text-rda-500"
-                      : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                        ? 'border-amber-500 text-amber-700'
+                        : 'border-rda-500 text-rda-500'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                   } w-full border-b-2 px-1 py-4 text-center text-sm font-medium cursor-pointer flex items-center justify-center gap-1`}
                 >
                   <span>{tab.name}</span>
@@ -364,17 +373,17 @@ export default function Annotations() {
                     <span
                       className={`inline-flex items-center justify-center w-5 h-5 text-xs font-semibold rounded-full ${
                         isOrphansTab
-                          ? "bg-amber-100 text-amber-800"
+                          ? 'bg-amber-100 text-amber-800'
                           : isActive
-                          ? "bg-rda-100 text-rda-800"
-                          : "bg-gray-200 text-gray-700"
+                            ? 'bg-rda-100 text-rda-800'
+                            : 'bg-gray-200 text-gray-700'
                       }`}
                     >
                       {tab.count}
                     </span>
                   )}
                 </p>
-              );
+              )
             })}
           </nav>
         </div>
@@ -434,7 +443,7 @@ export default function Annotations() {
             )}
 
             <div className="my-4 mx-2 space-y-4">
-              {orphanedAnnotations.map((annotation) => (
+              {orphanedAnnotations.map(annotation => (
                 <AnnotationCard
                   key={annotation._id}
                   annotation={annotation}
@@ -449,34 +458,34 @@ export default function Annotations() {
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   return (
     <div className="flex flex-col h-full">
       <div className="border-b border-gray-200">
         <nav aria-label="Tabs" className="-mb-px flex">
-          {tabs.map((tab) => (
+          {tabs.map(tab => (
             <p
               key={tab.name}
               onClick={() => setActiveTab(tab.name)}
               className={`${
                 activeTab === tab.name
-                  ? tab.name === "Orphans"
-                    ? "border-amber-500 text-amber-700"
-                    : "border-rda-500 text-rda-500"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                  ? tab.name === 'Orphans'
+                    ? 'border-amber-500 text-amber-700'
+                    : 'border-rda-500 text-rda-500'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
               } w-full border-b-2 px-1 py-4 text-center text-sm font-medium cursor-pointer flex items-center justify-center gap-1`}
             >
               <span>{tab.name}</span>
               {tab.count !== null && (
                 <span
                   className={`inline-flex items-center justify-center w-5 h-5 text-xs font-semibold rounded-full ${
-                    tab.name === "Orphans"
-                      ? "bg-amber-100 text-amber-800"
+                    tab.name === 'Orphans'
+                      ? 'bg-amber-100 text-amber-800'
                       : activeTab === tab.name
-                      ? "bg-rda-100 text-rda-800"
-                      : "bg-gray-200 text-gray-700"
+                        ? 'bg-rda-100 text-rda-800'
+                        : 'bg-gray-200 text-gray-700'
                   }`}
                 >
                   {tab.count}
@@ -509,8 +518,12 @@ export default function Annotations() {
               </svg>
 
               <span className="text-sm font-medium text-rda-900">
-                Showing {filteredAnnotationIds.length} selected annotation
-                {filteredAnnotationIds.length !== 1 ? "s" : ""}
+                Showing
+                {' '}
+                {filteredAnnotationIds.length}
+                {' '}
+                selected annotation
+                {filteredAnnotationIds.length !== 1 ? 's' : ''}
               </span>
             </div>
             <button
@@ -533,17 +546,17 @@ export default function Annotations() {
             Page Annotations found:
           </h2>
 
-          {displayedAnnotations.length === 0 &&
-            pageAnnotations.length === 0 && (
-              <div className="mx-2 my-8 border border-rda-500 rounded-md shadow ">
-                <p className="text-gray-600 px-4 pt-4 text-base/7 font-medium">
-                  No annotations found for this URL.
-                </p>
-                <p className="text-gray-600 px-4 pb-4 text-base/7 font-medium">
-                  Be the first to annotate it!
-                </p>
-              </div>
-            )}
+          {displayedAnnotations.length === 0
+            && pageAnnotations.length === 0 && (
+            <div className="mx-2 my-8 border border-rda-500 rounded-md shadow ">
+              <p className="text-gray-600 px-4 pt-4 text-base/7 font-medium">
+                No annotations found for this URL.
+              </p>
+              <p className="text-gray-600 px-4 pb-4 text-base/7 font-medium">
+                Be the first to annotate it!
+              </p>
+            </div>
+          )}
 
           {displayedAnnotations.length === 0 && pageAnnotations.length > 0 && (
             <div className="mx-2 my-8 border border-rda-500 rounded-md shadow ">
@@ -556,15 +569,16 @@ export default function Annotations() {
                   className="text-rda-600 hover:text-rda-700 underline font-semibold"
                 >
                   Clear filter
-                </button>{" "}
+                </button>
+                {' '}
                 to see all annotations.
               </p>
             </div>
           )}
 
           <div className="my-4 mx-2 space-y-4">
-            {displayedAnnotations.length > 0 &&
-              displayedAnnotations.map((annotation) => (
+            {displayedAnnotations.length > 0
+              && displayedAnnotations.map(annotation => (
                 <AnnotationCard
                   key={annotation._id}
                   annotation={annotation}
@@ -579,5 +593,5 @@ export default function Annotations() {
         </div>
       </div>
     </div>
-  );
+  )
 }

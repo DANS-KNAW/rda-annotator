@@ -3,13 +3,13 @@ import {
   DialogBackdrop,
   DialogPanel,
   DialogTitle,
-} from "@headlessui/react";
+} from '@headlessui/react'
 
 interface ModelProps {
-  title: string | React.ReactNode;
-  children: React.ReactNode;
-  open: boolean;
-  setOpen: (value: boolean) => void;
+  title: string | React.ReactNode
+  children: React.ReactNode
+  open: boolean
+  setOpen: (value: boolean) => void
 }
 
 export default function Model({ title, children, open, setOpen }: ModelProps) {
@@ -41,5 +41,5 @@ export default function Model({ title, children, open, setOpen }: ModelProps) {
         </div>
       </div>
     </Dialog>
-  );
+  )
 }

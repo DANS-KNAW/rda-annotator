@@ -3,13 +3,13 @@
  * This is the most robust selector type as it works even when the document structure changes.
  */
 export interface TextQuoteSelector {
-  type: "TextQuoteSelector";
+  type: 'TextQuoteSelector'
   /** The exact text that was selected */
-  exact: string;
+  exact: string
   /** Text immediately before the selection (for context) */
-  prefix?: string;
+  prefix?: string
   /** Text immediately after the selection (for context) */
-  suffix?: string;
+  suffix?: string
 }
 
 /**
@@ -17,11 +17,11 @@ export interface TextQuoteSelector {
  * Fast and precise when the document hasn't changed, but fragile to document modifications.
  */
 export interface TextPositionSelector {
-  type: "TextPositionSelector";
+  type: 'TextPositionSelector'
   /** Character offset from the start of the document's textContent */
-  start: number;
+  start: number
   /** Character offset from the start of the document's textContent */
-  end: number;
+  end: number
 }
 
 /**
@@ -29,15 +29,15 @@ export interface TextPositionSelector {
  * More resilient to small changes than position selectors, but still structural.
  */
 export interface RangeSelector {
-  type: "RangeSelector";
+  type: 'RangeSelector'
   /** XPath to the element containing the start of the selection */
-  startContainer: string;
+  startContainer: string
   /** Character offset within the start container */
-  startOffset: number;
+  startOffset: number
   /** XPath to the element containing the end of the selection */
-  endContainer: string;
+  endContainer: string
   /** Character offset within the end container */
-  endOffset: number;
+  endOffset: number
 }
 
 /**
@@ -45,17 +45,17 @@ export interface RangeSelector {
  * Used in conjunction with other selectors to provide page context for PDFs.
  */
 export interface PageSelector {
-  type: "PageSelector";
+  type: 'PageSelector'
   /** Zero-based page index */
-  index: number;
+  index: number
   /** Page label (displayed page number or sequential numbering) */
-  label?: string;
+  label?: string
 }
 
 /**
  * Union type of all supported selector types
  */
-export type Selector = TextQuoteSelector | TextPositionSelector | RangeSelector | PageSelector;
+export type Selector = TextQuoteSelector | TextPositionSelector | RangeSelector | PageSelector
 
 /**
  * The target of an annotation, containing multiple selector strategies
@@ -63,7 +63,7 @@ export type Selector = TextQuoteSelector | TextPositionSelector | RangeSelector 
  */
 export interface AnnotationTarget {
   /** The URL or identifier of the document being annotated */
-  source: string;
+  source: string
   /** Multiple selectors for the same text region (fallback strategy) */
-  selector: Selector[];
+  selector: Selector[]
 }

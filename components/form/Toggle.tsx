@@ -1,10 +1,10 @@
-import { UseFormRegister } from "react-hook-form";
+import type { UseFormRegister } from 'react-hook-form'
 
 interface ToggleProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "name" | "type"> {
-  name: string;
-  label: string | React.ReactNode;
-  register?: UseFormRegister<any>;
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'type'> {
+  name: string
+  label: string | React.ReactNode
+  register?: UseFormRegister<any>
 }
 
 export default function Toggle({
@@ -16,14 +16,14 @@ export default function Toggle({
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="text-sm cursor-pointer">
-        <label className="cursor-pointer" htmlFor={name + "-input"}>
+        <label className="cursor-pointer" htmlFor={`${name}-input`}>
           {label}
         </label>
       </div>
       <div className="group relative flex w-11 shrink-0 rounded-full bg-gray-200 p-0.5 inset-ring inset-ring-gray-900/5 outline-offset-2 outline-rda-500 transition-colors duration-200 ease-in-out has-checked:bg-rda-500 has-focus-visible:outline-2">
         <input
           type="checkbox"
-          id={name + "-input"}
+          id={`${name}-input`}
           className="absolute inset-0 w-full h-full opacity-0 appearance-none focus:outline-hidden cursor-pointer z-10"
           {...(register ? register(name) : {})}
           {...rest}
@@ -62,5 +62,5 @@ export default function Toggle({
         </span>
       </div>
     </div>
-  );
+  )
 }

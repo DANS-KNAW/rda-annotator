@@ -6,18 +6,19 @@
  */
 export function extractDocumentURL(tabUrl: string): string {
   try {
-    const urlObj = new URL(tabUrl);
+    const urlObj = new URL(tabUrl)
 
     // Check if this is our PDF.js viewer by looking for the ?file= parameter
-    const fileParam = urlObj.searchParams.get('file');
+    const fileParam = urlObj.searchParams.get('file')
     if (fileParam && urlObj.pathname.includes('/pdfjs/web/viewer.html')) {
       // This is our PDF viewer, return the original PDF URL
-      return fileParam;
+      return fileParam
     }
-  } catch (error) {
-    console.warn('[RDA] Failed to parse tab URL:', error);
+  }
+  catch (error) {
+    console.warn('[RDA] Failed to parse tab URL:', error)
   }
 
   // Not in our PDF viewer, return the URL as-is
-  return tabUrl;
+  return tabUrl
 }

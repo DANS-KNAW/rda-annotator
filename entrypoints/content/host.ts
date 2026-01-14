@@ -1,98 +1,99 @@
-import { ContentScriptContext } from "#imports";
-import { createSidebar } from "./sidebar";
-import { createAnnotatorPopup } from "./annotator-popup";
+import type { ContentScriptContext } from '#imports'
+import { createAnnotatorPopup } from './annotator-popup'
+import { createSidebar } from './sidebar'
 
 interface CreateHostProps {
-  ctx: ContentScriptContext;
-  onCreateTemporaryHighlight?: (range: Range) => Promise<void>;
-  onMountStateChange?: (isMounted: boolean) => void;
+  ctx: ContentScriptContext
+  onCreateTemporaryHighlight?: (range: Range) => Promise<void>
+  onMountStateChange?: (isMounted: boolean) => void
 }
 
 export async function createHost({ ctx, onCreateTemporaryHighlight, onMountStateChange }: CreateHostProps) {
-  let sidebarMounted = false;
-  let annotatorMounted = false;
-  let sidebarOpen = false;
+  let sidebarMounted = false
+  let annotatorMounted = false
+  let sidebarOpen = false
 
-  const sidebar = await createSidebar({ ctx });
+  const sidebar = await createSidebar({ ctx })
   const annotatorPopup = await createAnnotatorPopup({
     ctx,
     onAnnotate: async () => {
       if (!sidebarMounted) {
-        await mount();
+        await mount()
       }
-      await openSidebar();
+      await openSidebar()
     },
     onCreateTemporaryHighlight,
-  });
+  })
 
   async function mount() {
     if (sidebarMounted && annotatorMounted) {
-      return;
+      return
     }
 
     if (!sidebarMounted) {
-      sidebar.mount();
-      sidebarMounted = true;
+      sidebar.mount()
+      sidebarMounted = true
     }
     if (!annotatorMounted) {
-      annotatorPopup.mount();
-      annotatorMounted = true;
+      annotatorPopup.mount()
+      annotatorMounted = true
     }
 
     // Notify that the extension is now mounted
     if (onMountStateChange) {
-      onMountStateChange(true);
+      onMountStateChange(true)
     }
   }
 
   async function unmount() {
     if (!sidebarMounted && !annotatorMounted) {
-      return;
+      return
     }
 
-    annotatorPopup.remove();
-    sidebar.remove();
+    annotatorPopup.remove()
+    sidebar.remove()
 
-    annotatorMounted = false;
-    sidebarMounted = false;
-    sidebarOpen = false;
+    annotatorMounted = false
+    sidebarMounted = false
+    sidebarOpen = false
 
     // Notify that the extension is now unmounted
     if (onMountStateChange) {
-      onMountStateChange(false);
+      onMountStateChange(false)
     }
   }
 
   async function toggle() {
     if (sidebarMounted && annotatorMounted) {
-      await unmount();
-    } else {
-      await mount();
+      await unmount()
+    }
+    else {
+      await mount()
     }
   }
 
   async function openSidebar() {
     if (!sidebarMounted) {
       if (import.meta.env.DEV) {
-        console.warn("Cannot open sidebar - not mounted");
+        console.warn('Cannot open sidebar - not mounted')
       }
-      return;
+      return
     }
 
-    sidebarOpen = true;
+    sidebarOpen = true
 
     if (sidebar.shadowHost) {
-      sidebar.shadowHost.classList.add("open");
+      sidebar.shadowHost.classList.add('open')
 
-      const shadowRoot = sidebar.shadowHost.shadowRoot;
+      const shadowRoot = sidebar.shadowHost.shadowRoot
       if (shadowRoot) {
-        const button = shadowRoot.getElementById("toggle-button");
+        const button = shadowRoot.getElementById('toggle-button')
         if (button) {
           button.innerHTML = `
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="chevron-icon">
               <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
             </svg>
-          `;
+          `
         }
       }
     }
@@ -100,7 +101,7 @@ export async function createHost({ ctx, onCreateTemporaryHighlight, onMountState
 
   function destroy() {
     if (sidebarMounted || annotatorMounted) {
-      unmount();
+      unmount()
     }
   }
 
@@ -114,10 +115,10 @@ export async function createHost({ ctx, onCreateTemporaryHighlight, onMountState
       return {
         sidebar: sidebarMounted,
         annotator: annotatorMounted,
-      };
+      }
     },
     get isSidebarOpen() {
-      return sidebarOpen;
+      return sidebarOpen
     },
-  };
+  }
 }

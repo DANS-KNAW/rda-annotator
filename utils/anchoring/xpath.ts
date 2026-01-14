@@ -6,58 +6,59 @@
  */
 export function getXPathForNode(
   node: Node,
-  root: Node = document.body
+  root: Node = document.body,
 ): string {
-  const steps: string[] = [];
-  let currentNode: Node | null = node;
+  const steps: string[] = []
+  let currentNode: Node | null = node
 
   while (currentNode && currentNode !== root) {
-    let step = "";
-    const parent: Node | null = currentNode.parentNode;
+    let step = ''
+    const parent: Node | null = currentNode.parentNode
 
     if (!parent) {
-      break;
+      break
     }
 
     if (currentNode.nodeType === Node.ELEMENT_NODE) {
-      const element = currentNode as Element;
-      const tagName = element.tagName.toLowerCase();
+      const element = currentNode as Element
+      const tagName = element.tagName.toLowerCase()
 
       // Find the position of this element among siblings with the same tag name
-      let index = 1;
-      let sibling = element.previousSibling;
+      let index = 1
+      let sibling = element.previousSibling
 
       while (sibling) {
         if (
-          sibling.nodeType === Node.ELEMENT_NODE &&
-          (sibling as Element).tagName === element.tagName
+          sibling.nodeType === Node.ELEMENT_NODE
+          && (sibling as Element).tagName === element.tagName
         ) {
-          index++;
+          index++
         }
-        sibling = sibling.previousSibling;
+        sibling = sibling.previousSibling
       }
 
-      step = `${tagName}[${index}]`;
-    } else if (currentNode.nodeType === Node.TEXT_NODE) {
+      step = `${tagName}[${index}]`
+    }
+    else if (currentNode.nodeType === Node.TEXT_NODE) {
       // Find the position of this text node among siblings
-      let index = 1;
-      let sibling = currentNode.previousSibling;
+      let index = 1
+      let sibling = currentNode.previousSibling
 
       while (sibling) {
         if (sibling.nodeType === Node.TEXT_NODE) {
-          index++;
+          index++
         }
-        sibling = sibling.previousSibling;
+        sibling = sibling.previousSibling
       }
 
-      step = `text()[${index}]`;
+      step = `text()[${index}]`
     }
 
-    steps.unshift(step);
-    currentNode = parent;
+    steps.unshift(step)
+    currentNode = parent
   }
 
-  return "/" + steps.join("/");
+  return `/${steps.join('/')}`
 }
 
 /**
@@ -68,7 +69,7 @@ export function getXPathForNode(
  */
 export function resolveXPath(
   xpath: string,
-  root: Node = document.body
+  root: Node = document.body,
 ): Node | null {
   try {
     const result = document.evaluate(
@@ -76,11 +77,12 @@ export function resolveXPath(
       root,
       null,
       XPathResult.FIRST_ORDERED_NODE_TYPE,
-      null
-    );
-    return result.singleNodeValue;
-  } catch (error) {
-    console.error("Failed to resolve XPath:", xpath, error);
-    return null;
+      null,
+    )
+    return result.singleNodeValue
+  }
+  catch (error) {
+    console.error('Failed to resolve XPath:', xpath, error)
+    return null
   }
 }

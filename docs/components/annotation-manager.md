@@ -167,8 +167,8 @@ When scrolling to an annotation:
 Highlights are always in the DOM but visibility is controlled by a CSS class:
 
 ```typescript
-setHighlightsVisible(true);  // Adds class, highlights appear
-setHighlightsVisible(false); // Removes class, highlights hidden
+setHighlightsVisible(true) // Adds class, highlights appear
+setHighlightsVisible(false) // Removes class, highlights hidden
 ```
 
 This allows instant toggling without recreating highlights.
@@ -181,16 +181,16 @@ This allows instant toggling without recreating highlights.
 const manager = new AnnotationManager({
   onHighlightClick: async (annotationIds) => {
     // Open sidebar and show annotations
-    await sendMessage("showAnnotationsFromHighlight", { annotationIds });
+    await sendMessage('showAnnotationsFromHighlight', { annotationIds })
   },
   onHighlightHover: async (annotationIds) => {
     // Send hover state to sidebar
-    await sendMessage("hoverAnnotations", { annotationIds });
+    await sendMessage('hoverAnnotations', { annotationIds })
   }
-});
+})
 
-await manager.loadAnnotations();
-manager.setHighlightsVisible(true);
+await manager.loadAnnotations()
+manager.setHighlightsVisible(true)
 ```
 
 ### Guest Frame Setup
@@ -202,20 +202,20 @@ const manager = new AnnotationManager({
   onHighlightClick: async (annotationIds) => {
     // Send to parent frame, not directly to sidebar
     window.parent.postMessage({
-      type: "rda:showAnnotations",
+      type: 'rda:showAnnotations',
       annotationIds
-    }, "*");
+    }, '*')
   }
-});
+})
 ```
 
 ### Creating Temporary Highlights
 
 ```typescript
-const selection = window.getSelection();
+const selection = window.getSelection()
 if (selection && !selection.isCollapsed) {
-  const range = selection.getRangeAt(0);
-  await manager.createTemporaryHighlight(range);
+  const range = selection.getRangeAt(0)
+  await manager.createTemporaryHighlight(range)
   // Open sidebar for annotation form
 }
 ```
@@ -224,9 +224,9 @@ if (selection && !selection.isCollapsed) {
 
 ```typescript
 // After creating annotation, reload to show permanent highlight
-onMessage("reloadAnnotations", async () => {
-  await manager.loadAnnotations();
-});
+onMessage('reloadAnnotations', async () => {
+  await manager.loadAnnotations()
+})
 ```
 
 ## Debugging Guide
@@ -236,7 +236,7 @@ onMessage("reloadAnnotations", async () => {
 Check the orphaned annotations set to see if they failed to anchor:
 
 ```typescript
-console.log(manager.orphanedAnnotationIds);
+console.log(manager.orphanedAnnotationIds)
 ```
 
 Common causes:
@@ -249,13 +249,13 @@ Common causes:
 Check if the visibility class is set:
 
 ```typescript
-console.log(document.body.classList.contains("rda-highlights-visible"));
+console.log(document.body.classList.contains('rda-highlights-visible'))
 ```
 
 If false, highlights exist but are hidden. Enable visibility:
 
 ```typescript
-manager.setHighlightsVisible(true);
+manager.setHighlightsVisible(true)
 ```
 
 ### PDF Highlights Missing
@@ -281,7 +281,7 @@ Possible issues:
 Check the number of annotations:
 
 ```typescript
-console.log(manager.annotations.size);
+console.log(manager.annotations.size)
 ```
 
 With many annotations (100+), anchoring takes time:

@@ -1,92 +1,107 @@
-import { useEffect, useState, useRef } from "react";
+import { storage } from '#imports'
+import { useEffect, useRef, useState } from 'react'
 import {
   BrowserRouter,
+  Navigate,
   Route,
   Routes,
-  Navigate,
   useNavigate,
-} from "react-router";
-import Layout from "@/components/Layout.tsx";
-import Introduction from "@/views/Introduction.tsx";
-import Annotations from "@/views/Annotations";
-import { storage } from "#imports";
-import AuthenticationProvider from "@/context/authentication.provider";
-import { AnchorStatusProvider } from "@/context/anchor-status.context";
+} from 'react-router'
+import Alert from '@/components/Alert.tsx'
+import Layout from '@/components/Layout.tsx'
+import { AnchorStatusProvider } from '@/context/anchor-status.context'
+import AuthenticationProvider from '@/context/authentication.provider'
 import {
   PendingAnnotationProvider,
   usePendingAnnotation,
-} from "@/context/pending-annotation.context";
-import Settings from "@/views/Settings";
-import Create from "@/views/Create";
-import Alert from "@/components/Alert.tsx";
-import { isVersionGreaterOrEqual } from "@/utils/version-comparison";
+} from '@/context/pending-annotation.context'
+import { isVersionGreaterOrEqual } from '@/utils/version-comparison'
+import Annotations from '@/views/Annotations'
+import Create from '@/views/Create'
+import Introduction from '@/views/Introduction.tsx'
+import Settings from '@/views/Settings'
 
 function IndexRoute() {
-  const [initialPath, setInitialPath] = useState<null | string>(null);
+  const [initialPath, setInitialPath] = useState<null | string>(null)
+  const { pendingAnnotation, isReady } = usePendingAnnotation()
 
   useEffect(() => {
+    // Wait for pending annotation context to be ready before deciding route
+    if (!isReady)
+      return;
+
     (async () => {
-      const shown = await storage.getItem<boolean>("local:intro-shown");
-      setInitialPath(shown ? "/annotations" : "/introduction");
-    })();
-  }, []);
+      // If there's a pending annotation, go directly to create
+      if (pendingAnnotation) {
+        setInitialPath('/create')
+        return
+      }
 
-  if (initialPath === null) return null;
+      // Otherwise, check if intro has been shown
+      const shown = await storage.getItem<boolean>('local:intro-shown')
+      setInitialPath(shown ? '/annotations' : '/introduction')
+    })()
+  }, [isReady, pendingAnnotation])
 
-  return <Navigate to={initialPath} replace />;
+  if (initialPath === null)
+    return null
+
+  return <Navigate to={initialPath} replace />
 }
 
 function NavigateOnPendingAnnotation() {
-  const navigate = useNavigate();
-  const { pendingAnnotation, isReady } = usePendingAnnotation();
-  const lastNavigatedTimestampRef = useRef<number | null>(null);
+  const navigate = useNavigate()
+  const { pendingAnnotation, isReady } = usePendingAnnotation()
+  const lastNavigatedTimestampRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (
-      isReady &&
-      pendingAnnotation &&
-      pendingAnnotation.timestamp !== lastNavigatedTimestampRef.current
+      isReady
+      && pendingAnnotation
+      && pendingAnnotation.timestamp !== lastNavigatedTimestampRef.current
     ) {
       if (import.meta.env.DEV) {
         console.log(
-          "[NavigateOnPendingAnnotation] Navigating to /create for timestamp:",
-          pendingAnnotation.timestamp
-        );
+          '[NavigateOnPendingAnnotation] Navigating to /create for timestamp:',
+          pendingAnnotation.timestamp,
+        )
       }
-      lastNavigatedTimestampRef.current = pendingAnnotation.timestamp;
-      navigate("/create");
+      lastNavigatedTimestampRef.current = pendingAnnotation.timestamp
+      navigate('/create')
     }
-  }, [isReady, pendingAnnotation, navigate]);
+  }, [isReady, pendingAnnotation, navigate])
 
-  return null;
+  return null
 }
 
 export default function App() {
-  const [upToDate, setUpToDate] = useState(true);
-  const [minimumVersion, setMinimumVersion] = useState<string | null>(null);
+  const [upToDate, setUpToDate] = useState(true)
+  const [minimumVersion, setMinimumVersion] = useState<string | null>(null)
 
   useEffect(() => {
     (async () => {
       try {
         const response = await fetch(
-          import.meta.env.WXT_API_ENDPOINT + "/annotator/min-version"
-        );
-        const data = await response.json();
+          `${import.meta.env.WXT_API_ENDPOINT}/annotator/min-version`,
+        )
+        const data = await response.json()
         const result = isVersionGreaterOrEqual(
           import.meta.env.WXT_ANNOTATOR_VERSION,
-          data.minVersion
-        );
+          data.minVersion,
+        )
 
         if (result) {
-          setUpToDate(true);
-          setMinimumVersion(import.meta.env.WXT_ANNOTATOR_VERSION);
-        } else {
-          setUpToDate(false);
-          setMinimumVersion(data.minVersion);
+          setUpToDate(true)
+          setMinimumVersion(import.meta.env.WXT_ANNOTATOR_VERSION)
         }
-      } catch (error) {}
-    })();
-  }, []);
+        else {
+          setUpToDate(false)
+          setMinimumVersion(data.minVersion)
+        }
+      }
+      catch {}
+    })()
+  }, [])
 
   return (
     <div className="h-screen w-full bg-gray-100 font-roboto">
@@ -100,12 +115,16 @@ export default function App() {
               } of the RDA Annotator is outdated.`,
               `Please update to the latest version (minimum required version is ${minimumVersion}).`,
               <a
+                key="download-link"
                 href={`${import.meta.env.WXT_KNOWLEDGE_BASE_URL}/annotator`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-rda-500 underline"
               >
-                Download from {import.meta.env.WXT_KNOWLEDGE_BASE_URL}/annotator
+                Download from
+                {' '}
+                {import.meta.env.WXT_KNOWLEDGE_BASE_URL}
+                /annotator
               </a>,
             ]}
           />
@@ -132,5 +151,5 @@ export default function App() {
         </PendingAnnotationProvider>
       )}
     </div>
-  );
+  )
 }

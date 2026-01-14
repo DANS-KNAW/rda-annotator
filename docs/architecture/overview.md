@@ -403,14 +403,14 @@ The standard browser extension messaging APIs (`chrome.runtime.sendMessage`) are
 
 ```typescript
 // Standard API - no type checking
-chrome.runtime.sendMessage({ action: "scrolToAnnotation" }); // Typo!
+chrome.runtime.sendMessage({ action: 'scrolToAnnotation' }) // Typo!
 ```
 
 `@webext-core/messaging` provides compile-time type safety:
 
 ```typescript
 // Type-safe - compiler catches typos and wrong types
-await sendMessage("scrollToAnnotation", { annotationId: "ann_123" });
+await sendMessage('scrollToAnnotation', { annotationId: 'ann_123' })
 ```
 
 All messages are defined in a single `ProtocolMap` interface. TypeScript ensures:

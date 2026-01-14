@@ -144,10 +144,10 @@ Highlights are invisible by default. They become visible when an ancestor has th
 
 ```typescript
 // Make highlights visible
-document.body.classList.add("rda-highlights-visible");
+document.body.classList.add('rda-highlights-visible')
 
 // Hide highlights
-document.body.classList.remove("rda-highlights-visible");
+document.body.classList.remove('rda-highlights-visible')
 ```
 
 This allows instant toggling without recreating DOM elements.
@@ -167,12 +167,12 @@ Uses `<rda-highlight>` custom element name to avoid conflicts with existing page
 ### Creating Highlights
 
 ```typescript
-import { highlightRange } from "@/utils/highlighter";
+import { highlightRange } from '@/utils/highlighter'
 
-const selection = window.getSelection();
+const selection = window.getSelection()
 if (selection && !selection.isCollapsed) {
-  const range = selection.getRangeAt(0);
-  const highlight = highlightRange(range, "ann_123");
+  const range = selection.getRangeAt(0)
+  const highlight = highlightRange(range, 'ann_123')
 
   // highlight.elements contains array of created elements
   // highlight.annotationId is "ann_123"
@@ -182,22 +182,22 @@ if (selection && !selection.isCollapsed) {
 ### Removing Highlights
 
 ```typescript
-import { removeHighlight } from "@/utils/highlighter";
+import { removeHighlight } from '@/utils/highlighter'
 
 // Remove highlight
-removeHighlight(highlight);
+removeHighlight(highlight)
 
 // Normalize parent elements to clean up adjacent text nodes
-const parents = new Set();
+const parents = new Set()
 for (const element of highlight.elements) {
   if (element.parentNode) {
-    parents.add(element.parentNode);
+    parents.add(element.parentNode)
   }
 }
 
 for (const parent of parents) {
   if (parent.nodeType === Node.ELEMENT_NODE) {
-    parent.normalize();
+    parent.normalize()
   }
 }
 ```
@@ -205,26 +205,26 @@ for (const parent of parents) {
 ### Focusing Highlights
 
 ```typescript
-import { setHighlightFocused } from "@/utils/highlighter";
+import { setHighlightFocused } from '@/utils/highlighter'
 
 // Focus an annotation
-setHighlightFocused(highlight, true);
+setHighlightFocused(highlight, true)
 
 // Unfocus an annotation
-setHighlightFocused(highlight, false);
+setHighlightFocused(highlight, false)
 ```
 
 ### Toggling Visibility
 
 ```typescript
 // Show all highlights
-document.body.classList.add("rda-highlights-visible");
+document.body.classList.add('rda-highlights-visible')
 
 // Hide all highlights
-document.body.classList.remove("rda-highlights-visible");
+document.body.classList.remove('rda-highlights-visible')
 
 // Toggle visibility
-document.body.classList.toggle("rda-highlights-visible");
+document.body.classList.toggle('rda-highlights-visible')
 ```
 
 ### Finding Highlights at Point
@@ -232,20 +232,20 @@ document.body.classList.toggle("rda-highlights-visible");
 Use the helper function to find annotations at mouse coordinates:
 
 ```typescript
-import { getAnnotationIdsAtPoint } from "@/utils/highlights-at-point";
+import { getAnnotationIdsAtPoint } from '@/utils/highlights-at-point'
 
-document.addEventListener("click", (event) => {
+document.addEventListener('click', (event) => {
   const annotationIds = getAnnotationIdsAtPoint(
     event.clientX,
     event.clientY,
     document
-  );
+  )
 
   if (annotationIds.length > 0) {
     // Multiple annotations can overlap at the same point
-    console.log("Clicked annotations:", annotationIds);
+    console.log('Clicked annotations:', annotationIds)
   }
-});
+})
 ```
 
 ## Technical Details
@@ -295,7 +295,7 @@ Text nodes containing only whitespace are usually skipped. Exception: whitespace
 After removing highlights, adjacent text nodes remain. The caller should normalize these:
 
 ```typescript
-parentElement.normalize();
+parentElement.normalize()
 ```
 
 Normalization merges adjacent text nodes back into single nodes. This is important for future anchoring operations.
@@ -306,8 +306,8 @@ A single highlight can consist of multiple DOM elements when text spans disconne
 
 ```typescript
 interface Highlight {
-  elements: HTMLElement[];  // Can be multiple
-  annotationId: string;
+  elements: HTMLElement[] // Can be multiple
+  annotationId: string
 }
 ```
 

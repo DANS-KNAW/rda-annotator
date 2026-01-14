@@ -138,18 +138,18 @@ Tokens are stored in extension storage, which the browser encrypts:
 
 ```typescript
 // Store tokens
-await storage.setItem("local:oauth", {
-  access_token: "...",
-  refresh_token: "...",
+await storage.setItem('local:oauth', {
+  access_token: '...',
+  refresh_token: '...',
   expires_at: timestamp,
   refresh_expires_at: timestamp,
-});
+})
 
 // Retrieve tokens
-const oauth = await storage.getItem("local:oauth");
+const oauth = await storage.getItem('local:oauth')
 
 // Clear tokens
-await storage.removeItem("local:oauth");
+await storage.removeItem('local:oauth')
 ```
 
 **Security notes:**
@@ -239,22 +239,22 @@ function MyComponent() {
 ### Making Authenticated Requests
 
 ```typescript
-import { useContext } from "react";
-import { AuthenticationContext } from "@/context/authentication.context";
+import { use } from 'react'
+import { AuthenticationContext } from '@/context/authentication.context'
 
 function useAnnotations() {
-  const { oauth } = useContext(AuthenticationContext);
+  const { oauth } = use(AuthenticationContext)
 
   const fetchAnnotations = async () => {
     const response = await fetch(`${API_URL}/annotations`, {
       headers: {
         Authorization: `Bearer ${oauth?.access_token}`,
       },
-    });
-    return response.json();
-  };
+    })
+    return response.json()
+  }
 
-  return { fetchAnnotations };
+  return { fetchAnnotations }
 }
 ```
 
@@ -297,19 +297,19 @@ function UserMenu() {
 Before making API requests, ensure the token is valid:
 
 ```typescript
-const { oauth, refreshToken } = useContext(AuthenticationContext);
+const { oauth, refreshToken } = use(AuthenticationContext)
 
 // Check if token expires soon
-const needsRefresh = oauth.expires_at < Date.now() / 1000 + 30;
+const needsRefresh = oauth.expires_at < Date.now() / 1000 + 30
 
 if (needsRefresh) {
-  await refreshToken();
+  await refreshToken()
 }
 
 // Now safe to make request
 const response = await fetch(API_URL, {
   headers: { Authorization: `Bearer ${oauth.access_token}` },
-});
+})
 ```
 
 ## Error Handling

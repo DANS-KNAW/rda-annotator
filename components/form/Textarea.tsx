@@ -1,13 +1,13 @@
-import { UseFormRegister } from "react-hook-form";
-import Modal from "@/components/Model";
+import type { UseFormRegister } from 'react-hook-form'
+import Modal from '@/components/Model'
 
 interface InputProps
-  extends Omit<React.InputHTMLAttributes<HTMLTextAreaElement>, "name"> {
-  register?: UseFormRegister<any>;
-  info?: string;
-  rows?: number;
-  label: string | React.ReactNode;
-  name: string;
+  extends Omit<React.InputHTMLAttributes<HTMLTextAreaElement>, 'name'> {
+  register?: UseFormRegister<any>
+  info?: string
+  rows?: number
+  label: string | React.ReactNode
+  name: string
 }
 
 export function Textarea({
@@ -18,7 +18,7 @@ export function Textarea({
   rows,
   ...rest
 }: InputProps) {
-  const [showInfo, setShowInfo] = useState(false);
+  const [showInfo, setShowInfo] = useState(false)
 
   return (
     <div>
@@ -48,17 +48,19 @@ export function Textarea({
             </div>
             <div
               className="mt-4 prose prose-a:underline prose-a:text-rda-500"
-              dangerouslySetInnerHTML={{ __html: info || "" }}
+              dangerouslySetInnerHTML={{ __html: info || '' }}
             />
           </div>
         </Modal>
       )}
       <div className="flex items-center justify-between">
         <label
-          htmlFor={name + "-input"}
+          htmlFor={`${name}-input`}
           className="block text-sm/6 font-medium text-gray-900"
         >
-          {label} {rest.required && <span className="text-red-500">*</span>}
+          {label}
+          {' '}
+          {rest.required && <span className="text-red-500">*</span>}
         </label>
         {info && (
           <button
@@ -86,7 +88,7 @@ export function Textarea({
       </div>
       <div className="mt-2">
         <textarea
-          id={name + "-textarea"}
+          id={`${name}-textarea`}
           rows={rows || 4}
           className="block w-full rounded-md bg-white px-3 py-1.5 text-gray-900 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-rda-500 text-sm/6 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
           {...(register ? register(name) : {})}
@@ -94,5 +96,5 @@ export function Textarea({
         />
       </div>
     </div>
-  );
+  )
 }

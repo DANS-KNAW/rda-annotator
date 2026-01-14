@@ -1,19 +1,20 @@
-import { useState, useEffect, useRef, useContext } from "react";
-import AnnotationFormSchema from "@/assets/schema.json";
-import { Form, FormHandle } from "@/components/form/Form";
-import { Input } from "@/components/form/Input";
-import { Textarea } from "@/components/form/Textarea";
-import TypeaheadInput from "@/components/form/Typeahead.input";
-import { AnnotationSchema } from "@/types/annotation-schema.interface";
-import { AuthenticationContext } from "@/context/authentication.context";
-import { usePendingAnnotation } from "@/context/pending-annotation.context";
-import Toggle from "@/components/form/Toggle";
-import { storage } from "#imports";
-import { ISettings } from "@/types/settings.interface";
-import Alert from "@/components/Alert";
-import { useNavigate } from "react-router";
-import { AnnotationTarget } from "@/types/selector.interface";
-import { sendMessage } from "@/utils/messaging";
+import type { FormHandle } from '@/components/form/Form'
+import type { AnnotationSchema } from '@/types/annotation-schema.interface'
+import type { AnnotationTarget } from '@/types/selector.interface'
+import type { ISettings } from '@/types/settings.interface'
+import { storage } from '#imports'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router'
+import AnnotationFormSchema from '@/assets/schema.json'
+import Alert from '@/components/Alert'
+import { Form } from '@/components/form/Form'
+import { Input } from '@/components/form/Input'
+import { Textarea } from '@/components/form/Textarea'
+import Toggle from '@/components/form/Toggle'
+import TypeaheadInput from '@/components/form/Typeahead.input'
+import { AuthenticationContext } from '@/context/authentication.context'
+import { usePendingAnnotation } from '@/context/pending-annotation.context'
+import { sendMessage } from '@/utils/messaging'
 
 /**
  * Extracts the selected text from an AnnotationTarget
@@ -21,58 +22,60 @@ import { sendMessage } from "@/utils/messaging";
  */
 function getSelectedTextFromTarget(target: AnnotationTarget): string {
   const textQuoteSelector = target.selector.find(
-    (s) => s.type === "TextQuoteSelector"
-  );
+    s => s.type === 'TextQuoteSelector',
+  )
 
-  if (textQuoteSelector && textQuoteSelector.type === "TextQuoteSelector") {
-    return textQuoteSelector.exact;
+  if (textQuoteSelector && textQuoteSelector.type === 'TextQuoteSelector') {
+    return textQuoteSelector.exact
   }
 
-  return "";
+  return ''
 }
 
 export default function Create() {
-  const { isAuthenticated, login, oauth } = useContext(AuthenticationContext);
+  const { isAuthenticated, login, oauth } = use(AuthenticationContext)
   const {
     pendingAnnotation,
     isLoading: isLoadingAnnotation,
     isReady: isAnnotationReady,
     clearPendingAnnotation,
-  } = usePendingAnnotation();
-  const formRef = useRef<FormHandle>(null);
-  const [settings, setSettings] = useState<ISettings>({ vocabularies: {} });
-  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
-  const [errorMessages, setErrorMessages] = useState<string[]>([]);
-  const navigate = useNavigate();
+  } = usePendingAnnotation()
+  const formRef = useRef<FormHandle>(null)
+  const [settings, setSettings] = useState<ISettings>({ vocabularies: {} })
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true)
+  const [errorMessages, setErrorMessages] = useState<string[]>([])
+  const navigate = useNavigate()
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
         const storedSettings = await storage.getItem<ISettings>(
-          "local:settings"
-        );
-        setSettings(storedSettings || { vocabularies: {} });
-      } catch (error) {
-        console.error("Failed to load settings:", error);
-      } finally {
-        setIsLoadingSettings(false);
+          'local:settings',
+        )
+        setSettings(storedSettings || { vocabularies: {} })
       }
-    };
+      catch (error) {
+        console.error('Failed to load settings:', error)
+      }
+      finally {
+        setIsLoadingSettings(false)
+      }
+    }
 
-    loadSettings();
-  }, []);
+    loadSettings()
+  }, [])
 
   useEffect(() => {
     if (pendingAnnotation && formRef.current) {
-      const selectedText = getSelectedTextFromTarget(pendingAnnotation.target);
-      formRef.current.setValue("selectedText", selectedText);
-      formRef.current.setValue("resource", pendingAnnotation.target.source);
+      const selectedText = getSelectedTextFromTarget(pendingAnnotation.target)
+      formRef.current.setValue('selectedText', selectedText)
+      formRef.current.setValue('resource', pendingAnnotation.target.source)
 
       if (import.meta.env.DEV) {
-        console.log("[Create] Set form values:", {
-          selectedText: selectedText.substring(0, 50) + "...",
+        console.log('[Create] Set form values:', {
+          selectedText: `${selectedText.substring(0, 50)}...`,
           resource: pendingAnnotation.target.source,
-        });
+        })
       }
     }
   }, [
@@ -80,24 +83,24 @@ export default function Create() {
     isLoadingAnnotation,
     isAnnotationReady,
     isLoadingSettings,
-  ]);
+  ])
 
   useEffect(() => {
     if (!isLoadingSettings && settings.rememberChoices && formRef.current) {
       Object.entries(settings.rememberChoices).forEach(([fieldName, value]) => {
-        formRef.current?.setValue(fieldName, value);
-      });
+        formRef.current?.setValue(fieldName, value)
+      })
     }
-  }, [isLoadingSettings, settings.rememberChoices]);
+  }, [isLoadingSettings, settings.rememberChoices])
 
   useEffect(() => {
     if (
-      !isLoadingAnnotation &&
-      isAnnotationReady &&
-      !isLoadingSettings &&
-      !pendingAnnotation
+      !isLoadingAnnotation
+      && isAnnotationReady
+      && !isLoadingSettings
+      && !pendingAnnotation
     ) {
-      navigate("/annotations", { replace: true });
+      navigate('/annotations', { replace: true })
     }
   }, [
     isLoadingAnnotation,
@@ -105,79 +108,81 @@ export default function Create() {
     isLoadingSettings,
     pendingAnnotation,
     navigate,
-  ]);
+  ])
 
   const handleCancel = async () => {
     try {
-      await clearPendingAnnotation();
+      await clearPendingAnnotation()
       const tabs = await browser.tabs.query({
         active: true,
         currentWindow: true,
-      });
+      })
       if (tabs[0]?.id) {
-        await sendMessage("removeTemporaryHighlight", undefined, tabs[0].id);
+        await sendMessage('removeTemporaryHighlight', undefined, tabs[0].id)
       }
-    } catch (error) {
-      console.error("Failed to cleanup on cancel:", error);
     }
-    navigate("/annotations");
-  };
+    catch (error) {
+      console.error('Failed to cleanup on cancel:', error)
+    }
+    navigate('/annotations')
+  }
 
   const handleSubmit = async (data: Record<string, any>) => {
-    setErrorMessages([]);
+    setErrorMessages([])
 
     if (!oauth || !oauth.identity_provider_identity) {
-      console.error("Identifier not available");
+      console.error('Identifier not available')
       setErrorMessages([
-        "User Identifier not available. Please try logging in again.",
-      ]);
-      return;
+        'User Identifier not available. Please try logging in again.',
+      ])
+      return
     }
 
     if (data.rememberChoices === true) {
-      const comboboxFields = (AnnotationFormSchema as AnnotationSchema).fields
-        .filter((field) => field.type === "combobox")
-        .map((field) => field.name);
+      const comboboxFields = (AnnotationFormSchema as AnnotationSchema).fields.filter(field => field.type === 'combobox').map(field => field.name)
 
-      const rememberChoices: Record<string, any> = {};
+      const rememberChoices: Record<string, any> = {}
       comboboxFields.forEach((fieldName) => {
         if (
-          data[fieldName] !== undefined &&
-          data[fieldName] !== null &&
-          data[fieldName] !== ""
+          data[fieldName] !== undefined
+          && data[fieldName] !== null
+          && data[fieldName] !== ''
         ) {
-          rememberChoices[fieldName] = data[fieldName];
+          rememberChoices[fieldName] = data[fieldName]
         }
-      });
+      })
 
       try {
         const updatedSettings = {
           ...settings,
           rememberChoices,
-        };
-        await storage.setItem("local:settings", updatedSettings);
-        setSettings(updatedSettings);
-      } catch (error) {
-        console.error("Failed to save remembered choices:", error);
+        }
+        await storage.setItem('local:settings', updatedSettings)
+        setSettings(updatedSettings)
       }
-    } else if (data.rememberChoices === false && settings.rememberChoices) {
+      catch (error) {
+        console.error('Failed to save remembered choices:', error)
+      }
+    }
+    else if (data.rememberChoices === false && settings.rememberChoices) {
       try {
         const updatedSettings = {
           ...settings,
           rememberChoices: undefined,
-        };
-        await storage.setItem("local:settings", updatedSettings);
-        setSettings(updatedSettings);
-      } catch (error) {
-        console.error("Failed to clear remembered choices:", error);
+        }
+        await storage.setItem('local:settings', updatedSettings)
+        setSettings(updatedSettings)
+      }
+      catch (error) {
+        console.error('Failed to clear remembered choices:', error)
       }
     }
 
     if (!pendingAnnotation) {
       setErrorMessages([
-        "No annotation data available. Please select text and try again.",
-      ]);
-      return;
+        'No annotation data available. Please select text and try again.',
+      ])
+      return
     }
 
     try {
@@ -185,48 +190,48 @@ export default function Create() {
         ...data,
         submitter: oauth.identity_provider_identity,
         target: pendingAnnotation.target,
-      };
-
-      // Route through background service worker to bypass CORS/Brave Shields
-      const result = await sendMessage("createAnnotation", { payload });
-
-      if (!result.success) {
-        throw new Error(result.error || "Failed to create annotation");
       }
 
-      console.log("Annotation created successfully:", result.data);
+      // Route through background service worker to bypass CORS/Brave Shields
+      const result = await sendMessage('createAnnotation', { payload })
 
-      await clearPendingAnnotation();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create annotation')
+      }
+
+      console.log('Annotation created successfully:', result.data)
+
+      await clearPendingAnnotation()
 
       const tabs = await browser.tabs.query({
         active: true,
         currentWindow: true,
-      });
+      })
       if (tabs[0]?.id) {
-        await sendMessage("removeTemporaryHighlight", undefined, tabs[0].id);
-        await sendMessage("reloadAnnotations", undefined, tabs[0].id);
+        await sendMessage('removeTemporaryHighlight', undefined, tabs[0].id)
+        await sendMessage('reloadAnnotations', undefined, tabs[0].id)
       }
 
       if (data.rememberChoices === true && settings.rememberChoices) {
-        const fieldsToReset = (AnnotationFormSchema as AnnotationSchema).fields
-          .filter((field) => field.type !== "combobox")
-          .map((field) => field.name);
+        const fieldsToReset = (AnnotationFormSchema as AnnotationSchema).fields.filter(field => field.type !== 'combobox').map(field => field.name)
 
         fieldsToReset.forEach((fieldName) => {
-          formRef.current?.setValue(fieldName, "");
-        });
-        formRef.current?.setValue("selectedText", "");
-      } else {
-        formRef.current?.reset();
+          formRef.current?.setValue(fieldName, '')
+        })
+        formRef.current?.setValue('selectedText', '')
       }
-      navigate("/annotations");
-    } catch (error) {
-      console.error("Failed to create annotation:", error);
-      setErrorMessages([
-        "An unexpected error occurred while creating the annotation. Please try again.",
-      ]);
+      else {
+        formRef.current?.reset()
+      }
+      navigate('/annotations')
     }
-  };
+    catch (error) {
+      console.error('Failed to create annotation:', error)
+      setErrorMessages([
+        'An unexpected error occurred while creating the annotation. Please try again.',
+      ])
+    }
+  }
 
   if (isLoadingAnnotation || !isAnnotationReady || isLoadingSettings) {
     return (
@@ -234,7 +239,7 @@ export default function Create() {
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-rda-500"></div>
         <p className="mt-4 text-gray-600">Loading...</p>
       </div>
-    );
+    )
   }
 
   if (!isAuthenticated) {
@@ -250,17 +255,17 @@ export default function Create() {
           Login
         </p>
       </div>
-    );
+    )
   }
 
   if (!pendingAnnotation) {
-    return null;
+    return null
   }
 
   const FormFields = (AnnotationFormSchema as AnnotationSchema).fields.map(
     (field, index) => {
       switch (field.type) {
-        case "text":
+        case 'text':
           return (
             <Input
               key={field.name + index}
@@ -270,8 +275,8 @@ export default function Create() {
               info={field.info}
               disabled={field.disabled}
             />
-          );
-        case "textarea":
+          )
+        case 'textarea':
           return (
             <Textarea
               key={field.name + index}
@@ -280,11 +285,11 @@ export default function Create() {
               required={field.required}
               info={field.info}
             />
-          );
-        case "combobox":
-          if (field.type === "combobox" && field.vocabulary) {
+          )
+        case 'combobox':
+          if (field.type === 'combobox' && field.vocabulary) {
             if (settings.vocabularies?.[field.name] === false) {
-              return null;
+              return null
             }
           }
           return (
@@ -299,12 +304,12 @@ export default function Create() {
               multiple={field.multiple || false}
               vocabularyOptions={field.vocabularyOptions}
             />
-          );
+          )
         default:
-          return <p>Unsupported field type</p>;
+          return <p key={`unsupported-${index}`}>Unsupported field type</p>
       }
-    }
-  );
+    },
+  )
 
   FormFields.unshift(
     <Textarea
@@ -315,14 +320,14 @@ export default function Create() {
       required
       info="The text you selected on the page."
       disabled
-    />
-  );
+    />,
+  )
 
   const formDefaultValues = {
     selectedText: getSelectedTextFromTarget(pendingAnnotation.target),
     resource: pendingAnnotation.target.source,
     ...(settings.rememberChoices || {}),
-  };
+  }
 
   return (
     <>
@@ -339,7 +344,7 @@ export default function Create() {
 
         <div className="mx-2 my-4">
           <Toggle
-            label={
+            label={(
               <div>
                 <p className="font-medium text-gray-900">
                   Remember my choices for next time
@@ -348,7 +353,7 @@ export default function Create() {
                   This includes all vocabulary and keyword choices.
                 </p>
               </div>
-            }
+            )}
             name="rememberChoices"
             defaultChecked={!!settings.rememberChoices}
           />
@@ -371,5 +376,5 @@ export default function Create() {
         </div>
       </Form>
     </>
-  );
+  )
 }

@@ -1,8 +1,8 @@
-import { Selector, TextQuoteSelector } from "@/types/selector.interface";
-import { anchorByRange } from "./range";
-import { anchorByTextPosition } from "./text-position";
-import { anchorByTextQuote } from "./text-quote";
-import { isPDFDocument, anchorPDF } from "./pdf";
+import type { Selector, TextQuoteSelector } from '@/types/selector.interface'
+import { anchorPDF, isPDFDocument } from './pdf'
+import { anchorByRange } from './range'
+import { anchorByTextPosition } from './text-position'
+import { anchorByTextQuote } from './text-quote'
 
 /**
  * Anchor selectors to a range in the document.
@@ -13,37 +13,37 @@ import { isPDFDocument, anchorPDF } from "./pdf";
  */
 export async function anchor(
   root: Element,
-  selectors: Selector[]
+  selectors: Selector[],
 ): Promise<Range> {
   if (isPDFDocument()) {
-    return await anchorPDF(selectors);
+    return await anchorPDF(selectors)
   }
 
   const rangeSelector = selectors.find(
-    (s) => s.type === "RangeSelector"
-  ) as any;
+    s => s.type === 'RangeSelector',
+  ) as any
   const textPositionSelector = selectors.find(
-    (s) => s.type === "TextPositionSelector"
-  ) as any;
+    s => s.type === 'TextPositionSelector',
+  ) as any
   const textQuoteSelector = selectors.find(
-    (s) => s.type === "TextQuoteSelector"
-  ) as TextQuoteSelector | undefined;
+    s => s.type === 'TextQuoteSelector',
+  ) as TextQuoteSelector | undefined
 
   // Assert that a range's text matches the quote, if we have one.
   const assertQuoteMatches = (range: Range): Range => {
     if (textQuoteSelector?.exact) {
-      const rangeText = range.toString();
+      const rangeText = range.toString()
       if (rangeText !== textQuoteSelector.exact) {
         throw new Error(
           `Quote mismatch: expected "${textQuoteSelector.exact.substring(
             0,
-            50
-          )}...", ` + `got "${rangeText.substring(0, 50)}..."`
-        );
+            50,
+          )}...", ` + `got "${rangeText.substring(0, 50)}..."`,
+        )
       }
     }
-    return range;
-  };
+    return range
+  }
 
   // Try selectors in order: RangeSelector -> TextPositionSelector -> TextQuoteSelector
   // Each one validates against the quote if available.
@@ -51,16 +51,17 @@ export async function anchor(
   // Try 1: RangeSelector (XPath-based)
   if (rangeSelector) {
     try {
-      const range = anchorByRange(root, rangeSelector);
-      return assertQuoteMatches(range);
-    } catch (error) {
+      const range = anchorByRange(root, rangeSelector)
+      return assertQuoteMatches(range)
+    }
+    catch (error) {
       // Failed - try next selector
-      if (error instanceof Error && error.message.includes("Quote mismatch")) {
+      if (error instanceof Error && error.message.includes('Quote mismatch')) {
         if (import.meta.env.DEV) {
           console.warn(
-            "[Anchor] RangeSelector succeeded but quote mismatch:",
-            error.message
-          );
+            '[Anchor] RangeSelector succeeded but quote mismatch:',
+            error.message,
+          )
         }
       }
     }
@@ -69,16 +70,17 @@ export async function anchor(
   // Try 2: TextPositionSelector (character offset-based)
   if (textPositionSelector) {
     try {
-      const range = anchorByTextPosition(root, textPositionSelector);
-      return assertQuoteMatches(range);
-    } catch (error) {
+      const range = anchorByTextPosition(root, textPositionSelector)
+      return assertQuoteMatches(range)
+    }
+    catch (error) {
       // Failed - try next selector
-      if (error instanceof Error && error.message.includes("Quote mismatch")) {
+      if (error instanceof Error && error.message.includes('Quote mismatch')) {
         if (import.meta.env.DEV) {
           console.warn(
-            "[Anchor] TextPositionSelector succeeded but quote mismatch:",
-            error.message
-          );
+            '[Anchor] TextPositionSelector succeeded but quote mismatch:',
+            error.message,
+          )
         }
       }
     }
@@ -88,14 +90,15 @@ export async function anchor(
   if (textQuoteSelector) {
     try {
       // Use position hint from TextPositionSelector if available
-      const positionHint = textPositionSelector?.start;
-      const range = anchorByTextQuote(root, textQuoteSelector, positionHint);
+      const positionHint = textPositionSelector?.start
+      const range = anchorByTextQuote(root, textQuoteSelector, positionHint)
       // No need to assert quote here - anchorByTextQuote already found the exact text
-      return range;
-    } catch (error) {
+      return range
+    }
+    catch {
       // TextQuoteSelector also failed
     }
   }
 
-  throw new Error("Failed to anchor annotation with any selector");
+  throw new Error('Failed to anchor annotation with any selector')
 }
