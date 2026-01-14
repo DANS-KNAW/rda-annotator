@@ -1,6 +1,6 @@
 import type { AnnotationHit } from '@/types/elastic-search-document.interface'
 import { storage } from '#imports'
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { useLocation } from 'react-router'
 import AnnotationCard from '@/components/AnnotationCard'
 import AnnotationDrawer from '@/components/AnnotationDrawer'
@@ -15,7 +15,7 @@ import { extractDocumentURL } from '@/utils/extract-document-url'
 import { onMessage, sendMessage } from '@/utils/messaging'
 
 export default function Annotations() {
-  const { isAuthenticated, oauth } = use(AuthenticationContext)
+  const { isAuthenticated, oauth } = useContext(AuthenticationContext)
   const location = useLocation()
   const {
     orphanedIds: orphanedAnnotationIds,
@@ -144,6 +144,8 @@ export default function Annotations() {
       )
       setMyAnnotations(userData.hits.hits)
     })()
+  // oauth/profile are derived from isAuthenticated state, no need to track separately
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, location])
 
   // Listen for highlight clicks - set persistent filter

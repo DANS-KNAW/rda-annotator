@@ -22,6 +22,8 @@ export default antfu(
       'ts/ban-ts-comment': ['error', { 'ts-ignore': 'allow-with-description' }],
       // Markdown files don't need linting
       'markdown/heading-increment': 'off',
+      // useContext is more reliable than React 19's use() which requires proper auto-import setup
+      'react/no-use-context': 'off',
     },
   },
   // Test files - disable React hooks rules (Playwright fixtures use `use()` which isn't a React hook)

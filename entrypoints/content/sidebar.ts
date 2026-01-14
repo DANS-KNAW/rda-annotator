@@ -21,7 +21,7 @@ export async function createSidebar({ ctx }: SidebarProps) {
 
     onMount(_, shadowRoot, shadowHost) {
       if (import.meta.env.DEV) {
-        console.log('[RDA Sidebar] Mounted')
+        console.debug('[RDA Sidebar] Mounted')
       }
 
       const container = document.createElement('div')
@@ -142,7 +142,7 @@ export async function createSidebar({ ctx }: SidebarProps) {
 
     onRemove() {
       if (import.meta.env.DEV) {
-        console.log('[RDA Sidebar] Removed')
+        console.debug('[RDA Sidebar] Removed')
       }
     },
   })

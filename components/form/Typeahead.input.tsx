@@ -49,6 +49,7 @@ export default function TypeaheadInput({
     defaultValue: multiple ? [] : null,
   })
 
+  // Set initial value when data loads - field.onChange is stable, field object changes every render
   useEffect(() => {
     if (!control)
       return
@@ -70,6 +71,7 @@ export default function TypeaheadInput({
         }
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- field.onChange is stable, full field object changes every render
   }, [control, data, value, field.value, multiple])
 
   // Early return after all hooks
@@ -153,6 +155,7 @@ export default function TypeaheadInput({
             </div>
             <div
               className="mt-4 prose prose-a:underline prose-a:text-rda-500"
+              // eslint-disable-next-line react-dom/no-dangerously-set-innerhtml -- info comes from trusted schema
               dangerouslySetInnerHTML={{ __html: info || '' }}
             />
           </div>

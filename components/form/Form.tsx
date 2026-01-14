@@ -46,6 +46,7 @@ function FormComponent<T extends FieldValues = FieldValues>(
 
   // Recursive function to inject register and control into nested children
   const injectProps = (children: ReactNode): ReactNode => {
+    // eslint-disable-next-line react/no-children-map -- intentional pattern to inject form context into child components
     return Children.map(children, (child) => {
       if (!React.isValidElement(child))
         return child
@@ -78,6 +79,7 @@ function FormComponent<T extends FieldValues = FieldValues>(
   return <form onSubmit={handleSubmit(onSubmit)}>{injectProps(children)}</form>
 }
 
+// eslint-disable-next-line react/no-forward-ref -- complex generic type inference requires forwardRef pattern
 export const Form = forwardRef(FormComponent) as <
   T extends FieldValues = FieldValues,
 >(

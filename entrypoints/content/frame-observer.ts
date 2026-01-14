@@ -91,7 +91,7 @@ export class FrameObserver {
         try {
           const url = frame.contentWindow?.location.href || ''
           if (import.meta.env.DEV) {
-            console.log(`[FrameObserver] Frame loaded:`, url)
+            console.debug(`[FrameObserver] Frame loaded:`, url)
           }
           this.onFrameLoad?.(frame, url)
         }

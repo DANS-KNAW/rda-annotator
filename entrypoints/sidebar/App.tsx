@@ -61,7 +61,7 @@ function NavigateOnPendingAnnotation() {
       && pendingAnnotation.timestamp !== lastNavigatedTimestampRef.current
     ) {
       if (import.meta.env.DEV) {
-        console.log(
+        console.debug(
           '[NavigateOnPendingAnnotation] Navigating to /create for timestamp:',
           pendingAnnotation.timestamp,
         )

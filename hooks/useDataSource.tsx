@@ -88,6 +88,8 @@ export default function useDataSource(
     }
 
     loadData()
+  // JSON.stringify(options) is used intentionally to compare by value, not reference
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasource, JSON.stringify(options)])
 
   return { data, loading, error }

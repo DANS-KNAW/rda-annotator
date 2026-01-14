@@ -224,7 +224,7 @@ export class AnnotationManager {
       return
 
     if (import.meta.env.DEV) {
-      console.log(
+      console.debug(
         `[AnnotationManager] Re-anchoring ${toReanchor.length} annotations after DOM change`,
       )
     }
@@ -261,7 +261,7 @@ export class AnnotationManager {
     )
 
     if (import.meta.env.DEV) {
-      console.log('[AnnotationManager] PDF page tracking initialized')
+      console.debug('[AnnotationManager] PDF page tracking initialized')
     }
   }
 
@@ -277,7 +277,7 @@ export class AnnotationManager {
     }
 
     if (import.meta.env.DEV) {
-      console.log(
+      console.debug(
         `[AnnotationManager] Page ${pageIndex} ready, ${annotationsForPage.length} annotations to process`,
       )
     }
@@ -383,7 +383,7 @@ export class AnnotationManager {
         this.recoveredAnnotationIds.add(id)
         this.scheduleStatusUpdate(id, 'recovered')
         if (import.meta.env.DEV) {
-          console.log(
+          console.debug(
             `[AnnotationManager] Annotation ${id} recovered from orphaned state`,
           )
         }
@@ -658,7 +658,7 @@ export class AnnotationManager {
     this.scheduleStatusUpdate(id, 'orphaned')
 
     if (import.meta.env.DEV) {
-      console.log(
+      console.debug(
         `[AnnotationManager] Annotation ${id} marked orphaned after ${this.MAX_TIMED_RETRIES} retries`,
       )
     }

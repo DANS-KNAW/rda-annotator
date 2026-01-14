@@ -3,7 +3,7 @@ import type { AnnotationSchema } from '@/types/annotation-schema.interface'
 import type { AnnotationTarget } from '@/types/selector.interface'
 import type { ISettings } from '@/types/settings.interface'
 import { storage } from '#imports'
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import AnnotationFormSchema from '@/assets/schema.json'
 import Alert from '@/components/Alert'
@@ -33,7 +33,7 @@ function getSelectedTextFromTarget(target: AnnotationTarget): string {
 }
 
 export default function Create() {
-  const { isAuthenticated, login, oauth } = use(AuthenticationContext)
+  const { isAuthenticated, login, oauth } = useContext(AuthenticationContext)
   const {
     pendingAnnotation,
     isLoading: isLoadingAnnotation,
@@ -72,7 +72,7 @@ export default function Create() {
       formRef.current.setValue('resource', pendingAnnotation.target.source)
 
       if (import.meta.env.DEV) {
-        console.log('[Create] Set form values:', {
+        console.debug('[Create] Set form values:', {
           selectedText: `${selectedText.substring(0, 50)}...`,
           resource: pendingAnnotation.target.source,
         })
@@ -199,7 +199,7 @@ export default function Create() {
         throw new Error(result.error || 'Failed to create annotation')
       }
 
-      console.log('Annotation created successfully:', result.data)
+      console.debug('Annotation created successfully:', result.data)
 
       await clearPendingAnnotation()
 
@@ -263,12 +263,12 @@ export default function Create() {
   }
 
   const FormFields = (AnnotationFormSchema as AnnotationSchema).fields.map(
-    (field, index) => {
+    (field) => {
       switch (field.type) {
         case 'text':
           return (
             <Input
-              key={field.name + index}
+              key={field.name}
               name={field.name}
               label={field.label}
               required={field.required}
@@ -279,7 +279,7 @@ export default function Create() {
         case 'textarea':
           return (
             <Textarea
-              key={field.name + index}
+              key={field.name}
               name={field.name}
               label={field.label}
               required={field.required}
@@ -294,7 +294,7 @@ export default function Create() {
           }
           return (
             <TypeaheadInput
-              key={field.name + index}
+              key={field.name}
               name={field.name}
               label={field.label}
               info={field.info}
@@ -306,7 +306,8 @@ export default function Create() {
             />
           )
         default:
-          return <p key={`unsupported-${index}`}>Unsupported field type</p>
+          // This case should never happen with proper schema
+          return null
       }
     },
   )

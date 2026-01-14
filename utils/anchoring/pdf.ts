@@ -201,7 +201,7 @@ export async function waitForPDFReady(win: Window = window): Promise<boolean> {
   try {
     const isPDF = isPDFDocument(win)
     if (import.meta.env.DEV) {
-      console.log(
+      console.debug(
         `[PDF waitForPDFReady] isPDFDocument: ${isPDF}, window:`,
         win === window ? 'main' : 'frame',
       )
@@ -212,13 +212,13 @@ export async function waitForPDFReady(win: Window = window): Promise<boolean> {
     }
 
     if (import.meta.env.DEV) {
-      console.log(`[PDF waitForPDFReady] Waiting for PDF document to load...`)
+      console.debug(`[PDF waitForPDFReady] Waiting for PDF document to load...`)
     }
 
     await waitForPDFDocumentLoaded(win)
 
     if (import.meta.env.DEV) {
-      console.log(`[PDF waitForPDFReady] PDF document loaded successfully`)
+      console.debug(`[PDF waitForPDFReady] PDF document loaded successfully`)
     }
 
     return true
@@ -583,7 +583,7 @@ async function anchorByPosition(
   ])
 
   if (import.meta.env.DEV) {
-    console.log(`[PDF anchorByPosition] Page ${pageIndex}:`, {
+    console.debug(`[PDF anchorByPosition] Page ${pageIndex}:`, {
       renderingState: page.renderingState,
       hasTextLayer: !!page.textLayer,
       textLayerRenderingDone: page.textLayer
@@ -613,7 +613,7 @@ async function anchorByPosition(
     const textLayerStr = textLayerDiv.textContent!
 
     if (import.meta.env.DEV) {
-      console.log(`[PDF anchorByPosition] Text layer for page ${pageIndex}:`, {
+      console.debug(`[PDF anchorByPosition] Text layer for page ${pageIndex}:`, {
         textLayerLength: textLayerStr.length,
         pageTextLength: pageText.length,
         ratio: textLayerStr.length / pageText.length,
@@ -625,7 +625,7 @@ async function anchorByPosition(
       || textLayerStr.length < pageText.length * 0.5
     ) {
       if (import.meta.env.DEV) {
-        console.log(
+        console.debug(
           `[PDF anchorByPosition] Text layer too short, creating placeholder for page ${pageIndex}`,
         )
       }
@@ -696,7 +696,7 @@ async function anchorByPosition(
     range.setEnd(endNode, endOffset)
 
     if (import.meta.env.DEV) {
-      console.log(
+      console.debug(
         `[PDF anchorByPosition] Successfully anchored on page ${pageIndex}:`,
         {
           rangeText: range.toString().substring(0, 50),
@@ -708,7 +708,7 @@ async function anchorByPosition(
   }
 
   if (import.meta.env.DEV) {
-    console.log(
+    console.debug(
       `[PDF anchorByPosition] Text layer not ready, creating placeholder for page ${pageIndex}:`,
       {
         renderingState: page.renderingState,

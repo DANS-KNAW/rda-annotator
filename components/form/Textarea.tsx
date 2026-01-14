@@ -48,6 +48,7 @@ export function Textarea({
             </div>
             <div
               className="mt-4 prose prose-a:underline prose-a:text-rda-500"
+              // eslint-disable-next-line react-dom/no-dangerously-set-innerhtml -- info comes from trusted schema
               dangerouslySetInnerHTML={{ __html: info || '' }}
             />
           </div>

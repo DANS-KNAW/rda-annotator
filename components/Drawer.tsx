@@ -11,6 +11,7 @@ export default function Drawer({ title, children, open, setOpen }: DrawerProps) 
   const [isVisible, setIsVisible] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
 
+  /* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect -- Animation state management: state updates are intentional for smooth open/close transitions */
   useEffect(() => {
     if (open) {
       // Opening: first make visible, then animate in
@@ -33,6 +34,7 @@ export default function Drawer({ title, children, open, setOpen }: DrawerProps) 
       return () => clearTimeout(timer)
     }
   }, [open])
+  /* eslint-enable react-hooks-extra/no-direct-set-state-in-use-effect */
 
   if (!isVisible && !open) {
     return null

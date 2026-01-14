@@ -67,7 +67,7 @@ export async function createAnnotatorPopup({
 
     onMount(_, shadowRoot, shadowHost) {
       if (import.meta.env.DEV) {
-        console.log('[RDA Annotator] Mounted')
+        console.debug('[RDA Annotator] Mounted')
       }
 
       container = document.createElement('div')
@@ -199,7 +199,7 @@ export async function createAnnotatorPopup({
 
     onRemove() {
       if (import.meta.env.DEV) {
-        console.log('[RDA Annotator] Removed')
+        console.debug('[RDA Annotator] Removed')
       }
       currentSelection = null
     },

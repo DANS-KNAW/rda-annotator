@@ -93,7 +93,7 @@ class PDFPageStateManagerImpl implements PDFPageStateManager {
     this.initialized = true
 
     if (import.meta.env.DEV) {
-      console.log('[PDFPageStateManager] Initialized with eventBus')
+      console.debug('[PDFPageStateManager] Initialized with eventBus')
     }
   }
 
@@ -127,7 +127,7 @@ class PDFPageStateManagerImpl implements PDFPageStateManager {
     this.initialized = false
 
     if (import.meta.env.DEV) {
-      console.log('[PDFPageStateManager] Destroyed')
+      console.debug('[PDFPageStateManager] Destroyed')
     }
   }
 
@@ -246,7 +246,7 @@ class PDFPageStateManagerImpl implements PDFPageStateManager {
 
     if (import.meta.env.DEV) {
       const readyCount = this.getReadyPages().length
-      console.log(
+      console.debug(
         `[PDFPageStateManager] Scanned ${app.pdfViewer.pagesCount} pages, ${readyCount} ready`,
       )
     }
@@ -297,7 +297,7 @@ class PDFPageStateManagerImpl implements PDFPageStateManager {
       state.renderingDone = true
 
       if (import.meta.env.DEV) {
-        console.log(
+        console.debug(
           `[PDFPageStateManager] Text layer ready for page ${pageIndex}`,
         )
       }
@@ -333,7 +333,7 @@ class PDFPageStateManagerImpl implements PDFPageStateManager {
     }
 
     if (import.meta.env.DEV) {
-      console.log(`[PDFPageStateManager] Page ${pageIndex} destroyed`)
+      console.debug(`[PDFPageStateManager] Page ${pageIndex} destroyed`)
     }
 
     this.notifyPageDestroyed(pageIndex)

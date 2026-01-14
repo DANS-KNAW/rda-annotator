@@ -4,6 +4,7 @@ import type {
 import {
   createContext,
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState,
@@ -31,8 +32,9 @@ interface AnchorStatusContextType {
 
 const AnchorStatusContext = createContext<AnchorStatusContextType | null>(null)
 
+// eslint-disable-next-line react-refresh/only-export-components -- hooks are conventionally co-located with their providers
 export function useAnchorStatus(): AnchorStatusContextType {
-  const context = use(AnchorStatusContext)
+  const context = useContext(AnchorStatusContext)
   if (!context) {
     throw new Error(
       'useAnchorStatus must be used within an AnchorStatusProvider',
@@ -46,12 +48,14 @@ interface AnchorStatusProviderProps {
 }
 
 export function AnchorStatusProvider({ children }: AnchorStatusProviderProps) {
+  /* eslint-disable react/prefer-use-state-lazy-initialization -- Set initialization is trivial, not expensive */
   const [state, setState] = useState<AnchorStatusState>({
     orphanedIds: [],
     pendingIds: [],
     recoveredIds: [],
     anchoredIds: new Set(),
   })
+  /* eslint-enable react/prefer-use-state-lazy-initialization */
 
   // Track IDs that were ever successfully anchored (survives re-renders)
   const everAnchoredRef = useRef<Set<string>>(new Set())

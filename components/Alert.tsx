@@ -31,6 +31,7 @@ export default function Alert({ title, messages }: AlertProps) {
           <div className="mt-2 text-sm text-red-700">
             <ul role="list" className="list-disc space-y-1 pl-5">
               {messages.map((message, index) => (
+                // eslint-disable-next-line react/no-array-index-key -- static list, no reordering
                 <li key={index}>{message}</li>
               ))}
             </ul>

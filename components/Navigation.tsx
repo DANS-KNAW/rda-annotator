@@ -1,9 +1,9 @@
-import { use } from 'react'
+import { useContext } from 'react'
 import { NavLink } from 'react-router'
 import { AuthenticationContext } from '@/context/authentication.context'
 
 export default function Navigation() {
-  const { isAuthenticated, login } = use(AuthenticationContext)
+  const { isAuthenticated, login } = useContext(AuthenticationContext)
 
   const tabs = [
     { label: 'Annotations', view: '/annotations' },

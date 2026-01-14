@@ -100,7 +100,7 @@ export async function injectIntoFrame(
   // Register frame URL IMMEDIATELY - sidebar can fetch annotations right away
   // This is independent of PDF readiness - just a URL query to Elasticsearch
   const frameUrl = frameWindow.location.href
-  console.log('[RDA Frame Injector] Registering frame URL:', frameUrl)
+  console.debug('[RDA Frame Injector] Registering frame URL:', frameUrl)
   frameWindow.parent.postMessage(
     {
       type: 'rda:registerFrameUrl',
@@ -109,7 +109,7 @@ export async function injectIntoFrame(
     },
     '*',
   )
-  console.log('[RDA Frame Injector] Posted registerFrameUrl message to parent')
+  console.debug('[RDA Frame Injector] Posted registerFrameUrl message to parent')
 
   const contentType = await detectContentTypeAsync(frameDoc)
 
@@ -119,7 +119,7 @@ export async function injectIntoFrame(
     try {
       const isReady = await waitForPDFReady(frameWindow)
       if (!isReady && import.meta.env.DEV) {
-        console.log(
+        console.debug(
           '[RDA Frame Injector] PDF.js not ready yet, AnnotationManager will retry',
         )
       }

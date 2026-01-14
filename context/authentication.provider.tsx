@@ -64,6 +64,8 @@ export default function AuthenticationProvider({
       setOauth(storedOauth)
       setAuthenticated(true)
     })()
+  // Run once on mount - auth is a singleton, no need to track
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const login = async () => {
@@ -136,6 +138,8 @@ export default function AuthenticationProvider({
     }, refreshIn)
 
     return () => clearTimeout(timeout)
+  // refreshToken is intentionally excluded - it changes every render but behavior is stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authenticated, oauth])
 
   return (

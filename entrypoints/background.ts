@@ -325,10 +325,12 @@ export default defineBackground(() => {
         const urlObj = new URL(tab.url)
         const originalURL = urlObj.searchParams.get('file')
         if (originalURL) {
-          console.log(
-            '[RDA Background] Redirecting back to original PDF:',
-            originalURL,
-          )
+          if (import.meta.env.DEV) {
+            console.debug(
+              '[RDA Background] Redirecting back to original PDF:',
+              originalURL,
+            )
+          }
           await browser.tabs.update(tab.id!, { url: originalURL })
           return
         }
@@ -346,7 +348,7 @@ export default defineBackground(() => {
       // Check if this is a direct PDF URL (not already in our viewer)
       if (isPDFURL(tab.url)) {
         if (import.meta.env.DEV) {
-          console.log(
+          console.debug(
             '[RDA Background] Redirecting PDF after enable:',
             tab.url,
           )

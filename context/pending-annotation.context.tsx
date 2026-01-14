@@ -6,6 +6,7 @@ import { storage } from '#imports'
 import {
   createContext,
   useCallback,
+  useContext,
   useEffect,
   useState,
 } from 'react'
@@ -34,8 +35,9 @@ interface PendingAnnotationContextType {
 const PendingAnnotationContext
   = createContext<PendingAnnotationContextType | null>(null)
 
+// eslint-disable-next-line react-refresh/only-export-components -- hooks are conventionally co-located with their providers
 export function usePendingAnnotation(): PendingAnnotationContextType {
-  const context = use(PendingAnnotationContext)
+  const context = useContext(PendingAnnotationContext)
   if (!context) {
     throw new Error(
       'usePendingAnnotation must be used within a PendingAnnotationProvider',
@@ -71,7 +73,7 @@ export function PendingAnnotationProvider({
         // Firefox may need more time for cross-context storage propagation
         if (!data && retriesRemaining > 0) {
           if (import.meta.env.DEV) {
-            console.log(
+            console.debug(
               `[PendingAnnotationContext] No data found, retrying (${retriesRemaining} left)...`,
             )
           }
@@ -125,7 +127,7 @@ export function PendingAnnotationProvider({
         'local:pendingAnnotation',
         (newValue) => {
           if (import.meta.env.DEV) {
-            console.log(
+            console.debug(
               '[PendingAnnotationContext] Storage changed:',
               newValue ? `timestamp: ${newValue.timestamp}` : 'null',
             )

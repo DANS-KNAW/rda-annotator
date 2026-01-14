@@ -23,8 +23,8 @@
     "test:e2e:headed": "pnpm build:all && playwright test --headed",
     "test:e2e:debug": "pnpm build:all && playwright test --debug",
     "test:all": "pnpm test && pnpm test:e2e",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint": "eslint . && tsc --noEmit",
+    "lint:fix": "eslint . --fix && tsc --noEmit"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",

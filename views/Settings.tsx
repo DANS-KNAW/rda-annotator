@@ -2,7 +2,7 @@ import type { AnnotationSchema } from '@/types/annotation-schema.interface'
 import type { ISettings } from '@/types/settings.interface'
 import { storage } from '#imports'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import AnnotationFormSchema from '@/assets/schema.json'
 import Button from '@/components/Button'
 import { Form } from '@/components/form/Form'
@@ -18,7 +18,7 @@ export default function Settings() {
   const [isLoading, setIsLoading] = useState(true)
   const [settings, setSettings] = useState<VocabularySettings>({})
   const [activeModal, setActiveModal] = useState<string | null>(null)
-  const { logout } = use(AuthenticationContext)
+  const { logout } = useContext(AuthenticationContext)
 
   const comboboxes = (AnnotationFormSchema as AnnotationSchema).fields.filter(
     field =>
@@ -54,8 +54,10 @@ export default function Settings() {
     }
   }
 
+  // Run once on mount to initialize settings
   useEffect(() => {
     initializeSettings()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs only on mount
   }, [])
 
   const onSubmit = async (data: Record<string, boolean>) => {
@@ -122,6 +124,7 @@ export default function Settings() {
                       </div>
                       <div
                         className="mt-4 prose prose-a:underline prose-a:text-rda-500"
+                        // eslint-disable-next-line react-dom/no-dangerously-set-innerhtml -- info comes from trusted schema
                         dangerouslySetInnerHTML={{ __html: field.info || '' }}
                       />
                     </div>
