@@ -262,6 +262,10 @@ export default defineBackground(() => {
     })
 
     if (!response.ok) {
+      // 404 means no results found - return empty array instead of error
+      if (response.status === 404) {
+        return []
+      }
       throw new Error(
         `Failed to fetch vocabularies: ${response.status} ${response.statusText}`,
       )
