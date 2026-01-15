@@ -1,5 +1,8 @@
 import type { FormHandle } from '@/components/form/Form'
-import type { AnnotationSchema } from '@/types/annotation-schema.interface'
+import type {
+  AnnotationSchema,
+  ComboboxField,
+} from '@/types/annotation-schema.interface'
 import type { AnnotationTarget } from '@/types/selector.interface'
 import type { ISettings } from '@/types/settings.interface'
 import { storage } from '#imports'
@@ -192,6 +195,45 @@ export default function Create() {
         target: pendingAnnotation.target,
       }
 
+      // Group open vocabulary fields (displaySection: "additional_vocabularies") under open_vocabularies
+      // This is future-proof - any new vocabulary with this displaySection will automatically be grouped
+      const openVocabFields = (
+        AnnotationFormSchema as AnnotationSchema
+      ).fields.filter(
+        (field): field is ComboboxField =>
+          field.type === 'combobox'
+          && field.displaySection === 'additional_vocabularies'
+          && !!field.vocabularyOptions?.namespace,
+      )
+
+      if (openVocabFields.length > 0) {
+        const openVocabularies: Record<string, any> = {}
+
+        for (const field of openVocabFields) {
+          const fieldName = field.name
+          const namespace = field.vocabularyOptions?.namespace
+          if (!namespace)
+            continue
+
+          if (
+            payload[fieldName]
+            && Array.isArray(payload[fieldName])
+            && payload[fieldName].length > 0
+          ) {
+            openVocabularies[namespace] = payload[fieldName]
+            delete payload[fieldName]
+          }
+          else {
+            // Clean up empty/undefined fields
+            delete payload[fieldName]
+          }
+        }
+
+        if (Object.keys(openVocabularies).length > 0) {
+          payload.open_vocabularies = openVocabularies
+        }
+      }
+
       // Route through background service worker to bypass CORS/Brave Shields
       const result = await sendMessage('createAnnotation', { payload })
 
@@ -227,9 +269,11 @@ export default function Create() {
     }
     catch (error) {
       console.error('Failed to create annotation:', error)
-      setErrorMessages([
-        'An unexpected error occurred while creating the annotation. Please try again.',
-      ])
+      const message
+        = error instanceof Error
+          ? error.message
+          : 'An unexpected error occurred while creating the annotation. Please try again.'
+      setErrorMessages([message])
     }
   }
 

@@ -2,6 +2,7 @@ import type { DataSource } from '@/types/datasource.interface'
 import { storage } from '#imports'
 import { isPDFURL } from '@/utils/detect-content-type'
 import { onMessage, sendMessage } from '@/utils/messaging'
+import { parseApiError } from '@/utils/parse-api-error'
 
 /**
  * Get the URL for viewing a PDF in our custom PDF.js viewer
@@ -310,10 +311,8 @@ export default defineBackground(() => {
       })
 
       if (!response.ok) {
-        return {
-          success: false,
-          error: `Failed to create annotation: ${response.statusText}`,
-        }
+        const errorMessage = await parseApiError(response)
+        return { success: false, error: errorMessage }
       }
 
       const data = await response.json()

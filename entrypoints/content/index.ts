@@ -383,6 +383,13 @@ export default defineContentScript({
         clearPendingOnUrlChange()
       }
 
+      // Clear pending annotation on full page navigation (beforeunload)
+      // This handles cases where user clicks a link or navigates away entirely
+      window.addEventListener('beforeunload', () => {
+        // Fire-and-forget - page is unloading, can't wait for response
+        sendMessage('clearPendingAnnotation', undefined).catch(() => {})
+      })
+
       // Wrap message listeners in try-catch to prevent duplicate listener errors from breaking
       try {
         onMessage('toggleSidebar', async (message) => {

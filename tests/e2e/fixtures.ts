@@ -150,6 +150,10 @@ async function setStorageViaExtensionPage(
 function getMockAuthData() {
   const now = Math.floor(Date.now() / 1000)
 
+  // Use a valid ORCID format for identity_provider_identity
+  // This is required by the backend validation
+  const mockOrcid = '0000-0002-1825-0097'
+
   const oauth = {
     'access_token': 'mock-test-token-e2e',
     'expires_in': 3600,
@@ -162,7 +166,7 @@ function getMockAuthData() {
     'not-before-policy': 0,
     'session_state': 'test-session-123',
     'scope': 'openid email profile',
-    'identity_provider_identity': 'test-user-uuid-123',
+    'identity_provider_identity': mockOrcid,
   }
 
   const user = {
@@ -173,7 +177,7 @@ function getMockAuthData() {
     name: 'E2E Tester',
     preferred_username: 'e2etester',
     resource_access: { account: { roles: [] } },
-    sub: 'test-user-uuid-123',
+    sub: mockOrcid,
   }
 
   return { oauth, user }
@@ -235,25 +239,31 @@ export async function getExtensionBackground(
 }
 
 /**
- * Enable the extension by setting storage flag.
+ * Enable the extension by setting storage flags.
+ * Sets both 'extension-enabled' and 'intro-shown' to skip the intro page.
  * Works with both Chrome (via service worker) and Firefox (via extension page).
  */
 export async function enableExtension(
   context: BrowserContext,
   browserName: string,
 ) {
+  const storageData = {
+    'extension-enabled': true,
+    'intro-shown': true, // Skip the introduction page in tests
+  }
+
   if (browserName === 'chromium') {
     let [serviceWorker] = context.serviceWorkers()
     if (!serviceWorker) {
       serviceWorker = await context.waitForEvent('serviceworker')
     }
-    await serviceWorker.evaluate(() => {
-      return chrome.storage.local.set({ 'extension-enabled': true })
-    })
+    await serviceWorker.evaluate((data) => {
+      return chrome.storage.local.set(data)
+    }, storageData)
   }
   else {
     // Firefox: use extension page to set storage
-    await setStorageViaExtensionPage(context, { 'extension-enabled': true })
+    await setStorageViaExtensionPage(context, storageData)
   }
 }
 
