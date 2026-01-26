@@ -309,6 +309,22 @@ export default defineBackground(() => {
       return { success: false, error: 'No authentication token available' }
     }
 
+    // Debug: Log the payload being sent to the API
+    if (import.meta.env.DEV) {
+      const payload = message.data.payload as Record<string, unknown>
+      const target = payload.target as { source?: string, selector?: Array<{ type?: string }> } | undefined
+      console.debug('[Background] Creating annotation:', {
+        title: payload.title,
+        submitter: payload.submitter,
+        hasTarget: !!target,
+        targetSource: target?.source,
+        hasSelectorArray: Array.isArray(target?.selector),
+        selectorCount: target?.selector?.length || 0,
+        selectorTypes: target?.selector?.map(s => s.type) || [],
+        fullTarget: target,
+      })
+    }
+
     try {
       const response = await fetch(`${baseUrl}/knowledge-base/annotation`, {
         method: 'POST',
@@ -321,13 +337,30 @@ export default defineBackground(() => {
 
       if (!response.ok) {
         const errorMessage = await parseApiError(response)
+        if (import.meta.env.DEV) {
+          console.error('[Background] Create annotation failed:', errorMessage)
+        }
         return { success: false, error: errorMessage }
       }
 
       const data = await response.json()
+
+      // Debug: Log the API response
+      if (import.meta.env.DEV) {
+        console.debug('[Background] Annotation created successfully:', {
+          id: data.id || data.uuid,
+          responseKeys: Object.keys(data),
+          hasAnnotationTarget: 'annotation_target' in data,
+          hasTarget: 'target' in data,
+        })
+      }
+
       return { success: true, data }
     }
     catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('[Background] Create annotation error:', error)
+      }
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -349,7 +382,7 @@ export default defineBackground(() => {
         {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${oauth.access_token}`,
+            Authorization: `Bearer ${oauth.access_token}`,
           },
         },
       )

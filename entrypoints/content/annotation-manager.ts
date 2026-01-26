@@ -514,6 +514,22 @@ export class AnnotationManager {
       const response = await searchAnnotationsByUrl(url)
       const annotations = response.hits.hits
 
+      // Debug: Log retrieved annotations and their selector structure
+      if (import.meta.env.DEV) {
+        console.debug('[AnnotationManager] Loaded annotations:', {
+          url,
+          count: annotations.length,
+          annotations: annotations.map(ann => ({
+            id: ann._id,
+            fragment: ann._source.fragment?.substring(0, 50),
+            hasAnnotationTarget: !!ann._source.annotation_target,
+            hasSelectors: !!ann._source.annotation_target?.selector?.length,
+            selectorTypes: ann._source.annotation_target?.selector?.map(s => s.type) || [],
+            rawAnnotationTarget: ann._source.annotation_target,
+          })),
+        })
+      }
+
       // Use URL hint OR runtime check - handles race condition where
       // isPDFDocument() returns false because PDF.js hasn't loaded yet
       const shouldUseHybridRetry = this.isPDFHint || isPDFDocument()
@@ -546,12 +562,27 @@ export class AnnotationManager {
     try {
       await this.anchorAnnotation(annotation)
       this.scheduleStatusUpdate(annotation._id, 'anchored')
+
+      if (import.meta.env.DEV) {
+        console.debug('[AnnotationManager] Successfully anchored:', annotation._id)
+      }
     }
-    catch {
+    catch (error) {
       if (!this.annotations.has(annotation._id)) {
         this.orphanedAnnotationIds.add(annotation._id)
         this.orphanedAnnotations.set(annotation._id, annotation)
         this.scheduleStatusUpdate(annotation._id, 'orphaned')
+
+        if (import.meta.env.DEV) {
+          console.warn('[AnnotationManager] Failed to anchor annotation:', {
+            id: annotation._id,
+            fragment: annotation._source.fragment?.substring(0, 50),
+            hasAnnotationTarget: !!annotation._source.annotation_target,
+            hasSelectors: !!annotation._source.annotation_target?.selector?.length,
+            selectorTypes: annotation._source.annotation_target?.selector?.map(s => s.type) || [],
+            error: error instanceof Error ? error.message : String(error),
+          })
+        }
       }
     }
   }
