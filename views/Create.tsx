@@ -192,7 +192,7 @@ export default function Create() {
       const payload: Record<string, any> = {
         ...data,
         submitter: oauth.identity_provider_identity,
-        target: pendingAnnotation.target,
+        annotation_target: pendingAnnotation.target,
       }
 
       // Group open vocabulary fields (displaySection: "additional_vocabularies") under open_vocabularies
