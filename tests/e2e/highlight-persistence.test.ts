@@ -45,10 +45,11 @@ import {
 test.describe('Highlight Persistence', () => {
   let mockServer: Server
 
-  // Skip on Firefox - anchoring/highlighting has known issues on Firefox
-  // that require separate investigation. The core fix (annotation_target field)
-  // is verified by Chromium tests.
-  test.skip(({ browserName }) => browserName === 'firefox', 'Firefox anchoring needs separate fix')
+  // Skip on Firefox - the reloadAnnotations message doesn't trigger properly after
+  // annotation creation. The content script receives the message but the annotation-manager
+  // doesn't reload. This is a separate issue from the annotation_target fix.
+  // TODO: Investigate Firefox message handling in content script
+  test.skip(({ browserName }) => browserName === 'firefox', 'Firefox message handling needs separate investigation')
 
   test.beforeAll(async () => {
     mockServer = await startMockServer({ port: 3001 })
@@ -96,10 +97,29 @@ test.describe('Highlight Persistence', () => {
     // Wait for annotations list
     await waitForAnnotationsList(sidebarFrame)
 
-    // Wait for annotations to load and anchor (use longer timeout for stability)
+    // Wait for annotations to load and anchor
     await waitForAnnotationsToAnchor(page, 15000)
 
     await takeScreenshot(page, browserName, 'highlight-after-creation')
+
+    // Debug: Check what highlights exist on the page
+    const debugHighlights = await page.evaluate(() => {
+      const highlights = document.querySelectorAll('rda-highlight')
+      return {
+        count: highlights.length,
+        highlights: Array.from(highlights).map(h => ({
+          id: h.getAttribute('data-annotation-id'),
+          text: h.textContent?.substring(0, 50),
+        })),
+      }
+    })
+    console.debug(`[DEBUG ${browserName}] Highlights on page:`, JSON.stringify(debugHighlights))
+
+    // Debug: Check sidebar content for annotation status
+    const sidebarContent = await sidebarFrame.evaluate(() => {
+      return document.body.textContent?.substring(0, 500)
+    })
+    console.debug(`[DEBUG ${browserName}] Sidebar content:`, sidebarContent?.replace(/\s+/g, ' ').substring(0, 200))
 
     // CRITICAL: Check that annotation is NOT orphaned
     const orphanedCount = await countOrphanedAnnotations(sidebarFrame)

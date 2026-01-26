@@ -147,10 +147,13 @@ export async function startMockServer(config: MockServerConfig = {}): Promise<Se
 
   // POST /knowledge-base/rda/_search - Search annotations
   app.post('/knowledge-base/rda/_search', async (req, res) => {
+    const body = req.body as Record<string, unknown>
     console.debug(`[Mock API] POST /knowledge-base/rda/_search received (${createdAnnotations.length} annotations stored)`)
+    console.debug('[Mock API] Search request body:', JSON.stringify(body, null, 2))
     if (createdAnnotations.length > 0) {
       const ann = createdAnnotations[0] as Record<string, unknown>
       console.debug('[Mock API] First annotation:', {
+        resource: ann.resource,
         hasAnnotationTarget: 'annotation_target' in ann,
         annotationTarget: (ann.annotation_target as Record<string, unknown> | undefined),
       })
