@@ -229,3 +229,95 @@ export async function takeScreenshot(
     path: `test-results/${browserName}-${name}.png`,
   })
 }
+
+/**
+ * Check if there are any orphaned annotations in the sidebar.
+ * Orphaned annotations show "Orphaned Annotation" label in their card.
+ */
+export async function hasOrphanedAnnotations(sidebarFrame: Frame): Promise<boolean> {
+  const orphanedLabel = sidebarFrame.getByText('Orphaned Annotation')
+  return orphanedLabel.isVisible().catch(() => false)
+}
+
+/**
+ * Count the number of orphaned annotations in the sidebar
+ */
+export async function countOrphanedAnnotations(sidebarFrame: Frame): Promise<number> {
+  const orphanedLabels = sidebarFrame.locator('text=Orphaned Annotation')
+  return orphanedLabels.count()
+}
+
+/**
+ * Check if a permanent (non-temporary) highlight exists on the page.
+ * Temporary highlights have ID "temporary", permanent ones have annotation IDs.
+ */
+export async function hasPermanentHighlight(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const highlights = document.querySelectorAll('rda-highlight')
+    for (const highlight of highlights) {
+      const dataId = highlight.getAttribute('data-rda-id')
+      // Permanent highlights have a non-temporary ID (usually mock-uuid-*)
+      if (dataId && dataId !== 'temporary') {
+        return true
+      }
+    }
+    return false
+  })
+}
+
+/**
+ * Get all highlight IDs on the page
+ */
+export async function getHighlightIds(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const highlights = document.querySelectorAll('rda-highlight')
+    const ids: string[] = []
+    for (const highlight of highlights) {
+      const dataId = highlight.getAttribute('data-rda-id')
+      if (dataId) {
+        ids.push(dataId)
+      }
+    }
+    return ids
+  })
+}
+
+/**
+ * Count the number of highlights on the page (excluding temporary)
+ */
+export async function countPermanentHighlights(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const highlights = document.querySelectorAll('rda-highlight')
+    let count = 0
+    for (const highlight of highlights) {
+      const dataId = highlight.getAttribute('data-rda-id')
+      if (dataId && dataId !== 'temporary') {
+        count++
+      }
+    }
+    return count
+  })
+}
+
+/**
+ * Wait for annotations to be loaded and anchored (or orphaned).
+ * Returns when no more pending status.
+ */
+export async function waitForAnnotationsToAnchor(
+  page: Page,
+  timeout: number = 5000,
+): Promise<void> {
+  // Wait for highlights to appear or timeout
+  const startTime = Date.now()
+  while (Date.now() - startTime < timeout) {
+    const hasHighlight = await page.evaluate(() => {
+      return document.querySelector('rda-highlight') !== null
+    })
+    if (hasHighlight) {
+      // Give a bit more time for all annotations to anchor
+      await page.waitForTimeout(500)
+      return
+    }
+    await page.waitForTimeout(100)
+  }
+}

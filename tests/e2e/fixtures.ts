@@ -4,13 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import {
-  test as base,
-
-  chromium,
-  firefox,
-
-} from '@playwright/test'
+import { test as base, chromium, firefox } from '@playwright/test'
 import { withExtension } from 'playwright-webextext'
 
 // Re-export mock server functions for tests
