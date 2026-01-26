@@ -206,6 +206,7 @@ export default function TypeaheadInput({
         value={multiple ? null : field.value}
         onChange={handleSelect}
         disabled={loading && data.length === 0}
+        data-testid={`combobox-${name}`}
       >
         <div className="flex items-center justify-between">
           <Label
@@ -307,8 +308,9 @@ export default function TypeaheadInput({
               rest.required && (!multiple || selectedValues.length === 0)
             }
             placeholder={loading && data.length === 0 ? 'Loading...' : undefined}
+            data-testid={`combobox-input-${name}`}
           />
-          <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-hidden">
+          <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-hidden" data-testid={`combobox-button-${name}`}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -330,6 +332,7 @@ export default function TypeaheadInput({
             ref={optionsRef}
             onScroll={handleScroll}
             className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-sm shadow outline outline-black/5 data-leave:transition data-leave:duration-100 data-leave:ease-in data-closed:data-leave:opacity-0"
+            data-testid={`combobox-options-${name}`}
           >
             {error && (
               <div className="cursor-default px-3 py-2 text-red-600 select-none">

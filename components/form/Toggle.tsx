@@ -25,6 +25,7 @@ export default function Toggle({
           type="checkbox"
           id={`${name}-input`}
           className="absolute inset-0 w-full h-full opacity-0 appearance-none focus:outline-hidden cursor-pointer z-10"
+          data-testid={`toggle-${name}`}
           {...(register ? register(name) : {})}
           {...rest}
         />

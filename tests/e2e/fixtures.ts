@@ -1,4 +1,5 @@
 import type { BrowserContext, Page, Worker } from '@playwright/test'
+import type { Server } from 'node:http'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -11,6 +12,21 @@ import {
 
 } from '@playwright/test'
 import { withExtension } from 'playwright-webextext'
+
+// Re-export mock server functions for tests
+export {
+  clearCreatedAnnotations,
+  getCreatedAnnotations,
+  startMockServer,
+  startMockServerWithDelay,
+  startMockServerWithError,
+  stopMockServer,
+} from './mocks/mock-api-server'
+
+export type { MockServerConfig } from './mocks/mock-api-server'
+
+// Re-export Server type for use in tests
+export type { Server }
 
 // Path to built extensions (ESM-compatible)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -184,6 +200,32 @@ function getMockAuthData() {
 }
 
 /**
+ * Set extension storage values via appropriate method for each browser.
+ * Chrome uses service worker; Firefox uses an extension iframe.
+ * Exported for tests that need to set custom storage values (e.g., remember choices).
+ */
+export async function setStorageSettings(
+  context: BrowserContext,
+  browserName: string,
+  storageData: Record<string, unknown>,
+): Promise<void> {
+  if (browserName === 'chromium') {
+    // Chrome: use service worker
+    let [serviceWorker] = context.serviceWorkers()
+    if (!serviceWorker) {
+      serviceWorker = await context.waitForEvent('serviceworker')
+    }
+    await serviceWorker.evaluate((data) => {
+      return chrome.storage.local.set(data)
+    }, storageData)
+  }
+  else {
+    // Firefox: use extension page to set storage
+    await setStorageViaExtensionPage(context, storageData)
+  }
+}
+
+/**
  * Helper to inject mock auth into a browser context.
  * Works with both Chrome (via service worker) and Firefox (via extension page).
  */
@@ -192,27 +234,7 @@ export async function injectMockAuth(
   browserName: string = 'chromium',
 ) {
   const { oauth, user } = getMockAuthData()
-
-  if (browserName === 'chromium') {
-    // Chrome: use service worker
-    let [serviceWorker] = context.serviceWorkers()
-    if (!serviceWorker) {
-      serviceWorker = await context.waitForEvent('serviceworker')
-    }
-    await serviceWorker.evaluate(
-      ({ oauth, user }) => {
-        return Promise.all([
-          chrome.storage.local.set({ oauth }),
-          chrome.storage.local.set({ user }),
-        ])
-      },
-      { oauth, user },
-    )
-  }
-  else {
-    // Firefox: use extension page to set storage
-    await setStorageViaExtensionPage(context, { oauth, user })
-  }
+  await setStorageSettings(context, browserName, { oauth, user })
 }
 
 /**
@@ -247,24 +269,10 @@ export async function enableExtension(
   context: BrowserContext,
   browserName: string,
 ) {
-  const storageData = {
+  await setStorageSettings(context, browserName, {
     'extension-enabled': true,
     'intro-shown': true, // Skip the introduction page in tests
-  }
-
-  if (browserName === 'chromium') {
-    let [serviceWorker] = context.serviceWorkers()
-    if (!serviceWorker) {
-      serviceWorker = await context.waitForEvent('serviceworker')
-    }
-    await serviceWorker.evaluate((data) => {
-      return chrome.storage.local.set(data)
-    }, storageData)
-  }
-  else {
-    // Firefox: use extension page to set storage
-    await setStorageViaExtensionPage(context, storageData)
-  }
+  })
 }
 
 export const test = base.extend<{

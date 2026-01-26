@@ -7,7 +7,7 @@ interface AlertProps {
 
 export default function Alert({ title, messages }: AlertProps) {
   return (
-    <div className="rounded-md bg-red-50 p-4 mx-2 border border-red-400 my-4">
+    <div role="alert" className="rounded-md bg-red-50 p-4 mx-2 border border-red-400 my-4">
       <div className="flex">
         <div className="shrink-0">
           <svg

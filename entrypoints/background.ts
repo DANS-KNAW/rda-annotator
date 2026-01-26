@@ -1,4 +1,5 @@
 import type { DataSource } from '@/types/datasource.interface'
+import type { Keycloak } from '@/types/keycloak.interface'
 import { storage } from '#imports'
 import { isPDFURL } from '@/utils/detect-content-type'
 import { onMessage, sendMessage } from '@/utils/messaging'
@@ -302,11 +303,19 @@ export default defineBackground(() => {
 
   onMessage('createAnnotation', async (message) => {
     const baseUrl = import.meta.env.WXT_API_ENDPOINT
+    const oauth = await storage.getItem<Keycloak>('local:oauth')
+
+    if (!oauth?.access_token) {
+      return { success: false, error: 'No authentication token available' }
+    }
 
     try {
       const response = await fetch(`${baseUrl}/knowledge-base/annotation`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${oauth.access_token}`,
+        },
         body: JSON.stringify(message.data.payload),
       })
 
@@ -317,6 +326,40 @@ export default defineBackground(() => {
 
       const data = await response.json()
       return { success: true, data }
+    }
+    catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }
+    }
+  })
+
+  onMessage('deleteAnnotation', async (message) => {
+    const baseUrl = import.meta.env.WXT_API_ENDPOINT
+    const oauth = await storage.getItem<Keycloak>('local:oauth')
+
+    if (!oauth?.access_token) {
+      return { success: false, error: 'No authentication token available' }
+    }
+
+    try {
+      const response = await fetch(
+        `${baseUrl}/knowledge-base/annotation/${message.data.annotationId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${oauth.access_token}`,
+          },
+        },
+      )
+
+      if (!response.ok) {
+        const errorMessage = await parseApiError(response)
+        return { success: false, error: errorMessage }
+      }
+
+      return { success: true }
     }
     catch (error) {
       return {

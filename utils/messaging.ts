@@ -56,6 +56,10 @@ interface ProtocolMap {
   createAnnotation: (data: {
     payload: Record<string, unknown>
   }) => Promise<{ success: boolean, data?: unknown, error?: string }>
+
+  deleteAnnotation: (data: {
+    annotationId: string
+  }) => Promise<{ success: boolean, error?: string }>
 }
 
 export const { sendMessage, onMessage }
