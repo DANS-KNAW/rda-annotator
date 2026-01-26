@@ -131,30 +131,20 @@ export function AnchorStatusProvider({ children }: AnchorStatusProviderProps) {
 
   const requestStatus = useCallback(async () => {
     try {
-      const tabs = await browser.tabs.query({
-        active: true,
-        currentWindow: true,
-      })
+      // Use relay message through background (browser.tabs not available in Firefox iframe)
+      const status = await sendMessage('relayRequestAnchorStatus', undefined)
 
-      if (tabs[0]?.id) {
-        const status = await sendMessage(
-          'requestAnchorStatus',
-          undefined,
-          tabs[0].id,
-        )
+      if (status) {
+        // Update everAnchored tracking
+        status.anchored.forEach(id => everAnchoredRef.current.add(id))
+        status.recovered.forEach(id => everAnchoredRef.current.add(id))
 
-        if (status) {
-          // Update everAnchored tracking
-          status.anchored.forEach(id => everAnchoredRef.current.add(id))
-          status.recovered.forEach(id => everAnchoredRef.current.add(id))
-
-          setState({
-            orphanedIds: status.orphaned,
-            pendingIds: status.pending,
-            recoveredIds: status.recovered,
-            anchoredIds: new Set([...status.anchored, ...status.recovered]),
-          })
-        }
+        setState({
+          orphanedIds: status.orphaned,
+          pendingIds: status.pending,
+          recoveredIds: status.recovered,
+          anchoredIds: new Set([...status.anchored, ...status.recovered]),
+        })
       }
     }
     catch (error) {

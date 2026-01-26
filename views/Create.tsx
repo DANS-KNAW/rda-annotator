@@ -116,13 +116,8 @@ export default function Create() {
   const handleCancel = async () => {
     try {
       await clearPendingAnnotation()
-      const tabs = await browser.tabs.query({
-        active: true,
-        currentWindow: true,
-      })
-      if (tabs[0]?.id) {
-        await sendMessage('removeTemporaryHighlight', undefined, tabs[0].id)
-      }
+      // Use relay message through background (browser.tabs not available in Firefox iframe)
+      await sendMessage('relayRemoveTemporaryHighlight', undefined)
     }
     catch (error) {
       console.error('Failed to cleanup on cancel:', error)
@@ -245,14 +240,9 @@ export default function Create() {
 
       await clearPendingAnnotation()
 
-      const tabs = await browser.tabs.query({
-        active: true,
-        currentWindow: true,
-      })
-      if (tabs[0]?.id) {
-        await sendMessage('removeTemporaryHighlight', undefined, tabs[0].id)
-        await sendMessage('reloadAnnotations', undefined, tabs[0].id)
-      }
+      // Use relay messages through background (browser.tabs not available in Firefox iframe)
+      await sendMessage('relayRemoveTemporaryHighlight', undefined)
+      await sendMessage('relayReloadAnnotations', undefined)
 
       if (data.rememberChoices === true && settings.rememberChoices) {
         const fieldsToReset = (AnnotationFormSchema as AnnotationSchema).fields.filter(field => field.type !== 'combobox').map(field => field.name)

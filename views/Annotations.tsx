@@ -61,17 +61,8 @@ export default function Annotations() {
 
     if (shouldScroll) {
       try {
-        const tabs = await browser.tabs.query({
-          active: true,
-          currentWindow: true,
-        })
-        if (tabs[0]?.id) {
-          await sendMessage(
-            'scrollToAnnotation',
-            { annotationId: annotation._id },
-            tabs[0].id,
-          )
-        }
+        // Use relay message through background (browser.tabs not available in Firefox iframe)
+        await sendMessage('relayScrollToAnnotation', { annotationId: annotation._id })
       }
       catch (error) {
         console.error('Failed to scroll to annotation:', error)

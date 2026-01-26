@@ -33,6 +33,7 @@ interface ProtocolMap {
     orphaned: string[]
     recovered: string[]
   }>
+  getPageUrl: () => Promise<{ url: string | null }>
 
   // API proxy messages - route through background to bypass CORS/Brave Shields
   searchAnnotations: (data: {
@@ -60,6 +61,19 @@ interface ProtocolMap {
   deleteAnnotation: (data: {
     annotationId: string
   }) => Promise<{ success: boolean, error?: string }>
+
+  // Relay messages - sidebar sends to background, background relays to content script
+  // This is needed because browser.tabs is not available in Firefox sidebar iframe
+  relayScrollToAnnotation: (data: { annotationId: string }) => Promise<void>
+  relayRemoveTemporaryHighlight: () => Promise<void>
+  relayReloadAnnotations: () => Promise<void>
+  relayGetPageUrl: () => Promise<{ url: string | null }>
+  relayRequestAnchorStatus: () => Promise<{
+    anchored: string[]
+    pending: string[]
+    orphaned: string[]
+    recovered: string[]
+  } | null>
 }
 
 export const { sendMessage, onMessage }

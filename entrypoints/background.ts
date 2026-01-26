@@ -402,6 +402,84 @@ export default defineBackground(() => {
     }
   })
 
+  // Relay handlers - forward messages from sidebar to content script
+  // These are needed because browser.tabs is not available in Firefox sidebar iframe
+  onMessage('relayScrollToAnnotation', async (message) => {
+    try {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+      if (tabs[0]?.id) {
+        await sendMessage('scrollToAnnotation', message.data, tabs[0].id)
+      }
+    }
+    catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('[Background] Failed to relay scrollToAnnotation:', error)
+      }
+    }
+  })
+
+  onMessage('relayRemoveTemporaryHighlight', async () => {
+    try {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+      if (tabs[0]?.id) {
+        await sendMessage('removeTemporaryHighlight', undefined, tabs[0].id)
+      }
+    }
+    catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('[Background] Failed to relay removeTemporaryHighlight:', error)
+      }
+    }
+  })
+
+  onMessage('relayReloadAnnotations', async () => {
+    try {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+      if (tabs[0]?.id) {
+        await sendMessage('reloadAnnotations', undefined, tabs[0].id)
+      }
+    }
+    catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('[Background] Failed to relay reloadAnnotations:', error)
+      }
+    }
+  })
+
+  onMessage('relayGetPageUrl', async () => {
+    try {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+      if (tabs[0]?.id) {
+        const result = await sendMessage('getPageUrl', undefined, tabs[0].id)
+        return result
+      }
+      return { url: null }
+    }
+    catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('[Background] Failed to relay getPageUrl:', error)
+      }
+      return { url: null }
+    }
+  })
+
+  onMessage('relayRequestAnchorStatus', async () => {
+    try {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+      if (tabs[0]?.id) {
+        const result = await sendMessage('requestAnchorStatus', undefined, tabs[0].id)
+        return result
+      }
+      return null
+    }
+    catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('[Background] Failed to relay requestAnchorStatus:', error)
+      }
+      return null
+    }
+  })
+
   browser.action.onClicked.addListener(async (tab) => {
     const currentState = await storage.getItem('local:extension-enabled')
     const newState = !currentState

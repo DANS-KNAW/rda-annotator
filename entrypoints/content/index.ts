@@ -517,6 +517,17 @@ export default defineContentScript({
           )
         }
       }
+
+      try {
+        onMessage('getPageUrl', async () => {
+          return { url: getDocumentURL() }
+        })
+      }
+      catch {
+        if (import.meta.env.DEV) {
+          console.warn('[RDA] Listener for "getPageUrl" already registered')
+        }
+      }
     }
     else {
       const frameUrl = getDocumentURL()
