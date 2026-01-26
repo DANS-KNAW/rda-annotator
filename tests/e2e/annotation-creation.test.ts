@@ -1,6 +1,26 @@
-import { enableExtension, expect, injectMockAuth, test } from './fixtures'
+import type { Server } from 'node:http'
+import {
+  enableExtension,
+  expect,
+  injectMockAuth,
+  startMockServer,
+  stopMockServer,
+  test,
+} from './fixtures'
 
 test.describe('Annotation Creation', () => {
+  let mockServer: Server
+
+  test.beforeAll(async () => {
+    mockServer = await startMockServer({ port: 3001 })
+  })
+
+  test.afterAll(async () => {
+    if (mockServer) {
+      await stopMockServer(mockServer)
+    }
+  })
+
   test('fills annotation form and verifies vocabularies load', async ({
     context,
     browserName,

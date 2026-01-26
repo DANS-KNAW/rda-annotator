@@ -154,8 +154,8 @@ export async function startMockServer(config: MockServerConfig = {}): Promise<Se
       const ann = createdAnnotations[0] as Record<string, unknown>
       console.debug('[Mock API] First annotation:', {
         resource: ann.resource,
-        hasAnnotationTarget: 'annotation_target' in ann,
-        annotationTarget: (ann.annotation_target as Record<string, unknown> | undefined),
+        hasTarget: 'target' in ann,
+        target: (ann.target as Record<string, unknown> | undefined),
       })
     }
     // Check for simulated delay

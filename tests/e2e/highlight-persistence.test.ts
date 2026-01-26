@@ -45,12 +45,6 @@ import {
 test.describe('Highlight Persistence', () => {
   let mockServer: Server
 
-  // Skip on Firefox - the reloadAnnotations message doesn't trigger properly after
-  // annotation creation. The content script receives the message but the annotation-manager
-  // doesn't reload. This is a separate issue from the annotation_target fix.
-  // TODO: Investigate Firefox message handling in content script
-  test.skip(({ browserName }) => browserName === 'firefox', 'Firefox message handling needs separate investigation')
-
   test.beforeAll(async () => {
     mockServer = await startMockServer({ port: 3001 })
   })
@@ -191,10 +185,10 @@ test.describe('Highlight Persistence', () => {
 
     const annotation = created[0] as Record<string, unknown>
 
-    // Check that annotation_target field exists (what we send to API)
-    expect(annotation.annotation_target, 'annotation_target field should exist').toBeDefined()
+    // Check that target field exists (what we send to API - backend transforms to annotation_target)
+    expect(annotation.target, 'target field should exist').toBeDefined()
 
-    const annotationTarget = annotation.annotation_target as {
+    const annotationTarget = annotation.target as {
       source?: string
       selector?: Array<{ type: string }>
     }

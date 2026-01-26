@@ -162,7 +162,7 @@ export function formDataToAnnotation(formData: Record<string, unknown>): Annotat
     notes: formData.notes as string || null,
     dc_date: now,
     submitter: formData.submitter as string || '0000-0002-1825-0097',
-    annotation_target: formData.annotation_target as Annotation['annotation_target'],
+    annotation_target: formData.target as Annotation['annotation_target'],
     keywords: Array.isArray(formData.keywords)
       ? formData.keywords.map((k: { label: string, value: string }) => ({
           uuid_keyword: k.value,
