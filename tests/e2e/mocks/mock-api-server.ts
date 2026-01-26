@@ -103,6 +103,7 @@ export async function startMockServer(config: MockServerConfig = {}): Promise<Se
 
   // POST /knowledge-base/annotation - Create annotation
   app.post('/knowledge-base/annotation', async (req, res) => {
+    console.debug('[Mock API] POST /knowledge-base/annotation received')
     // Check for simulated delay
     if (config.simulateDelay?.endpoint === '/knowledge-base/annotation') {
       await sleep(config.simulateDelay.delayMs)
@@ -146,6 +147,14 @@ export async function startMockServer(config: MockServerConfig = {}): Promise<Se
 
   // POST /knowledge-base/rda/_search - Search annotations
   app.post('/knowledge-base/rda/_search', async (req, res) => {
+    console.debug(`[Mock API] POST /knowledge-base/rda/_search received (${createdAnnotations.length} annotations stored)`)
+    if (createdAnnotations.length > 0) {
+      const ann = createdAnnotations[0] as Record<string, unknown>
+      console.debug('[Mock API] First annotation:', {
+        hasAnnotationTarget: 'annotation_target' in ann,
+        annotationTarget: (ann.annotation_target as Record<string, unknown> | undefined),
+      })
+    }
     // Check for simulated delay
     if (config.simulateDelay?.endpoint === '/knowledge-base/rda/_search') {
       await sleep(config.simulateDelay.delayMs)
@@ -212,7 +221,7 @@ export async function startMockServer(config: MockServerConfig = {}): Promise<Se
 
   return new Promise((resolve, reject) => {
     const server = app.listen(port, () => {
-      console.log(`[Mock API] Server running on http://localhost:${port}`)
+      console.debug(`[Mock API] Server running on http://localhost:${port}`)
       resolve(server)
     })
 
@@ -234,7 +243,7 @@ export function stopMockServer(server: Server): Promise<void> {
         reject(err)
       }
       else {
-        console.log('[Mock API] Server stopped')
+        console.debug('[Mock API] Server stopped')
         resolve()
       }
     })

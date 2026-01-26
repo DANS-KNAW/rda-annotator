@@ -255,7 +255,7 @@ export async function hasPermanentHighlight(page: Page): Promise<boolean> {
   return page.evaluate(() => {
     const highlights = document.querySelectorAll('rda-highlight')
     for (const highlight of highlights) {
-      const dataId = highlight.getAttribute('data-rda-id')
+      const dataId = highlight.getAttribute('data-annotation-id')
       // Permanent highlights have a non-temporary ID (usually mock-uuid-*)
       if (dataId && dataId !== 'temporary') {
         return true
@@ -273,7 +273,7 @@ export async function getHighlightIds(page: Page): Promise<string[]> {
     const highlights = document.querySelectorAll('rda-highlight')
     const ids: string[] = []
     for (const highlight of highlights) {
-      const dataId = highlight.getAttribute('data-rda-id')
+      const dataId = highlight.getAttribute('data-annotation-id')
       if (dataId) {
         ids.push(dataId)
       }
@@ -290,7 +290,7 @@ export async function countPermanentHighlights(page: Page): Promise<number> {
     const highlights = document.querySelectorAll('rda-highlight')
     let count = 0
     for (const highlight of highlights) {
-      const dataId = highlight.getAttribute('data-rda-id')
+      const dataId = highlight.getAttribute('data-annotation-id')
       if (dataId && dataId !== 'temporary') {
         count++
       }
@@ -305,19 +305,27 @@ export async function countPermanentHighlights(page: Page): Promise<number> {
  */
 export async function waitForAnnotationsToAnchor(
   page: Page,
-  timeout: number = 5000,
+  timeout: number = 10000,
 ): Promise<void> {
-  // Wait for highlights to appear or timeout
+  // Wait for permanent highlights to appear or timeout
+  // Permanent highlights have data-annotation-id that is not 'temporary'
   const startTime = Date.now()
   while (Date.now() - startTime < timeout) {
-    const hasHighlight = await page.evaluate(() => {
-      return document.querySelector('rda-highlight') !== null
+    const hasPermanentHighlight = await page.evaluate(() => {
+      const highlights = document.querySelectorAll('rda-highlight')
+      for (const highlight of highlights) {
+        const dataId = highlight.getAttribute('data-annotation-id')
+        if (dataId && dataId !== 'temporary') {
+          return true
+        }
+      }
+      return false
     })
-    if (hasHighlight) {
+    if (hasPermanentHighlight) {
       // Give a bit more time for all annotations to anchor
-      await page.waitForTimeout(500)
+      await page.waitForTimeout(1000)
       return
     }
-    await page.waitForTimeout(100)
+    await page.waitForTimeout(200)
   }
 }

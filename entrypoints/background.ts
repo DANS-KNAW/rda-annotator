@@ -312,16 +312,16 @@ export default defineBackground(() => {
     // Debug: Log the payload being sent to the API
     if (import.meta.env.DEV) {
       const payload = message.data.payload as Record<string, unknown>
-      const target = payload.target as { source?: string, selector?: Array<{ type?: string }> } | undefined
+      const annotationTarget = payload.annotation_target as { source?: string, selector?: Array<{ type?: string }> } | undefined
       console.debug('[Background] Creating annotation:', {
         title: payload.title,
         submitter: payload.submitter,
-        hasTarget: !!target,
-        targetSource: target?.source,
-        hasSelectorArray: Array.isArray(target?.selector),
-        selectorCount: target?.selector?.length || 0,
-        selectorTypes: target?.selector?.map(s => s.type) || [],
-        fullTarget: target,
+        hasAnnotationTarget: !!annotationTarget,
+        targetSource: annotationTarget?.source,
+        hasSelectorArray: Array.isArray(annotationTarget?.selector),
+        selectorCount: annotationTarget?.selector?.length || 0,
+        selectorTypes: annotationTarget?.selector?.map(s => s.type) || [],
+        fullAnnotationTarget: annotationTarget,
       })
     }
 
