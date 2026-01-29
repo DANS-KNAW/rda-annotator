@@ -1,4 +1,5 @@
 import type { FormHandle } from '@/components/form/Form'
+import type { PendingAnnotationData } from '@/context/pending-annotation.context'
 import type {
   AnnotationSchema,
   ComboboxField,
@@ -42,12 +43,38 @@ export default function Create() {
     isLoading: isLoadingAnnotation,
     isReady: isAnnotationReady,
     clearPendingAnnotation,
+    refreshFromStorage,
   } = usePendingAnnotation()
   const formRef = useRef<FormHandle>(null)
   const [settings, setSettings] = useState<ISettings>({ vocabularies: {} })
   const [isLoadingSettings, setIsLoadingSettings] = useState(true)
   const [errorMessages, setErrorMessages] = useState<string[]>([])
+  const [isAuthenticating, setIsAuthenticating] = useState(false)
   const navigate = useNavigate()
+
+  const handleLogin = async () => {
+    setIsAuthenticating(true)
+    // Capture before auth — content script handlers (beforeunload, URL change)
+    // may clear local:pendingAnnotation storage during the auth popup flow
+    const savedAnnotation = pendingAnnotation
+    try {
+      await login()
+
+      // Check if storage was cleared during auth and restore if needed
+      const storageData = await storage.getItem<PendingAnnotationData>('local:pendingAnnotation')
+      if (!storageData && savedAnnotation) {
+        await storage.setItem('local:pendingAnnotation', savedAnnotation)
+      }
+
+      await refreshFromStorage()
+    }
+    catch (error) {
+      console.error('Login failed:', error)
+    }
+    finally {
+      setIsAuthenticating(false)
+    }
+  }
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -102,6 +129,7 @@ export default function Create() {
       && isAnnotationReady
       && !isLoadingSettings
       && !pendingAnnotation
+      && !isAuthenticating
     ) {
       navigate('/annotations', { replace: true })
     }
@@ -110,6 +138,7 @@ export default function Create() {
     isAnnotationReady,
     isLoadingSettings,
     pendingAnnotation,
+    isAuthenticating,
     navigate,
   ])
 
@@ -279,14 +308,14 @@ export default function Create() {
   if (!isAuthenticated) {
     return (
       <div
-        onClick={login}
-        className="mx-2 my-12 border border-rda-500 rounded-md bg-white shadow cursor-pointer"
+        onClick={isAuthenticating ? undefined : handleLogin}
+        className={`mx-2 my-12 border border-rda-500 rounded-md bg-white shadow ${isAuthenticating ? 'opacity-50' : 'cursor-pointer'}`}
       >
         <p className="px-4 pt-4 text-base font-medium text-center">
           Please authenticate to create annotations.
         </p>
         <p className="text-rda-500 underline text-center font-medium text-base py-4 px-4">
-          Login
+          {isAuthenticating ? 'Logging in...' : 'Login'}
         </p>
       </div>
     )

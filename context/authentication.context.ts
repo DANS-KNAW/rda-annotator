@@ -5,7 +5,7 @@ interface AuthContextType {
   isAuthenticated: boolean
   oauth?: Keycloak
   profile?: UserProfile
-  login: () => void
+  login: () => Promise<void>
   logout: () => void
   refreshToken: () => Promise<void>
 }
@@ -14,7 +14,7 @@ const authenticationContextDefaultValues: AuthContextType = {
   isAuthenticated: false,
   oauth: undefined,
   profile: undefined,
-  login: () => {},
+  login: async () => {},
   logout: () => {},
   refreshToken: async () => {},
 }
