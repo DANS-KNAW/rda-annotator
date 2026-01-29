@@ -8,7 +8,7 @@ import {
   getPageIndexFromSelectors,
   isPDFDocument,
   isPlaceholderRange,
-
+  verifyAnnotationTextOnPage,
 } from '@/utils/anchoring/pdf'
 import { getDocumentURL } from '@/utils/document-url'
 import { searchAnnotationsByUrl } from '@/utils/elasticsearch-fetch'
@@ -606,6 +606,12 @@ export class AnnotationManager {
 
   /**
    * Try initial anchor attempt, then start timed retries if needed.
+   *
+   * For PDF annotations on non-rendered pages: verifies that the text content
+   * exists on the target page (using pdfPage.getTextContent() which works
+   * without rendering). If verified, skips timed retries and relies entirely
+   * on event-driven re-anchoring when the page renders (scrolled into view).
+   * This prevents false "orphaned" status for annotations on distant pages.
    */
   private async tryInitialAnchor(annotation: AnnotationHit): Promise<void> {
     const id = annotation._id
@@ -621,13 +627,37 @@ export class AnnotationManager {
         this.scheduleStatusUpdate(id, 'anchored')
         return
       }
-      // Placeholder was created - continue with timed retries
+      // Placeholder was created - check if text exists on the target page
     }
     catch {
-      // Initial attempt failed - continue with timed retries
+      // Initial attempt failed - check if text exists on the target page
     }
 
-    // Start timed retries in background
+    // For PDF annotations: verify text exists before starting retries.
+    // If text is verified, the page just hasn't rendered its text layer yet.
+    // Skip timed retries and rely on event-driven re-anchoring via
+    // PDFPageStateManager (fires when user scrolls to the page).
+    const selectors = annotation._source.annotation_target?.selector
+    if (selectors && isPDFDocument()) {
+      try {
+        const { verified } = await verifyAnnotationTextOnPage(selectors)
+        if (verified) {
+          if (import.meta.env.DEV) {
+            console.debug(
+              `[AnnotationManager] Text verified for ${id}, waiting for page render (event-driven)`,
+            )
+          }
+          // Keep as pending - event-driven re-anchoring will handle it
+          // when handlePageTextLayerReady fires
+          return
+        }
+      }
+      catch {
+        // Verification failed - fall through to timed retries
+      }
+    }
+
+    // Start timed retries in background (text not verified or non-PDF)
     this.runTimedRetries(annotation, 0, this.INITIAL_RETRY_DELAY_MS)
   }
 

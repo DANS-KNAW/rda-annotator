@@ -6,18 +6,32 @@ export interface HTMLContentType { type: 'HTML' }
 /** Details of the detected content type. */
 export type ContentTypeInfo = PDFContentType | HTMLContentType
 
+/**
+ * Get PDFViewerApplication from page context.
+ * Falls back to wrappedJSObject for Firefox content scripts (isolated context).
+ */
+function getPDFViewerAppFromWindow(win: Window): any {
+  if ((win as any).PDFViewerApplication !== undefined) {
+    return (win as any).PDFViewerApplication
+  }
+  if ((win as any).wrappedJSObject?.PDFViewerApplication !== undefined) {
+    return (win as any).wrappedJSObject.PDFViewerApplication
+  }
+  return undefined
+}
+
 async function waitForPDFJS(win: Window = window): Promise<boolean> {
   const startTime = Date.now()
   const globalTimeout = 15000
 
   while (Date.now() - startTime < globalTimeout) {
-    if ((win as any).PDFViewerApplication !== undefined) {
+    if (getPDFViewerAppFromWindow(win) !== undefined) {
       break
     }
     await new Promise(resolve => setTimeout(resolve, 100))
   }
 
-  const app = (win as any).PDFViewerApplication
+  const app = getPDFViewerAppFromWindow(win)
   if (!app) {
     return false
   }
@@ -114,7 +128,7 @@ export function detectContentType(
   function detectExistingPDFJSViewer(): PDFContentType | null {
     // Check if page already has PDF.js loaded (like embedded viewers)
     // This is important for pages like Zenodo that use their own PDF.js
-    if ((win as any).PDFViewerApplication !== undefined) {
+    if (getPDFViewerAppFromWindow(win) !== undefined) {
       return { type: 'PDF' }
     }
     return null

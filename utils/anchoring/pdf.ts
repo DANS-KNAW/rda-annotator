@@ -59,17 +59,42 @@ const quotePositionCache = new Map<
   { pageIndex: number, anchor: { start: number, end: number } }
 >()
 
+/**
+ * Get the PDFViewerApplication global from the page context.
+ *
+ * In Chrome's extension PDF viewer, content scripts injected via pdfjs-init.js
+ * run in the page context where PDFViewerApplication is directly accessible.
+ *
+ * In Firefox content scripts (isolated execution context), page-level globals
+ * are invisible. We access them through `window.wrappedJSObject`, which is
+ * Firefox's standard API for content scripts to read page-level JS objects.
+ */
+function getPDFViewerApp(win: Window = window): any {
+  // Direct access (works in page context, e.g. Chrome extension PDF viewer)
+  if ((win as any).PDFViewerApplication !== undefined) {
+    return (win as any).PDFViewerApplication
+  }
+  // Firefox content script fallback: access page globals through wrappedJSObject
+  if ((win as any).wrappedJSObject?.PDFViewerApplication !== undefined) {
+    return (win as any).wrappedJSObject.PDFViewerApplication
+  }
+  return undefined
+}
+
 function getPDFViewer(): PDFViewer {
-  // @ts-expect-error - PDFViewerApplication is a global
-  return PDFViewerApplication.pdfViewer
+  const app = getPDFViewerApp()
+  if (!app) {
+    throw new Error('PDFViewerApplication not found')
+  }
+  return app.pdfViewer
 }
 
 export function isPDFDocument(win: Window = window): boolean {
-  return typeof (win as any).PDFViewerApplication !== 'undefined'
+  return getPDFViewerApp(win) !== undefined
 }
 
 async function waitForPDFViewerInitialized(win: Window = window): Promise<any> {
-  const app = (win as any).PDFViewerApplication
+  const app = getPDFViewerApp(win)
 
   if (!app) {
     throw new Error('PDFViewerApplication not found')
@@ -322,21 +347,97 @@ function stripSpaces(str: string): string {
   return stripped
 }
 
+/**
+ * Execute a snippet in the page context and return its string result.
+ *
+ * Firefox content scripts run in an isolated compartment where calling async
+ * PDF.js methods (e.g. `pdfPage.getTextContent()`) fails because object
+ * arguments don't cross the compartment boundary. We work around this by
+ * injecting a `<script>` element that runs in the page context and writes the
+ * result to a hidden DOM element that both contexts can access.
+ *
+ * In Chrome (or when running in the page context directly), this function is
+ * never called — `getPageTextContent` takes the direct path instead.
+ */
+function execInPageContext(code: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const id = `__rda_bridge_${Date.now()}_${Math.random().toString(36).slice(2)}`
+    const resultEl = document.createElement('div')
+    resultEl.id = id
+    resultEl.style.display = 'none'
+    document.body.appendChild(resultEl)
+
+    const script = document.createElement('script')
+    script.textContent = `
+      (async function() {
+        const el = document.getElementById('${id}');
+        try {
+          const result = await (async function() { ${code} })();
+          el.textContent = (result === undefined || result === null) ? '' : String(result);
+        } catch(e) {
+          el.dataset.error = e.message || 'Unknown error';
+        }
+        el.dataset.done = 'true';
+      })();
+    `
+    document.head.appendChild(script)
+
+    const poll = () => {
+      if (resultEl.dataset.done === 'true') {
+        const error = resultEl.dataset.error
+        const text = resultEl.textContent || ''
+        resultEl.remove()
+        script.remove()
+        if (error) {
+          reject(new Error(error))
+        }
+        else {
+          resolve(text)
+        }
+      }
+      else {
+        setTimeout(poll, 5)
+      }
+    }
+    poll()
+  })
+}
+
+/** True when running in a Firefox content script (isolated compartment). */
+function isFirefoxContentScript(): boolean {
+  return typeof (window as any).wrappedJSObject !== 'undefined'
+}
+
 async function getPageTextContent(pageIndex: number): Promise<string> {
   if (pageTextCache.has(pageIndex)) {
     return pageTextCache.get(pageIndex)!
   }
 
-  const pageView = await getPageView(pageIndex)
-  if (!pageView.pdfPage) {
-    throw new Error(`Page ${pageIndex} not loaded`)
+  let pageText: string
+
+  if (isFirefoxContentScript()) {
+    // Firefox content script: call PDF.js API in the page context via bridge
+    pageText = await execInPageContext(`
+      const viewer = PDFViewerApplication.pdfViewer;
+      const pageView = viewer.getPageView(${pageIndex});
+      if (!pageView || !pageView.pdfPage) throw new Error('Page ${pageIndex} not loaded');
+      const tc = await pageView.pdfPage.getTextContent({normalizeWhitespace: true});
+      return tc.items.map(function(i) { return i.str; }).join('');
+    `)
   }
+  else {
+    // Direct access (Chrome page context)
+    const pageView = await getPageView(pageIndex)
+    if (!pageView.pdfPage) {
+      throw new Error(`Page ${pageIndex} not loaded`)
+    }
 
-  const textContent = await pageView.pdfPage.getTextContent({
-    normalizeWhitespace: true,
-  })
+    const textContent = await pageView.pdfPage.getTextContent({
+      normalizeWhitespace: true,
+    })
 
-  const pageText = textContent.items.map((item: any) => item.str).join('')
+    pageText = textContent.items.map((item: any) => item.str).join('')
+  }
 
   pageTextCache.set(pageIndex, pageText)
 
@@ -839,6 +940,7 @@ export async function anchorPDF(selectors: Selector[]): Promise<Range> {
   const position = selectors.find(s => s.type === 'TextPositionSelector') as
     | TextPositionSelector
     | undefined
+  const targetPageIndex = getPageIndexFromSelectors(selectors)
 
   if (position) {
     try {
@@ -877,8 +979,117 @@ export async function anchorPDF(selectors: Selector[]): Promise<Range> {
     }
   }
 
-  // Fall back to quote matching
+  // If we have a PageSelector, try anchoring on that specific page first.
+  // This prevents matching duplicate text on the wrong page.
+  if (targetPageIndex !== undefined) {
+    try {
+      const pageText = await getPageTextContent(targetPageIndex)
+      const strippedText = stripSpaces(pageText)
+      const strippedQuote = stripSpaces(quote.exact)
+      const strippedPrefix = quote.prefix ? stripSpaces(quote.prefix) : undefined
+      const strippedSuffix = quote.suffix ? stripSpaces(quote.suffix) : undefined
+
+      const match = matchQuote(
+        strippedText,
+        strippedQuote,
+        strippedPrefix,
+        strippedSuffix,
+      )
+
+      if (match) {
+        const [start, end] = translateOffsets(
+          strippedText,
+          pageText,
+          match.start,
+          match.end,
+          isNotSpace,
+        )
+        return await anchorByPosition(targetPageIndex, start, end)
+      }
+    }
+    catch {
+      // Page-scoped anchoring failed, fall back to full search
+    }
+  }
+
+  // Fall back to quote matching across all pages
   return anchorQuote(quote, position?.start)
+}
+
+/**
+ * Verify that an annotation's text exists on its target PDF page
+ * without requiring the text layer to be rendered.
+ *
+ * Uses pdfPage.getTextContent() which works regardless of rendering state.
+ * This allows us to distinguish between:
+ * - "page not rendered yet" (text verified, just waiting for render)
+ * - "text genuinely not found" (true orphan)
+ */
+export async function verifyAnnotationTextOnPage(
+  selectors: Selector[],
+): Promise<{ verified: boolean, pageIndex: number | undefined }> {
+  const quote = selectors.find(s => s.type === 'TextQuoteSelector') as
+    | TextQuoteSelector
+    | undefined
+  const position = selectors.find(s => s.type === 'TextPositionSelector') as
+    | TextPositionSelector
+    | undefined
+  const pageSelector = selectors.find(s => s.type === 'PageSelector') as
+    | PageSelector
+    | undefined
+
+  if (!quote) {
+    return { verified: false, pageIndex: undefined }
+  }
+
+  try {
+    let targetPageIndex: number | undefined
+
+    // Determine target page from PageSelector or TextPositionSelector
+    if (pageSelector?.index !== undefined) {
+      targetPageIndex = pageSelector.index
+    }
+    else if (position) {
+      try {
+        const { index } = await findPageByOffset(position.start)
+        targetPageIndex = index
+      }
+      catch {
+        // Can't determine page - fall through to full search
+      }
+    }
+
+    const strippedQuote = stripSpaces(quote.exact)
+
+    // If we know the target page, check just that page
+    if (targetPageIndex !== undefined) {
+      const pageText = await getPageTextContent(targetPageIndex)
+      const strippedPageText = stripSpaces(pageText)
+
+      if (strippedPageText.includes(strippedQuote)) {
+        return { verified: true, pageIndex: targetPageIndex }
+      }
+    }
+
+    // Fallback: search all pages for the quote text
+    const viewer = getPDFViewer()
+    for (let i = 0; i < viewer.pagesCount; i++) {
+      const pageText = await getPageTextContent(i)
+      const strippedPageText = stripSpaces(pageText)
+
+      if (strippedPageText.includes(strippedQuote)) {
+        return { verified: true, pageIndex: i }
+      }
+    }
+
+    return { verified: false, pageIndex: undefined }
+  }
+  catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn('[PDF] Failed to verify annotation text:', error)
+    }
+    return { verified: false, pageIndex: undefined }
+  }
 }
 
 /**
