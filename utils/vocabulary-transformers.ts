@@ -93,10 +93,11 @@ export function transformVocabularyItem(
     case 'momsi':
     default:
       // For custom vocabularies or fallback
+      // item.label has the human-readable name, item.value has the URI
       return {
-        label: item.value || item.label || item.title || item.name || '',
+        label: item.label || item.value || item.title || item.name || '',
         value: item.uuid || item.id || item.value || '',
-        secondarySearch: item.value_uri || item.url || undefined,
+        secondarySearch: item.value_uri || item.value || item.url || undefined,
         description: item.description || undefined,
       }
   }
