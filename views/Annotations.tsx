@@ -105,17 +105,58 @@ export default function Annotations() {
     setFilteredAnnotationIds([])
   }
 
+  // Fetch active tab info and set up frame URL watcher for page annotations.
+  // Uses relay through background script because browser.tabs and browser.storage.session
+  // are not reliably available in the Firefox sidebar iframe.
   useEffect(() => {
-    (async () => {
-      const tabs = await browser.tabs.query({
-        active: true,
-        currentWindow: true,
-      })
-      if (tabs[0]?.url) {
-        const documentUrl = extractDocumentURL(tabs[0].url)
-        setCurrentUrl(documentUrl)
+    let unwatch: (() => void) | undefined
+
+    const setup = async () => {
+      try {
+        const { tabId, url, frameUrls } = await sendMessage('relayGetActiveTabInfo', undefined)
+
+        if (url) {
+          const documentUrl = extractDocumentURL(url)
+          setCurrentUrl(documentUrl)
+        }
+
+        if (!tabId)
+          return
+
+        // Use frame URLs returned by background (avoids cross-context session storage issues in Firefox)
+        if (frameUrls && frameUrls.length > 0) {
+          const data = await searchAnnotationsByUrl(frameUrls)
+          setAnnotations(prev => mergeAnnotations(prev, data.hits.hits))
+        }
+
+        // Watch for changes to frame URLs in storage
+        unwatch = storage.watch<string[]>(
+          `session:frameUrls:${tabId}` as const,
+          async (newUrls) => {
+            if (!newUrls || newUrls.length === 0)
+              return
+
+            try {
+              const data = await searchAnnotationsByUrl(newUrls)
+              setAnnotations(prev => mergeAnnotations(prev, data.hits.hits))
+            }
+            catch (error) {
+              console.error('[Annotations] Error fetching annotations for new frame URLs:', error)
+            }
+          },
+        )
       }
-    })()
+      catch (error) {
+        console.error('[Annotations] Error setting up annotation watcher:', error)
+      }
+    }
+
+    setup()
+
+    return () => {
+      if (unwatch)
+        unwatch()
+    }
   }, [])
 
   useEffect(() => {
@@ -139,7 +180,9 @@ export default function Annotations() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, location])
 
-  // Listen for highlight clicks - set persistent filter
+  // Listen for highlight clicks relayed via tabs.sendMessage from background.
+  // In Firefox, the sidebar iframe has "content script scope", so tabs.sendMessage(tabId)
+  // reaches it (unlike runtime.sendMessage which doesn't).
   useEffect(() => {
     const unsubscribe = onMessage(
       'showAnnotationsFromHighlight',
@@ -148,11 +191,8 @@ export default function Annotations() {
           return
 
         const { annotationIds } = message.data
-
-        // Set persistent filter (no timeout)
         setFilteredAnnotationIds(annotationIds)
 
-        // If only one annotation, show it in the modal
         if (annotationIds.length === 1) {
           const annotation = annotations.find(
             ann => ann._id === annotationIds[0],
@@ -161,8 +201,6 @@ export default function Annotations() {
             setSelected(annotation)
           }
         }
-        // If multiple annotations, they're now filtered in the list
-        // User can click any to see details
       },
     )
 
@@ -173,7 +211,7 @@ export default function Annotations() {
     }
   }, [annotations])
 
-  // Listen for highlight hovers - set temporary hover state
+  // Listen for highlight hovers relayed via tabs.sendMessage from background.
   useEffect(() => {
     const unsubscribe = onMessage('hoverAnnotations', async (message) => {
       if (!message.data?.annotationIds) {
@@ -182,6 +220,9 @@ export default function Annotations() {
       }
 
       const { annotationIds } = message.data
+      if (import.meta.env.DEV) {
+        console.debug('[Annotations] hoverAnnotations received:', annotationIds)
+      }
       setHoveredAnnotationIds(annotationIds)
     })
 
@@ -189,59 +230,6 @@ export default function Annotations() {
       if (unsubscribe) {
         unsubscribe()
       }
-    }
-  }, [])
-
-  // Watch tab-specific storage for frame URL changes
-  useEffect(() => {
-    let unwatch: (() => void) | undefined
-
-    const setupWatcher = async () => {
-      try {
-        const tabs = await browser.tabs.query({
-          active: true,
-          currentWindow: true,
-        })
-        const tabId = tabs[0]?.id
-        if (!tabId)
-          return
-
-        const key = `session:frameUrls:${tabId}` as const
-
-        // Check storage on mount for any URLs written before we mounted
-        const storedUrls = await storage.getItem<string[]>(key)
-        if (storedUrls && storedUrls.length > 0) {
-          const data = await searchAnnotationsByUrl(storedUrls)
-          setAnnotations(prev => mergeAnnotations(prev, data.hits.hits))
-        }
-
-        // Watch for changes to frame URLs in storage
-        unwatch = storage.watch<string[]>(key, async (newUrls) => {
-          if (!newUrls || newUrls.length === 0)
-            return
-
-          try {
-            const data = await searchAnnotationsByUrl(newUrls)
-            setAnnotations(prev => mergeAnnotations(prev, data.hits.hits))
-          }
-          catch (error) {
-            console.error(
-              '[Annotations] Error fetching annotations for new frame URLs:',
-              error,
-            )
-          }
-        })
-      }
-      catch (error) {
-        console.error('[Annotations] Error setting up storage watcher:', error)
-      }
-    }
-
-    setupWatcher()
-
-    return () => {
-      if (unwatch)
-        unwatch()
     }
   }, [])
 

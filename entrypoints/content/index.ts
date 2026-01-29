@@ -181,7 +181,7 @@ export default defineContentScript({
           await host.openSidebar()
 
           try {
-            await sendMessage('showAnnotationsFromHighlight', {
+            await sendMessage('relayShowAnnotationsFromHighlight', {
               annotationIds: event.data.annotationIds,
             })
           }
@@ -194,7 +194,7 @@ export default defineContentScript({
         }
         else if (event.data.type === 'rda:hoverAnnotations') {
           try {
-            await sendMessage('hoverAnnotations', {
+            await sendMessage('relayHoverAnnotations', {
               annotationIds: event.data.annotationIds,
             }).catch(() => {
               // Sidebar might not be ready yet, ignore
@@ -249,7 +249,7 @@ export default defineContentScript({
           await host.openSidebar()
 
           try {
-            await sendMessage('showAnnotationsFromHighlight', {
+            await sendMessage('relayShowAnnotationsFromHighlight', {
               annotationIds,
             })
           }
@@ -263,7 +263,7 @@ export default defineContentScript({
 
         onHighlightHover: async (annotationIds) => {
           try {
-            await sendMessage('hoverAnnotations', { annotationIds }).catch(
+            await sendMessage('relayHoverAnnotations', { annotationIds }).catch(
               () => {
                 // Sidebar might not be ready yet, ignore
               },

@@ -481,6 +481,74 @@ export default defineBackground(() => {
     }
   })
 
+  onMessage('relayGetActiveTabInfo', async () => {
+    try {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+      const tabId = tabs[0]?.id ?? null
+      const url = tabs[0]?.url ?? null
+
+      // Also return frame URLs from storage so the sidebar doesn't need to
+      // read session storage directly (which has cross-context issues in Firefox)
+      let frameUrls: string[] = []
+      if (tabId) {
+        const key = `session:frameUrls:${tabId}` as const
+        frameUrls = (await storage.getItem<string[]>(key)) || []
+      }
+
+      return { tabId, url, frameUrls }
+    }
+    catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('[Background] Failed to relay getActiveTabInfo:', error)
+      }
+      return { tabId: null, url: null, frameUrls: [] }
+    }
+  })
+
+  // Relay highlight interactions from content script to sidebar.
+  // Browser-specific routing is needed because Chrome and Firefox treat the sidebar differently:
+  // - Chrome: sidebar is a chrome-extension:// page (full extension context), so
+  //   runtime.sendMessage() reaches it but tabs.sendMessage(tabId) does not
+  // - Firefox: sidebar iframe has "content script scope" (bug #1443253), so
+  //   tabs.sendMessage(tabId) reaches it but runtime.sendMessage() does not
+  onMessage('relayShowAnnotationsFromHighlight', async (message) => {
+    try {
+      if (import.meta.env.BROWSER === 'firefox') {
+        const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+        if (tabs[0]?.id) {
+          await sendMessage('showAnnotationsFromHighlight', message.data, tabs[0].id)
+        }
+      }
+      else {
+        await sendMessage('showAnnotationsFromHighlight', message.data)
+      }
+    }
+    catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('[Background] Failed to relay showAnnotationsFromHighlight:', error)
+      }
+    }
+  })
+
+  onMessage('relayHoverAnnotations', async (message) => {
+    try {
+      if (import.meta.env.BROWSER === 'firefox') {
+        const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+        if (tabs[0]?.id) {
+          await sendMessage('hoverAnnotations', message.data, tabs[0].id)
+        }
+      }
+      else {
+        await sendMessage('hoverAnnotations', message.data)
+      }
+    }
+    catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('[Background] Failed to relay hoverAnnotations:', error)
+      }
+    }
+  })
+
   // Relay authentication through background where browser.identity is available
   // In Firefox MV3, browser.identity.launchWebAuthFlow() only works in the background script
   onMessage('relayAuthenticate', async () => {

@@ -75,7 +75,14 @@ interface ProtocolMap {
     orphaned: string[]
     recovered: string[]
   } | null>
+  relayGetActiveTabInfo: () => Promise<{ tabId: number | null, url: string | null, frameUrls: string[] }>
   relayAuthenticate: () => Promise<{ oauth: Keycloak, profile: UserProfile }>
+
+  // Relay messages - content script sends to background, background relays to sidebar
+  // This is needed because runtime.sendMessage() from content scripts doesn't reach
+  // moz-extension:// sidebar iframes in Firefox
+  relayShowAnnotationsFromHighlight: (data: { annotationIds: string[] }) => Promise<void>
+  relayHoverAnnotations: (data: { annotationIds: string[] }) => Promise<void>
 }
 
 export const { sendMessage, onMessage }
