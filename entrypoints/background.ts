@@ -1,6 +1,7 @@
 import type { DataSource } from '@/types/datasource.interface'
 import type { Keycloak } from '@/types/keycloak.interface'
 import { storage } from '#imports'
+import { Authentication } from '@/utils/authentication'
 import { isPDFURL } from '@/utils/detect-content-type'
 import { onMessage, sendMessage } from '@/utils/messaging'
 import { parseApiError } from '@/utils/parse-api-error'
@@ -478,6 +479,18 @@ export default defineBackground(() => {
       }
       return null
     }
+  })
+
+  // Relay authentication through background where browser.identity is available
+  // In Firefox MV3, browser.identity.launchWebAuthFlow() only works in the background script
+  onMessage('relayAuthenticate', async () => {
+    const auth = new Authentication(
+      import.meta.env.WXT_KEYCLOAK_URL,
+      import.meta.env.WXT_KEYCLOAK_CLIENT_ID,
+    )
+    const oauth = await auth.authenticate()
+    const profile = await auth.getUserProfile()
+    return { oauth, profile }
   })
 
   browser.action.onClicked.addListener(async (tab) => {

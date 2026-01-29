@@ -1,5 +1,6 @@
 import type { DataSource } from '@/types/datasource.interface'
 import type { ElasticsearchResponse } from '@/types/elastic-search-document.interface'
+import type { Keycloak, UserProfile } from '@/types/keycloak.interface'
 import type { AnnotationTarget } from '@/types/selector.interface'
 import { defineExtensionMessaging } from '@webext-core/messaging'
 
@@ -74,6 +75,7 @@ interface ProtocolMap {
     orphaned: string[]
     recovered: string[]
   } | null>
+  relayAuthenticate: () => Promise<{ oauth: Keycloak, profile: UserProfile }>
 }
 
 export const { sendMessage, onMessage }

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { AuthStorage } from '@/utils/auth-storage'
 import { Authentication } from '@/utils/authentication'
+import { sendMessage } from '@/utils/messaging'
 import { AuthenticationContext } from './authentication.context'
 
 interface AuthenticationProviderProps {
@@ -70,10 +71,9 @@ export default function AuthenticationProvider({
 
   const login = async () => {
     try {
-      const oauth = await auth.authenticate()
-      const profile = await auth.getUserProfile()
-      setProfile(profile)
-      setAuthState(oauth)
+      const result = await sendMessage('relayAuthenticate', undefined)
+      setProfile(result.profile)
+      await setAuthState(result.oauth)
     }
     catch {
       await clearAuthState()
