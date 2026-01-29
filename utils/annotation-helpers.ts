@@ -58,10 +58,20 @@ function normalizeVocabularyField(
   fieldConfig: ComboboxField,
 ): VocabularyItem[] {
   const dataFieldName = getElasticsearchFieldName(fieldConfig.name)
-  const rawValue = (annotation as any)[dataFieldName]
+  let rawValue = (annotation as any)[dataFieldName]
 
   if (!rawValue)
     return []
+
+  // For fields sharing custom_vocabularies, filter by namespace
+  if (dataFieldName === 'custom_vocabularies' && Array.isArray(rawValue)) {
+    const namespace = fieldConfig.vocabularyOptions?.namespace
+    if (namespace) {
+      rawValue = rawValue.filter(
+        (item: { namespace?: string }) => item.namespace === namespace,
+      )
+    }
+  }
 
   const variant
     = fieldConfig.displaySection === 'additional_vocabularies'
@@ -237,7 +247,17 @@ export function getVocabularyCounts(
   schema.fields.forEach((field) => {
     if (field.type === 'combobox' && field.multiple) {
       const dataFieldName = getElasticsearchFieldName(field.name)
-      const rawValue = (annotation as any)[dataFieldName]
+      let rawValue = (annotation as any)[dataFieldName]
+
+      // For fields sharing custom_vocabularies, filter by namespace
+      if (dataFieldName === 'custom_vocabularies' && Array.isArray(rawValue)) {
+        const namespace = field.vocabularyOptions?.namespace
+        if (namespace) {
+          rawValue = rawValue.filter(
+            (item: { namespace?: string }) => item.namespace === namespace,
+          )
+        }
+      }
 
       if (rawValue && Array.isArray(rawValue) && rawValue.length > 0) {
         counts.push({

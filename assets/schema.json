@@ -162,6 +162,88 @@
         "namespace": "momsi"
       },
       "displaySection": "additional_vocabularies"
+    },
+    {
+      "type": "combobox",
+      "label": "EOSC Opportunity Areas",
+      "name": "eosc_opportunity_areas",
+      "required": false,
+      "info": "Select an Opportunity Areas Expert Group from the list. You can start typing to filter the list. <a href=\"https://eosc.eu/eosc-opportunity-area-expert-groups/\" target=\"_blank\">Read more about EOSC Opportunity Areas Expert Groups</a>.",
+      "vocabulary": "open_vocabularies",
+      "multiple": true,
+      "vocabularyOptions": {
+        "namespace": "eosc_opportunity_areas"
+      },
+      "displaySection": "additional_vocabularies"
+    },
+    {
+      "type": "combobox",
+      "label": "SRIA Implementation Challenges",
+      "name": "sria_challenges",
+      "required": false,
+      "info": "Select a SRIA Implementation Challenge from the list. You can start typing to filter the list. <a href=\"https://eosc.eu/wp-content/uploads/2024/12/20241031_SRIA_1.3_final_Annex.pdf\" target=\"_blank\">Read more about the SRIA Implementation Challenges</a>.",
+      "vocabulary": "open_vocabularies",
+      "multiple": true,
+      "showDescription": true,
+      "vocabularyOptions": {
+        "namespace": "sria_challenges"
+      },
+      "displaySection": "additional_vocabularies"
+    },
+    {
+      "type": "combobox",
+      "label": "SRIA Priority Areas (v1.3)",
+      "name": "sria_priority_areas",
+      "required": false,
+      "info": "Select a SRIA Priority Area from the list. You can start typing to filter the list. <a href=\"https://eosc.eu/wp-content/uploads/2024/12/20241031_SRIA_1.3_final_Annex.pdf\" target=\"_blank\">Read more about the SRIA Priority Areas (v1.3)</a>.",
+      "vocabulary": "open_vocabularies",
+      "multiple": true,
+      "vocabularyOptions": {
+        "namespace": "sria_priority_areas"
+      },
+      "displaySection": "additional_vocabularies"
+    },
+    {
+      "type": "combobox",
+      "label": "EOSC Task Forces",
+      "name": "eosc_task_forces",
+      "required": false,
+      "info": "Select an EOSC Association Task Force from the list. You can start typing to filter the list.",
+      "vocabulary": "open_vocabularies",
+      "multiple": true,
+      "showDescription": true,
+      "vocabularyOptions": {
+        "namespace": "eosc_task_forces"
+      },
+      "displaySection": "additional_vocabularies"
+    },
+    {
+      "type": "combobox",
+      "label": "ERICs",
+      "name": "erics",
+      "required": false,
+      "info": "Select a European Research Infrastructure Consortium (ERIC) from the list. You can start typing to filter the list.",
+      "vocabulary": "open_vocabularies",
+      "multiple": true,
+      "showDescription": true,
+      "vocabularyOptions": {
+        "namespace": "erics"
+      },
+      "displaySection": "additional_vocabularies"
+    },
+    {
+      "type": "combobox",
+      "label": "HE Projects",
+      "name": "he_projects",
+      "required": false,
+      "info": "Select a Horizon Europe project from the list. You can start typing to filter the list.",
+      "vocabulary": "open_vocabularies",
+      "multiple": true,
+      "showDescription": true,
+      "vocabularyOptions": {
+        "namespace": "he_projects"
+      },
+      "displaySection": "additional_vocabularies"
     }
   ]
 }

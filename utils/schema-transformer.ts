@@ -56,7 +56,7 @@
  * ```
  */
 
-import type { AnnotationSchema } from '@/types/annotation-schema.interface'
+import type { AnnotationSchema, ComboboxField } from '@/types/annotation-schema.interface'
 import schema from '@/assets/schema.json'
 
 const annotationSchema = schema as AnnotationSchema
@@ -137,13 +137,6 @@ const FIELD_MAPPINGS: FieldMapping[] = [
     elasticsearchField: 'disciplines',
     type: 'vocabulary',
   },
-
-  // Custom vocabularies (special handling for namespaced vocabularies like MOMSI)
-  {
-    schemaField: 'momsi',
-    elasticsearchField: 'custom_vocabularies',
-    type: 'nested',
-  },
 ]
 
 /**
@@ -160,7 +153,17 @@ const schemaToESMap = new Map<string, FieldMapping>(
  */
 export function getElasticsearchFieldName(schemaFieldName: string): string {
   const mapping = schemaToESMap.get(schemaFieldName)
-  return mapping ? mapping.elasticsearchField : schemaFieldName
+  if (mapping)
+    return mapping.elasticsearchField
+
+  // Generic: any additional_vocabularies field maps to custom_vocabularies
+  const schemaField = annotationSchema.fields.find(f => f.name === schemaFieldName)
+  if (schemaField?.type === 'combobox'
+    && (schemaField as ComboboxField).displaySection === 'additional_vocabularies') {
+    return 'custom_vocabularies'
+  }
+
+  return schemaFieldName
 }
 
 /**
