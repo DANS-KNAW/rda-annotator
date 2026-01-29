@@ -156,6 +156,144 @@ test.describe('Highlight-Annotation Interactions', () => {
     expect(isFocused, 'Highlight should be focused after clicking annotation card').toBe(true)
   })
 
+  test('focused highlight clears when annotation drawer is closed', async ({
+    context,
+    browserName,
+  }) => {
+    test.setTimeout(60000)
+    const page = await context.newPage()
+
+    await enableExtension(context, browserName)
+    await injectMockAuth(context, browserName)
+
+    await page.goto('https://example.com')
+    await page.waitForSelector('[data-rda-injected]', { state: 'attached' })
+
+    // Create an annotation
+    await selectTextAndOpenPopup(page)
+
+    const sidebarFrame = await getSidebarFrame(page)
+    await waitForCreateForm(sidebarFrame)
+
+    await fillRequiredFields(
+      sidebarFrame,
+      page,
+      'Unfocus Test',
+      { selectByLabel: 'English' },
+      { selectByLabel: 'Other' },
+    )
+
+    await submitForm(sidebarFrame, page)
+    await waitForAnnotationsList(sidebarFrame)
+
+    // Wait for annotations to anchor
+    await waitForAnnotationsToAnchor(page)
+
+    // Verify annotation is in Page Annotations
+    const inPage = await verifyAnnotationInPageAnnotations(sidebarFrame, 'Example Domain')
+    expect(inPage, 'Annotation should be in Page Annotations').toBe(true)
+
+    // Click the annotation card to focus the highlight
+    await clickAnnotationCard(sidebarFrame, 'Example Domain')
+
+    await takeScreenshot(page, browserName, 'unfocus-drawer-before')
+
+    // Verify highlight is focused
+    const isFocused = await isHighlightFocused(page)
+    expect(isFocused, 'Highlight should be focused after clicking annotation card').toBe(true)
+
+    // Close the drawer by clicking the close button.
+    // Use evaluate() to click from within the iframe's JS context,
+    // as Playwright's force-click can fail to reach React handlers in extension iframes on Chromium.
+    await sidebarFrame.evaluate(() => {
+      const btn = document.querySelector('button[aria-label="Close drawer"]') as HTMLElement | null
+      btn?.click()
+    })
+    await page.waitForTimeout(2000)
+
+    await takeScreenshot(page, browserName, 'unfocus-drawer-after')
+
+    // Verify highlight is no longer focused
+    const isFocusedAfterClose = await isHighlightFocused(page)
+    expect(isFocusedAfterClose, 'Highlight should NOT be focused after closing drawer').toBe(false)
+  })
+
+  test('focused highlight clears when filter is cleared', async ({
+    context,
+    browserName,
+  }) => {
+    test.setTimeout(60000)
+    const page = await context.newPage()
+
+    await enableExtension(context, browserName)
+    await injectMockAuth(context, browserName)
+
+    await page.goto('https://example.com')
+    await page.waitForSelector('[data-rda-injected]', { state: 'attached' })
+
+    // Create an annotation
+    await selectTextAndOpenPopup(page)
+
+    const sidebarFrame = await getSidebarFrame(page)
+    await waitForCreateForm(sidebarFrame)
+
+    await fillRequiredFields(
+      sidebarFrame,
+      page,
+      'Filter Clear Test',
+      { selectByLabel: 'English' },
+      { selectByLabel: 'Other' },
+    )
+
+    await submitForm(sidebarFrame, page)
+    await waitForAnnotationsList(sidebarFrame)
+
+    // Wait for annotations to anchor
+    await waitForAnnotationsToAnchor(page)
+
+    // Verify annotation is in Page Annotations
+    const inPage = await verifyAnnotationInPageAnnotations(sidebarFrame, 'Example Domain')
+    expect(inPage, 'Annotation should be in Page Annotations').toBe(true)
+
+    // Click the highlight on the page to set filter and open drawer
+    await clickHighlightOnPage(page)
+
+    const isFiltered = await isSidebarFilterActive(sidebarFrame)
+    expect(isFiltered, 'Filter should be active after clicking highlight').toBe(true)
+
+    // Close the drawer first (it opens automatically for single-match highlights)
+    await sidebarFrame.evaluate(() => {
+      const btn = document.querySelector('button[aria-label="Close drawer"]') as HTMLElement | null
+      btn?.click()
+    })
+    await page.waitForTimeout(500)
+
+    // Click annotation card to focus the highlight (card is now visible with filter active)
+    await clickAnnotationCard(sidebarFrame, 'Example Domain')
+    const isFocused = await isHighlightFocused(page)
+    expect(isFocused, 'Highlight should be focused after clicking card').toBe(true)
+
+    await takeScreenshot(page, browserName, 'unfocus-filter-before')
+
+    // Clear the filter using the "Clear filter" button
+    await sidebarFrame.evaluate(() => {
+      const buttons = document.querySelectorAll('button')
+      for (const btn of buttons) {
+        if (btn.textContent?.includes('Clear filter')) {
+          btn.click()
+          break
+        }
+      }
+    })
+    await page.waitForTimeout(2000)
+
+    await takeScreenshot(page, browserName, 'unfocus-filter-after')
+
+    // Verify highlight is no longer focused
+    const isFocusedAfterClear = await isHighlightFocused(page)
+    expect(isFocusedAfterClear, 'Highlight should NOT be focused after clearing filter').toBe(false)
+  })
+
   test('hover highlight shows ring on annotation card', async ({
     context,
     browserName,

@@ -1,6 +1,6 @@
 import type { AnnotationHit } from '@/types/elastic-search-document.interface'
 import { storage } from '#imports'
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router'
 import AnnotationCard from '@/components/AnnotationCard'
 import AnnotationDrawer from '@/components/AnnotationDrawer'
@@ -103,6 +103,7 @@ export default function Annotations() {
 
   const clearFilter = () => {
     setFilteredAnnotationIds([])
+    setSelected(null)
   }
 
   // Fetch active tab info and set up frame URL watcher for page annotations.
@@ -232,6 +233,20 @@ export default function Annotations() {
       }
     }
   }, [])
+
+  // Clear focused highlight on the page when the annotation drawer is closed
+  const hadSelection = useRef(false)
+  useEffect(() => {
+    if (selected !== null) {
+      hadSelection.current = true
+    }
+    else if (hadSelection.current) {
+      hadSelection.current = false
+      sendMessage('relayClearFocusedAnnotation', undefined).catch((error) => {
+        console.error('Failed to clear focused annotation:', error)
+      })
+    }
+  }, [selected])
 
   // Request anchor status when annotations load
   // The anchorStatusUpdate listener is now in AnchorStatusProvider (App level)

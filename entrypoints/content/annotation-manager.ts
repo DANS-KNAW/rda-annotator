@@ -876,6 +876,16 @@ export class AnnotationManager {
     }
   }
 
+  clearFocusedAnnotation(): void {
+    if (this.currentFocused) {
+      const previousFocused = this.annotations.get(this.currentFocused)
+      if (previousFocused?.highlight) {
+        setHighlightFocused(previousFocused.highlight, false)
+      }
+      this.currentFocused = null
+    }
+  }
+
   private clearAnnotations(): void {
     const parents = new Set<Node>()
 

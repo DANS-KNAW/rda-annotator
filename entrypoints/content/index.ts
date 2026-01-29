@@ -454,6 +454,22 @@ export default defineContentScript({
       }
 
       try {
+        onMessage('clearFocusedAnnotation', async () => {
+          if (!annotationManager)
+            return
+          annotationManager.clearFocusedAnnotation()
+          broadcastToCrossOriginFrames({ type: 'rda:clearFocusedAnnotation' })
+        })
+      }
+      catch {
+        if (import.meta.env.DEV) {
+          console.warn(
+            '[RDA] Listener for "clearFocusedAnnotation" already registered',
+          )
+        }
+      }
+
+      try {
         onMessage('removeTemporaryHighlight', async () => {
           if (!annotationManager)
             return
@@ -644,6 +660,12 @@ export default defineContentScript({
             },
             '*',
           )
+        }
+        else if (
+          event.data.type === 'rda:clearFocusedAnnotation'
+          && annotationManager
+        ) {
+          annotationManager.clearFocusedAnnotation()
         }
         else if (
           event.data.type === 'rda:reloadAnnotations'

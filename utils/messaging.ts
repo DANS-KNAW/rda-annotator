@@ -14,6 +14,7 @@ interface ProtocolMap {
   }) => Promise<{ success: boolean }>
   clearPendingAnnotation: () => Promise<{ success: boolean }>
   scrollToAnnotation: (data: { annotationId: string }) => Promise<void>
+  clearFocusedAnnotation: () => Promise<void>
   removeTemporaryHighlight: () => Promise<void>
   reloadAnnotations: () => Promise<void>
   getExtensionState: () => Promise<{ enabled: boolean }>
@@ -66,6 +67,7 @@ interface ProtocolMap {
   // Relay messages - sidebar sends to background, background relays to content script
   // This is needed because browser.tabs is not available in Firefox sidebar iframe
   relayScrollToAnnotation: (data: { annotationId: string }) => Promise<void>
+  relayClearFocusedAnnotation: () => Promise<void>
   relayRemoveTemporaryHighlight: () => Promise<void>
   relayReloadAnnotations: () => Promise<void>
   relayGetPageUrl: () => Promise<{ url: string | null }>

@@ -419,6 +419,20 @@ export default defineBackground(() => {
     }
   })
 
+  onMessage('relayClearFocusedAnnotation', async () => {
+    try {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+      if (tabs[0]?.id) {
+        await sendMessage('clearFocusedAnnotation', undefined, tabs[0].id)
+      }
+    }
+    catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('[Background] Failed to relay clearFocusedAnnotation:', error)
+      }
+    }
+  })
+
   onMessage('relayRemoveTemporaryHighlight', async () => {
     try {
       const tabs = await browser.tabs.query({ active: true, currentWindow: true })
