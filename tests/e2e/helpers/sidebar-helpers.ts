@@ -162,6 +162,60 @@ export async function verifyAnnotationInList(
 }
 
 /**
+ * Verify an annotation appears specifically in the "Page Annotations" tab.
+ * Clicks the tab and waits for the annotation text to appear.
+ */
+export async function verifyAnnotationInPageAnnotations(
+  sidebarFrame: Frame,
+  fragmentOrText: string,
+  timeout: number = 10000,
+): Promise<boolean> {
+  try {
+    // Click the "Page Annotations" tab button (contains badge with count)
+    const pageAnnotationsTab = sidebarFrame.locator('button', { hasText: 'Page Annotations' })
+    if (await pageAnnotationsTab.isVisible()) {
+      await pageAnnotationsTab.click()
+      await sidebarFrame.page().waitForTimeout(1000)
+    }
+
+    // Wait for the annotation text to appear in the tab content
+    const annotationCard = sidebarFrame.getByText(fragmentOrText)
+    await annotationCard.waitFor({ state: 'visible', timeout })
+    return true
+  }
+  catch {
+    return false
+  }
+}
+
+/**
+ * Verify an annotation appears specifically in the "My Annotations" tab.
+ * Clicks the tab and waits for the annotation text to appear.
+ */
+export async function verifyAnnotationInMyAnnotations(
+  sidebarFrame: Frame,
+  fragmentOrText: string,
+  timeout: number = 10000,
+): Promise<boolean> {
+  try {
+    // Click the "My Annotations" tab button (contains badge with count)
+    const myAnnotationsTab = sidebarFrame.locator('button', { hasText: 'My Annotations' })
+    if (await myAnnotationsTab.isVisible()) {
+      await myAnnotationsTab.click()
+      await sidebarFrame.page().waitForTimeout(1000)
+    }
+
+    // Wait for the annotation text to appear in the tab content
+    const annotationCard = sidebarFrame.getByText(fragmentOrText)
+    await annotationCard.waitFor({ state: 'visible', timeout })
+    return true
+  }
+  catch {
+    return false
+  }
+}
+
+/**
  * Check if an error alert is visible in the sidebar
  */
 export async function isErrorAlertVisible(sidebarFrame: Frame): Promise<boolean> {
@@ -575,6 +629,126 @@ export async function selectPDFTextAndOpenPopup(
 
   // Wait for sidebar to open and render
   await page.waitForTimeout(1500)
+}
+
+/**
+ * Click a permanent highlight element on the page.
+ * Finds the first rda-highlight with the given annotation ID and clicks it.
+ * If no annotationId is given, clicks the first permanent highlight found.
+ */
+export async function clickHighlightOnPage(
+  page: Page,
+  annotationId?: string,
+): Promise<void> {
+  const selector = annotationId
+    ? `rda-highlight[data-annotation-id="${annotationId}"]`
+    : 'rda-highlight:not([data-annotation-id="temporary"])'
+
+  const highlight = page.locator(selector).first()
+  await highlight.waitFor({ state: 'visible', timeout: 5000 })
+  await highlight.click()
+  await page.waitForTimeout(1000)
+}
+
+/**
+ * Hover over a permanent highlight element on the page.
+ * Finds the first rda-highlight with the given annotation ID and hovers it.
+ * If no annotationId is given, hovers the first permanent highlight found.
+ *
+ * Uses explicit mouse.move() with coordinates to reliably trigger the
+ * mousemove event that the annotation manager's hover detection listens on.
+ */
+export async function hoverHighlightOnPage(
+  page: Page,
+  annotationId?: string,
+): Promise<void> {
+  const selector = annotationId
+    ? `rda-highlight[data-annotation-id="${annotationId}"]`
+    : 'rda-highlight:not([data-annotation-id="temporary"])'
+
+  const highlight = page.locator(selector).first()
+  await highlight.waitFor({ state: 'visible', timeout: 5000 })
+
+  // Move mouse away first to ensure the subsequent move is detected as a change
+  await page.mouse.move(0, 0)
+  await page.waitForTimeout(100)
+
+  // Get highlight coordinates and move mouse explicitly
+  const box = await highlight.boundingBox()
+  if (!box) {
+    throw new Error(`Highlight element not found or not visible: ${selector}`)
+  }
+
+  // Move mouse to the center of the highlight element
+  const centerX = box.x + box.width / 2
+  const centerY = box.y + box.height / 2
+  await page.mouse.move(centerX, centerY)
+  await page.waitForTimeout(200)
+
+  // Move mouse slightly within the highlight to ensure mousemove fires again
+  // (in case the first move was throttled or didn't register)
+  await page.mouse.move(centerX + 1, centerY)
+  await page.waitForTimeout(1500)
+}
+
+/**
+ * Check if a highlight element has the focused class (applied when scrolling to it).
+ * Returns true if any highlight with the given annotation ID has the 'rda-highlight-focused' class.
+ */
+export async function isHighlightFocused(
+  page: Page,
+  annotationId?: string,
+): Promise<boolean> {
+  return page.evaluate((id) => {
+    const selector = id
+      ? `rda-highlight[data-annotation-id="${id}"]`
+      : 'rda-highlight:not([data-annotation-id="temporary"])'
+    const highlights = document.querySelectorAll(selector)
+    for (const h of highlights) {
+      if (h.classList.contains('rda-highlight-focused')) {
+        return true
+      }
+    }
+    return false
+  }, annotationId)
+}
+
+/**
+ * Check if the sidebar is showing a filter (from clicking a highlight).
+ * The filter section shows "Showing N selected annotation(s)" text.
+ */
+export async function isSidebarFilterActive(
+  sidebarFrame: Frame,
+): Promise<boolean> {
+  const filterText = sidebarFrame.locator('text=selected annotation')
+  return filterText.isVisible().catch(() => false)
+}
+
+/**
+ * Check if an annotation card has the hover ring styling in the sidebar.
+ * The hover styling applies 'ring-2 ring-rda-400' CSS classes.
+ */
+export async function isAnnotationCardHovered(
+  sidebarFrame: Frame,
+  fragmentText: string,
+): Promise<boolean> {
+  // Find the annotation card containing the fragment text, then check for ring styling
+  const card = sidebarFrame.locator('.ring-rda-400', { hasText: fragmentText })
+  return card.isVisible().catch(() => false)
+}
+
+/**
+ * Click an annotation card in the sidebar by its fragment text.
+ * This triggers scrollToAnnotation on the page.
+ */
+export async function clickAnnotationCard(
+  sidebarFrame: Frame,
+  fragmentText: string,
+): Promise<void> {
+  const card = sidebarFrame.locator('.bg-white.cursor-pointer', { hasText: fragmentText }).first()
+  await card.waitFor({ state: 'visible', timeout: 5000 })
+  await card.click()
+  await sidebarFrame.page().waitForTimeout(1500)
 }
 
 /**

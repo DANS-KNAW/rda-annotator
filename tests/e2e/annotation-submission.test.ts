@@ -35,6 +35,8 @@ import {
   submitForm,
   takeScreenshot,
   verifyAnnotationInList,
+  verifyAnnotationInMyAnnotations,
+  verifyAnnotationInPageAnnotations,
   waitForAnnotationsList,
   waitForCreateForm,
 } from './helpers/sidebar-helpers'
@@ -136,6 +138,66 @@ test.describe('Annotation Submission - Happy Path', () => {
     ).toBe('other')
 
     await takeScreenshot(page, browserName, 'submission-required-success')
+  })
+
+  test('created annotation appears in both Page Annotations and My Annotations', async ({
+    context,
+    browserName,
+  }) => {
+    const page = await context.newPage()
+
+    await enableExtension(context, browserName)
+    await injectMockAuth(context, browserName)
+
+    await page.goto('https://example.com')
+    await page.waitForSelector('[data-rda-injected]', { state: 'attached' })
+
+    // Select text and open popup
+    await selectTextAndOpenPopup(page)
+
+    const sidebarFrame = await getSidebarFrame(page)
+    await waitForCreateForm(sidebarFrame)
+
+    // Fill required fields and submit
+    await fillRequiredFields(
+      sidebarFrame,
+      page,
+      'Both Tabs Test Annotation',
+      { selectByLabel: 'English' },
+      { selectByLabel: 'Other' },
+    )
+
+    await submitForm(sidebarFrame, page)
+
+    // Wait for annotations list
+    await waitForAnnotationsList(sidebarFrame)
+
+    // Wait for data to load
+    await page.waitForTimeout(2000)
+
+    await takeScreenshot(page, browserName, 'both-tabs-after-submit')
+
+    // Verify annotation appears in Page Annotations tab
+    const inPageAnnotations = await verifyAnnotationInPageAnnotations(
+      sidebarFrame,
+      'Example Domain',
+    )
+    await takeScreenshot(page, browserName, 'both-tabs-page-annotations')
+    expect(
+      inPageAnnotations,
+      'Annotation should appear in Page Annotations tab',
+    ).toBe(true)
+
+    // Verify annotation appears in My Annotations tab
+    const inMyAnnotations = await verifyAnnotationInMyAnnotations(
+      sidebarFrame,
+      'Example Domain',
+    )
+    await takeScreenshot(page, browserName, 'both-tabs-my-annotations')
+    expect(
+      inMyAnnotations,
+      'Annotation should appear in My Annotations tab',
+    ).toBe(true)
   })
 
   test('creates annotation with all fields filled', async ({
