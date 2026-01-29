@@ -556,6 +556,12 @@ export default defineBackground(() => {
       const isEnabled = await storage.getItem('local:extension-enabled')
 
       if (isEnabled && isPDFURL(changeInfo.url)) {
+        // Allow tests to disable PDF redirect (Playwright cannot navigate to
+        // moz-extension:// URLs in Firefox, so tests use the built-in viewer)
+        const noRedirect = await storage.getItem('local:__rda_e2e_no_pdf_redirect')
+        if (noRedirect)
+          return
+
         const viewerUrl = getPDFViewerURL(changeInfo.url)
         await browser.tabs.update(tabId, { url: viewerUrl })
       }

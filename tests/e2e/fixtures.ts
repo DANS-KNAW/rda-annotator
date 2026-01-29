@@ -303,6 +303,13 @@ export const test = base.extend<{
       const browserWithExt = withExtension(firefox, FIREFOX_EXTENSION_PATH)
       context = await browserWithExt.launchPersistentContext(userDataDir, {
         headless: false, // Extensions require non-headless mode
+        firefoxUserPrefs: {
+          // Ensure the built-in PDF.js viewer is enabled (needed for PDF E2E tests
+          // that navigate to PDF URLs with the extension redirect disabled)
+          'pdfjs.disabled': false,
+          // Open PDFs inline even if Content-Disposition: attachment
+          'browser.download.open_pdf_attachments_inline': true,
+        },
       })
     }
     else {
