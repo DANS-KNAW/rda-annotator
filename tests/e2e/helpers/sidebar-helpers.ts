@@ -571,7 +571,9 @@ export async function selectPDFText(
   pageNumber: number,
   spanIndex: number = 0,
 ): Promise<void> {
-  const selector = `.page[data-page-number="${pageNumber}"] .textLayer span`
+  // Exclude .markedContent container spans — they are invisible structural
+  // wrappers in PDF.js that have zero dimensions and fail visibility checks.
+  const selector = `.page[data-page-number="${pageNumber}"] .textLayer span:not(.markedContent)`
   const spans = page.locator(selector)
   const count = await spans.count()
 
