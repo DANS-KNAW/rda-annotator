@@ -52,6 +52,14 @@ export interface SiteAnnotationConfig {
   navigationTimeout?: number
   /** Timeout for content script injection (default: 15000) */
   injectionTimeout?: number
+  /** Wait strategy for page.goto(). Default: 'domcontentloaded' */
+  waitUntil?: 'domcontentloaded' | 'networkidle' | 'load' | 'commit'
+  /**
+   * Optional callback to wait for site-specific readiness after navigation
+   * and content script injection, but before text selection.
+   * Use for SPAs that hydrate after DOMContentLoaded.
+   */
+  waitForReady?: (page: Page) => Promise<void>
 }
 
 /**
@@ -75,6 +83,8 @@ export async function runSiteAnnotationTest(
     annotationTitle,
     navigationTimeout = 30000,
     injectionTimeout = 15000,
+    waitUntil = 'domcontentloaded',
+    waitForReady,
   } = config
 
   clearCreatedAnnotations()
@@ -85,13 +95,18 @@ export async function runSiteAnnotationTest(
 
   // Step 2: Navigate to the target URL
   const page = await context.newPage()
-  await page.goto(url, { timeout: navigationTimeout, waitUntil: 'domcontentloaded' })
+  await page.goto(url, { timeout: navigationTimeout, waitUntil })
 
   // Step 3: Wait for content script injection
   await page.waitForSelector('[data-rda-injected]', {
     state: 'attached',
     timeout: injectionTimeout,
   })
+
+  // Step 3.5: Wait for site-specific readiness (if provided)
+  if (waitForReady) {
+    await waitForReady(page)
+  }
 
   await takeScreenshot(page, browserName, `${name}-page-loaded`)
 
@@ -158,7 +173,7 @@ export async function runSiteAnnotationTest(
   await takeScreenshot(page, browserName, `${name}-annotation-created`)
 
   // Step 12: Reload the page
-  await page.reload({ timeout: navigationTimeout, waitUntil: 'domcontentloaded' })
+  await page.reload({ timeout: navigationTimeout, waitUntil })
   await page.waitForSelector('[data-rda-injected]', {
     state: 'attached',
     timeout: injectionTimeout,
@@ -203,6 +218,7 @@ export async function selectTextByContent(
   searchText: string,
 ): Promise<void> {
   const found = await page.evaluate((text) => {
+    // Strategy 1: Single text node match (fast path)
     const walker = document.createTreeWalker(
       document.body,
       NodeFilter.SHOW_TEXT,
@@ -224,6 +240,24 @@ export async function selectTextByContent(
         return true
       }
     }
+
+    // Strategy 2: Cross-element text search using window.find()
+    // Handles text that spans multiple elements (e.g. <strong>word</strong> rest)
+    // window.find() is non-standard but supported in Chrome and Firefox
+    const windowFindResult = (window as any).find(text)
+    if (windowFindResult) {
+      const selection = window.getSelection()
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        const container = range.commonAncestorContainer
+        const element = container.nodeType === Node.ELEMENT_NODE
+          ? container as Element
+          : (container as Text).parentElement
+        element?.scrollIntoView({ block: 'center' })
+        return true
+      }
+    }
+
     return false
   }, searchText)
 
