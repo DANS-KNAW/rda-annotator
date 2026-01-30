@@ -1,10 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
-  testDir: './tests/e2e',
-  testIgnore: ['**/sites/**'],
-  timeout: 30000,
-  retries: 0,
+  testDir: './tests/e2e/sites',
+  timeout: 90000, // External sites need longer timeouts
+  retries: 1, // Retry once for transient network failures
   workers: 1, // Extensions require sequential execution
   reporter: 'list',
 
