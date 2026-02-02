@@ -49,6 +49,7 @@ export default function Create() {
   const [settings, setSettings] = useState<ISettings>({ vocabularies: {} })
   const [isLoadingSettings, setIsLoadingSettings] = useState(true)
   const [errorMessages, setErrorMessages] = useState<string[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const navigate = useNavigate()
 
@@ -156,12 +157,14 @@ export default function Create() {
 
   const handleSubmit = async (data: Record<string, any>) => {
     setErrorMessages([])
+    setIsSubmitting(true)
 
     if (!oauth || !oauth.identity_provider_identity) {
       console.error('Identifier not available')
       setErrorMessages([
         'User Identifier not available. Please try logging in again.',
       ])
+      setIsSubmitting(false)
       return
     }
 
@@ -209,6 +212,7 @@ export default function Create() {
       setErrorMessages([
         'No annotation data available. Please select text and try again.',
       ])
+      setIsSubmitting(false)
       return
     }
 
@@ -293,6 +297,7 @@ export default function Create() {
           ? error.message
           : 'An unexpected error occurred while creating the annotation. Please try again.'
       setErrorMessages([message])
+      setIsSubmitting(false)
     }
   }
 
@@ -427,14 +432,23 @@ export default function Create() {
         <div className="flex flex-col gap-2 mx-2 mb-8">
           <button
             type="submit"
-            className="mt-4 rounded-md w-full bg-rda-500 px-2.5 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-rda-400 focus-visible:outline-2 cursor-pointer focus-visible:outline-offset-2 focus-visible:outline-rda-500"
+            disabled={isSubmitting}
+            className={`mt-4 rounded-md w-full px-2.5 py-1.5 text-sm font-semibold text-white shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rda-500 ${isSubmitting ? 'bg-rda-300 cursor-not-allowed' : 'bg-rda-500 hover:bg-rda-400 cursor-pointer'}`}
           >
-            Create Annotation
+            {isSubmitting
+              ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                    Creating...
+                  </span>
+                )
+              : 'Create Annotation'}
           </button>
           <button
             type="button"
             onClick={handleCancel}
-            className="rounded-md w-full bg-white border border-gray-300 px-2.5 py-1.5 text-sm font-semibold text-gray-700 shadow-xs hover:bg-gray-50 focus-visible:outline-2 cursor-pointer focus-visible:outline-offset-2 focus-visible:outline-gray-500"
+            disabled={isSubmitting}
+            className={`rounded-md w-full bg-white border border-gray-300 px-2.5 py-1.5 text-sm font-semibold text-gray-700 shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'}`}
           >
             Cancel
           </button>

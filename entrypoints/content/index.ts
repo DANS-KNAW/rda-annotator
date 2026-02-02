@@ -2,6 +2,7 @@ import { waitForPDFReady } from '@/utils/anchoring/pdf'
 import { detectContentType } from '@/utils/detect-content-type'
 import { getDocumentURL } from '@/utils/document-url'
 import { onMessage, sendMessage } from '@/utils/messaging'
+import { isBlockedUrl } from '@/utils/url-blocklist'
 import { AnnotationManager } from './annotation-manager'
 import { createAnnotatorPopup } from './annotator-popup'
 import { FrameInjector } from './frame-injector'
@@ -117,6 +118,13 @@ export default defineContentScript({
   runAt: 'document_end',
 
   async main(ctx) {
+    if (isBlockedUrl(window.location.href)) {
+      if (import.meta.env.DEV) {
+        console.debug('[RDA Boot] Blocked URL, skipping injection:', window.location.href)
+      }
+      return
+    }
+
     const isTopFrame = window.self === window.top
 
     // Atomic injection guard using synchronous window property
