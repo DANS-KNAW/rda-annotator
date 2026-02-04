@@ -1,7 +1,7 @@
 {
   "name": "rda-annotator",
   "type": "module",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "description": "RDA Annotator - a browser extension to create and view annotations for research data management resources",
   "scripts": {
@@ -28,7 +28,11 @@
     "test:e2e:real-api": "pnpm build:all && playwright test",
     "test:all": "pnpm test && pnpm test:e2e",
     "lint": "eslint . && tsc --noEmit",
-    "lint:fix": "eslint . --fix && tsc --noEmit"
+    "lint:fix": "eslint . --fix && tsc --noEmit",
+    "release": "standard-version",
+    "release:minor": "standard-version --release-as minor",
+    "release:major": "standard-version --release-as major",
+    "release:patch": "standard-version --release-as patch"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
@@ -62,6 +66,7 @@
     "express": "^5.2.1",
     "happy-dom": "^20.1.0",
     "playwright-webextext": "^0.0.4",
+    "standard-version": "^9.5.0",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",
     "vitest": "^4.0.17",

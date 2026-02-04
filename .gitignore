@@ -29,3 +29,8 @@ web-ext.config.ts
 test-results/
 playwright-report/
 .playwright/
+
+# Environment files
+.env
+.env.local
+.env.*.local

@@ -86,13 +86,13 @@ export default function App() {
         )
         const data = await response.json()
         const result = isVersionGreaterOrEqual(
-          import.meta.env.WXT_ANNOTATOR_VERSION,
+          __APP_VERSION__,
           data.minVersion,
         )
 
         if (result) {
           setUpToDate(true)
-          setMinimumVersion(import.meta.env.WXT_ANNOTATOR_VERSION)
+          setMinimumVersion(__APP_VERSION__)
         }
         else {
           setUpToDate(false)
@@ -110,9 +110,7 @@ export default function App() {
           <Alert
             title="OUTDATED"
             messages={[
-              `The version ${
-                import.meta.env.WXT_ANNOTATOR_VERSION
-              } of the RDA Annotator is outdated.`,
+              `The version ${__APP_VERSION__} of the RDA Annotator is outdated.`,
               `Please update to the latest version (minimum required version is ${minimumVersion}).`,
               <a
                 key="download-link"

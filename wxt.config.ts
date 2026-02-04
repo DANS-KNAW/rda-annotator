@@ -1,5 +1,6 @@
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'wxt'
+import pkg from './package.json'
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
@@ -12,10 +13,13 @@ export default defineConfig({
   },
   vite: () => ({
     plugins: [tailwindcss()],
+    define: {
+      __APP_VERSION__: JSON.stringify(pkg.version),
+    },
   }),
   manifest: env => ({
     name: `${env.mode === 'development' ? '[DEV] ' : ''}RDA TIGER Annotation`,
-    version: '1.2.0',
+    version: pkg.version,
     permissions: ['storage', 'identity', 'tabs'],
     host_permissions: [import.meta.env.HOST_PERMISSION],
     // Required for Firefox MV3 extensions (used by playwright-webextext for testing)
