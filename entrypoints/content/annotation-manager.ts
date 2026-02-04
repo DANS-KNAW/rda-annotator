@@ -67,6 +67,19 @@ export class AnnotationManager {
   private reanchorDebounceTimer: number | null = null
   private readonly REANCHOR_DEBOUNCE_MS = 500
 
+  // Content observation for orphaned re-anchoring (non-PDF)
+  private contentObserver: MutationObserver | null = null
+  private orphanedReanchorTimer: number | null = null
+  private lastTextContentLength: number = 0
+  private orphanRetryCooldowns: Map<string, number> = new Map()
+
+  // Lighter retry settings for non-PDF (vs PDF's 5 retries)
+  private readonly NON_PDF_MAX_RETRIES = 3
+  private readonly NON_PDF_INITIAL_DELAY_MS = 500
+  private readonly NON_PDF_MAX_DELAY_MS = 2000
+  private readonly ORPHANED_REANCHOR_DEBOUNCE_MS = 500
+  private readonly ORPHAN_RETRY_COOLDOWN_MS = 2000
+
   // Guest frame detection - guest frames use postMessage for status updates
   private isGuestFrame: boolean = false
 
@@ -88,6 +101,8 @@ export class AnnotationManager {
     this.isGuestFrame = options?.isGuestFrame ?? false
     this.setupEventListeners()
     this.setupHighlightObserver()
+    this.setupContentObserver()
+    this.lastTextContentLength = this.rootElement.textContent?.length ?? 0
   }
 
   /**
@@ -198,6 +213,141 @@ export class AnnotationManager {
       this.reanchorDebounceTimer = null
       this.reanchorMissingHighlights()
     }, this.REANCHOR_DEBOUNCE_MS)
+  }
+
+  /**
+   * Setup MutationObserver to detect when new content is added to the DOM.
+   * Used for re-anchoring orphaned annotations when dynamic content loads.
+   */
+  private setupContentObserver(): void {
+    this.contentObserver = new MutationObserver((mutations) => {
+      // Skip if no orphaned annotations to re-anchor
+      if (this.orphanedAnnotations.size === 0) {
+        return
+      }
+
+      let significantContentAdded = false
+
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          // Skip highlight elements we create (avoid infinite loops)
+          if (
+            node.nodeName === 'RDA-HIGHLIGHT'
+            || (node instanceof Element && node.querySelector('rda-highlight'))
+          ) {
+            continue
+          }
+
+          // Check if added node has meaningful text content
+          if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE) {
+            const textContent = node.textContent?.trim()
+            if (textContent && textContent.length > 50) {
+              significantContentAdded = true
+              break
+            }
+          }
+        }
+        if (significantContentAdded)
+          break
+      }
+
+      // Also check delta-based detection as a fallback
+      if (!significantContentAdded) {
+        const currentLength = this.rootElement.textContent?.length ?? 0
+        const delta = currentLength - this.lastTextContentLength
+        if (delta > 50) {
+          significantContentAdded = true
+        }
+        this.lastTextContentLength = currentLength
+      }
+
+      if (significantContentAdded) {
+        this.scheduleOrphanedReanchor()
+      }
+    })
+
+    this.contentObserver.observe(this.rootElement, {
+      childList: true,
+      subtree: true,
+    })
+  }
+
+  /**
+   * Schedule re-anchoring of orphaned annotations with debouncing.
+   */
+  private scheduleOrphanedReanchor(): void {
+    if (this.orphanedReanchorTimer !== null) {
+      clearTimeout(this.orphanedReanchorTimer)
+    }
+
+    this.orphanedReanchorTimer = window.setTimeout(() => {
+      this.orphanedReanchorTimer = null
+      this.reanchorOrphanedAnnotations()
+    }, this.ORPHANED_REANCHOR_DEBOUNCE_MS)
+  }
+
+  /**
+   * Check if any orphaned annotation's quote text exists in the document.
+   * Used as a quick filter before attempting expensive re-anchoring.
+   */
+  private hasOrphanedQuoteInDocument(): boolean {
+    const documentText = this.rootElement.textContent || ''
+    return Array.from(this.orphanedAnnotations.values()).some((ann) => {
+      const selectors = ann._source.annotation_target?.selector
+      if (!selectors)
+        return false
+      const quote = selectors.find(s => s.type === 'TextQuoteSelector') as { exact?: string } | undefined
+      return quote?.exact && documentText.includes(quote.exact)
+    })
+  }
+
+  /**
+   * Check if an annotation is on cooldown (was recently retried).
+   */
+  private isOnCooldown(annotationId: string): boolean {
+    const lastAttempt = this.orphanRetryCooldowns.get(annotationId)
+    if (!lastAttempt)
+      return false
+    return Date.now() - lastAttempt < this.ORPHAN_RETRY_COOLDOWN_MS
+  }
+
+  /**
+   * Re-anchor orphaned annotations after new content was detected.
+   */
+  private async reanchorOrphanedAnnotations(): Promise<void> {
+    if (this.orphanedAnnotations.size === 0)
+      return
+
+    // Quick check: does any quote text exist in the document?
+    if (!this.hasOrphanedQuoteInDocument()) {
+      if (import.meta.env.DEV) {
+        console.debug(
+          '[AnnotationManager] Skipping orphaned re-anchor: no quote text found in document',
+        )
+      }
+      return
+    }
+
+    if (import.meta.env.DEV) {
+      console.debug(
+        `[AnnotationManager] Attempting to re-anchor ${this.orphanedAnnotations.size} orphaned annotations after DOM change`,
+      )
+    }
+
+    // Copy to avoid modification during iteration
+    const toReanchor = Array.from(this.orphanedAnnotations.values())
+
+    for (const annotation of toReanchor) {
+      // Skip if on cooldown
+      if (this.isOnCooldown(annotation._id)) {
+        continue
+      }
+
+      // Mark retry attempt time
+      this.orphanRetryCooldowns.set(annotation._id, Date.now())
+
+      await this.anchorNonPDF(annotation)
+    }
   }
 
   /**
@@ -545,8 +695,8 @@ export class AnnotationManager {
           this.anchorWithHybridRetry(annotation)
         }
         else {
-          // Fire-and-forget for non-PDF too
-          this.anchorNonPDF(annotation)
+          // Fire-and-forget for non-PDF with light retry strategy
+          this.anchorWithLightRetry(annotation)
         }
       }
     }
@@ -557,21 +707,43 @@ export class AnnotationManager {
 
   /**
    * Non-blocking anchoring for non-PDF documents.
+   * Handles recovery status when a previously orphaned annotation is successfully anchored.
    */
   private async anchorNonPDF(annotation: AnnotationHit): Promise<void> {
+    const wasOrphaned = this.orphanedAnnotationIds.has(annotation._id)
+
     try {
       await this.anchorAnnotation(annotation)
-      this.scheduleStatusUpdate(annotation._id, 'anchored')
 
-      if (import.meta.env.DEV) {
-        console.debug('[AnnotationManager] Successfully anchored:', annotation._id)
+      // Clean up orphaned state on success
+      this.orphanedAnnotationIds.delete(annotation._id)
+      this.orphanedAnnotations.delete(annotation._id)
+      this.orphanRetryCooldowns.delete(annotation._id)
+
+      if (wasOrphaned) {
+        this.recoveredAnnotationIds.add(annotation._id)
+        this.scheduleStatusUpdate(annotation._id, 'recovered')
+
+        if (import.meta.env.DEV) {
+          console.debug('[AnnotationManager] Recovered orphaned annotation:', annotation._id)
+        }
+      }
+      else {
+        this.scheduleStatusUpdate(annotation._id, 'anchored')
+
+        if (import.meta.env.DEV) {
+          console.debug('[AnnotationManager] Successfully anchored:', annotation._id)
+        }
       }
     }
     catch (error) {
       if (!this.annotations.has(annotation._id)) {
         this.orphanedAnnotationIds.add(annotation._id)
         this.orphanedAnnotations.set(annotation._id, annotation)
-        this.scheduleStatusUpdate(annotation._id, 'orphaned')
+        // Only send orphaned status if not already orphaned (avoid duplicate updates)
+        if (!wasOrphaned) {
+          this.scheduleStatusUpdate(annotation._id, 'orphaned')
+        }
 
         if (import.meta.env.DEV) {
           console.warn('[AnnotationManager] Failed to anchor annotation:', {
@@ -584,6 +756,113 @@ export class AnnotationManager {
           })
         }
       }
+    }
+  }
+
+  /**
+   * Light retry strategy for non-PDF annotations.
+   * Similar to PDF's hybrid retry but with fewer attempts.
+   * Fire-and-forget - does not block caller.
+   */
+  private anchorWithLightRetry(annotation: AnnotationHit): void {
+    const id = annotation._id
+
+    // Mark as pending immediately so sidebar shows loading state
+    this.pendingAnnotationIds.add(id)
+    this.orphanedAnnotations.set(id, annotation)
+    this.scheduleStatusUpdate(id, 'pending')
+
+    // Fire initial attempt asynchronously
+    this.tryInitialAnchorNonPDF(annotation)
+  }
+
+  /**
+   * Try initial anchor attempt for non-PDF, then start timed retries if needed.
+   */
+  private async tryInitialAnchorNonPDF(annotation: AnnotationHit): Promise<void> {
+    const id = annotation._id
+
+    try {
+      await this.anchorAnnotation(annotation)
+      const anchored = this.annotations.get(id)
+
+      if (anchored?.highlight) {
+        // Successfully anchored with real highlight
+        this.pendingAnnotationIds.delete(id)
+        this.orphanedAnnotations.delete(id)
+        this.scheduleStatusUpdate(id, 'anchored')
+        return
+      }
+    }
+    catch {
+      // Initial attempt failed - start timed retries
+    }
+
+    // Start timed retries in background
+    this.runNonPDFTimedRetries(annotation, 0, this.NON_PDF_INITIAL_DELAY_MS)
+  }
+
+  /**
+   * Run timed retries for non-PDF annotations with exponential backoff.
+   * Content observer provides event-driven retry independently.
+   */
+  private async runNonPDFTimedRetries(
+    annotation: AnnotationHit,
+    attempts: number,
+    delay: number,
+  ): Promise<void> {
+    const id = annotation._id
+
+    while (attempts < this.NON_PDF_MAX_RETRIES) {
+      // Check if already successfully anchored (by content observer)
+      const anchored = this.annotations.get(id)
+      if (anchored?.highlight && anchored.highlight.elements.length > 0) {
+        return // Already done
+      }
+
+      attempts++
+      this.retryAttempts.set(id, attempts)
+      await this.sleep(delay)
+      delay = Math.min(delay * 2, this.NON_PDF_MAX_DELAY_MS)
+
+      try {
+        // Clean up any existing entry
+        const existing = this.annotations.get(id)
+        if (existing) {
+          if (existing.highlight) {
+            removeHighlight(existing.highlight)
+          }
+          this.annotations.delete(id)
+        }
+
+        await this.anchorAnnotation(annotation)
+
+        const newAnchored = this.annotations.get(id)
+        if (newAnchored?.highlight) {
+          // Successfully anchored
+          this.pendingAnnotationIds.delete(id)
+          this.orphanedAnnotations.delete(id)
+          this.retryAttempts.delete(id)
+          this.scheduleStatusUpdate(id, 'anchored')
+          return
+        }
+      }
+      catch {
+        // Continue retrying
+      }
+    }
+
+    // Timed retries exhausted - mark as orphaned
+    // Content observer will continue providing recovery opportunities
+    this.pendingAnnotationIds.delete(id)
+    this.orphanedAnnotationIds.add(id)
+    this.retryAttempts.delete(id)
+    this.scheduleStatusUpdate(id, 'orphaned')
+
+    if (import.meta.env.DEV) {
+      console.debug(
+        `[AnnotationManager] Non-PDF annotation ${id} marked orphaned after ${this.NON_PDF_MAX_RETRIES} retries`,
+      )
     }
   }
 
@@ -934,6 +1213,16 @@ export class AnnotationManager {
       this.reanchorDebounceTimer = null
     }
 
+    // Clean up content observer for orphaned re-anchoring
+    if (this.contentObserver) {
+      this.contentObserver.disconnect()
+      this.contentObserver = null
+    }
+    if (this.orphanedReanchorTimer !== null) {
+      clearTimeout(this.orphanedReanchorTimer)
+      this.orphanedReanchorTimer = null
+    }
+
     if (this.statusUpdateTimer !== null) {
       clearTimeout(this.statusUpdateTimer)
       this.statusUpdateTimer = null
@@ -945,6 +1234,7 @@ export class AnnotationManager {
     this.recoveredAnnotationIds.clear()
     this.orphanedAnnotations.clear()
     this.retryAttempts.clear()
+    this.orphanRetryCooldowns.clear()
 
     this.removeTemporaryHighlight()
     this.clearAnnotations()
