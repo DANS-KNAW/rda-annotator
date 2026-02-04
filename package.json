@@ -1,7 +1,7 @@
 {
   "name": "rda-annotator",
   "type": "module",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "description": "RDA Annotator - a browser extension to create and view annotations for research data management resources",
   "scripts": {
