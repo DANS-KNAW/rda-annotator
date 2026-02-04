@@ -52,7 +52,7 @@ export default function FieldDisplay({
   return (
     <div>
       <span className="font-medium text-xs text-gray-700">{label}</span>
-      <p className="mt-2 text-sm bg-gray-50 border border-gray-200 p-2 rounded-md text-gray-900">
+      <p className="mt-2 text-sm bg-gray-50 border border-gray-200 p-2 rounded-md text-gray-900 break-all">
         {value}
       </p>
     </div>
